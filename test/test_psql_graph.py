@@ -2,8 +2,8 @@ import uuid
 import unittest
 import time
 from cdisutils import log
-from PsqlGraph import PsqlGraphDriver, session_scope
-from PsqlGraph.setup_psql_graph import setup_database, create_tables, \
+from psqlgraph import PsqlGraphDriver, session_scope
+from psqlgraph.setup_psql_graph import setup_database, create_tables, \
     try_drop_test_data
 from multiprocessing import Process
 import logging
@@ -95,7 +95,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(propertiesB, nodes[1].properties)
 
     def test_repeated_node_update(self, tempid=None):
-        """-
+        """
 
         Verify that updates repeated updates to a single node create
         the correct number of voided transactions and a single valid
@@ -189,7 +189,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         tempid = str(uuid.uuid4())
 
-        propertiesA =
+        propertiesA = {'key1':  None, 'key2':  3, 'key3':  time.time()}
 
         {'key1':  None, 'key2':  2, 'key3':  time.time()}
         self.driver.node_merge(node_id=tempid, properties=propertiesA)

@@ -1,7 +1,8 @@
 from setuptools import setup
 
 setup(
-    name='PsqlGraph',
+    name='psqlgraph',
+    packages=["psqlgraph"],
     install_requires=[
         'psycopg2',
         'sqlalchemy',

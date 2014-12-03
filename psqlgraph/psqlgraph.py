@@ -1,6 +1,5 @@
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, MetaData, Table, Column, \
-    Integer, Text, String
+from sqlalchemy import create_engine, Column, Integer, Text, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgres import TIMESTAMP, ARRAY, JSONB
 from sqlalchemy.exc import IntegrityError
@@ -22,11 +21,15 @@ class NotConnected(Exception):
     pass
 
 
-class QueryException(Exception):
+class QueryError(Exception):
     pass
 
 
-class NodeCreationException(Exception):
+class ProgrammingError(Exception):
+    pass
+
+
+class NodeCreationError(Exception):
     pass
 
 
@@ -251,7 +254,7 @@ class PsqlGraphDriver(object):
                 self.logger.info('Creating a new node')
 
                 if not node_id:
-                    raise NodeCreationException(
+                    raise NodeCreationError(
                         'Cannot create a node with no node_id')
 
                 new_node = PsqlNode(
@@ -275,7 +278,8 @@ class PsqlGraphDriver(object):
 
         with session_scope(self.engine, session) as local:
             try:
-                self.node_void(old_node, session)
+                if old_node:
+                    self.node_void(old_node, session)
                 local.add(new_node)
             except:
                 raise
@@ -292,7 +296,7 @@ class PsqlGraphDriver(object):
 
         """
         if not node:
-            return
+            raise ProgrammingError('node_void was passed a NoneType PsqlNode')
 
         with session_scope(self.engine, session) as local:
             node.voided = datetime.now()
@@ -317,8 +321,8 @@ class PsqlGraphDriver(object):
         )
 
         if len(nodes) > 1:
-            raise QueryException('Expected a single result for query, got {n}'
-                                 ''.format(n=len(nodes)))
+            raise QueryError('Expected a single result for query, got {n}'
+                             ''.format(n=len(nodes)))
         if len(nodes) < 1:
             return None
 
@@ -335,15 +339,13 @@ class PsqlGraphDriver(object):
         treated as an invalid query.
         """
 
-        if not ((node_id is not None) ^
-                (property_matches is not None or
-                 system_annotation_matches is not None)):
-            raise QueryException("Node lookup by node_id and kv matches not"
-                                 " accepted.")
+        if (node_id and (property_matches or system_annotation_matches)):
+            raise QueryError('Node lookup by node_id and kv matches not'
+                             ' accepted.')
 
         if ((not node_id) and (not property_matches) and
                 (not system_annotation_matches)):
-            raise QueryException("No node_id or matches specified")
+            raise QueryError('No node_id or matches specified')
 
         if node_id is not None:
             return self.node_lookup_by_id(

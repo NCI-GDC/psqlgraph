@@ -2,18 +2,19 @@ import uuid
 import unittest
 import time
 from cdisutils import log
+import psqlgraph
 from psqlgraph import PsqlGraphDriver, session_scope
-from psqlgraph.setup_psql_graph import setup_database, create_tables, \
-    try_drop_test_data
+from psqlgraph.setup_psql_graph import setup_database, create_tables
 from multiprocessing import Process
 import logging
 import random
+from sqlalchemy.exc import IntegrityError
+
 
 host = 'localhost'
 user = 'test'
 password = 'test'
 database = 'automated_test'
-table = 'test'
 
 
 logging.basicConfig(level=logging.WARN)
@@ -27,16 +28,6 @@ class TestPsqlGraphSetup(unittest.TestCase):
     def test_setup(self):
         setup_database(user, password, database)
         create_tables(host, user, password, database)
-
-
-class TestPsqlGraphTeardown(unittest.TestCase):
-
-    def setUp(self):
-        self.logger = log.get_logger(__name__)
-
-    def test_teardown(self):
-        time.sleep(1)
-        try_drop_test_data(user, database)
 
 
 class TestPsqlGraphDriver(unittest.TestCase):
@@ -57,11 +48,29 @@ class TestPsqlGraphDriver(unittest.TestCase):
                              n=count, count=len(nodes)))
         return nodes
 
-    def test_connect_to_node_table(self):
-        self.driver.connect_to_table('nodes')
-        self.assertTrue(self.driver.is_connected())
+    def test_node_null_query_one(self):
+        """Verify that the library handles the case where a user queries for a
+        a single non-existant node
+
+        """
+
+        node = self.driver.node_lookup_one(str(uuid.uuid4()))
+        self.assertTrue(node is None)
+
+    def test_node_null_query(self):
+        """Verify that the library handles the case where a user queries for
+        non-existant nodes
+
+        """
+
+        node = self.driver.node_lookup(str(uuid.uuid4()))
+        self.assertEqual(node, [])
 
     def test_node_merge_and_lookup(self):
+        """Insert a single node and query, compare that the result of the
+        query is correct
+
+        """
         tempid = str(uuid.uuid4())
         properties = {'key1': None, 'key2': 2, 'key3': time.time()}
         self.driver.node_merge(node_id=tempid, properties=properties)
@@ -70,6 +79,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(properties, node.properties)
 
     def test_node_update(self):
+        """
+        Insert a single node, update it, verify that
+
+        (1) The fisrt insertion is successful
+        (2) The update is successful
+        (3) The transaction of the update is maintained
+        (4) There is only a single version of the node
+
+        """
 
         tempid = str(uuid.uuid4())
 
@@ -94,6 +112,39 @@ class TestPsqlGraphDriver(unittest.TestCase):
         nodes = self.verify_node_count(2, node_id=tempid, voided=True)
         self.assertEqual(propertiesB, nodes[1].properties)
 
+    def _insert_node(self, node):
+        with psqlgraph.session_scope(self.driver.engine) as session:
+            session.add(node)
+
+    def test_node_unique_id_constraint(self):
+
+        tempid = str(uuid.uuid4())
+
+        # Add first node
+        propertiesA = {'key1': None, 'key2': 2, 'key3': time.time()}
+        self.driver.node_merge(node_id=tempid, properties=propertiesA)
+
+        propertiesB = {'key1': None, 'key2': 2, 'key3': time.time()}
+        bad_node = psqlgraph.PsqlNode(
+            node_id=tempid,
+            system_annotations={},
+            acl=[],
+            label=None,
+            properties=propertiesB
+        )
+
+        self.assertRaises(IntegrityError, self._insert_node, bad_node)
+
+    def test_null_node_void(self):
+        self.assertRaises(
+            psqlgraph.ProgrammingError,
+            self.driver.node_void,
+            None
+        )
+
+    def test_null_node_merge(self):
+        self.assertRaises(psqlgraph.QueryError, self.driver.node_merge)
+
     def test_repeated_node_update(self, tempid=None):
         """
 
@@ -113,12 +164,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
                           'key2': 2,
                           'key3': time.time(),
                           'rand':  random.random()}
-            self.driver.node_merge(node_id=tempid, properties=properties)
+            self.driver.node_merge(node_id=tempid, properties=properties,
+                                   max_retries=int(1e6))
 
         node = self.driver.node_lookup_one(tempid)
         self.assertEqual(properties, node.properties, 'Node properties'
                          'do not match expected properties')
-        self.verify_node_count(update_count, node_id=tempid, voided=True)
+        if not tempid:
+            """if this is not part of another test, check the count"""
+            self.verify_node_count(update_count, node_id=tempid, voided=True)
 
     def test_sessioned_node_update(self, tempid=None):
         """
@@ -139,20 +193,27 @@ class TestPsqlGraphDriver(unittest.TestCase):
                               'key2': 2,
                               'key3': time.time(),
                               'rand':  random.random()}
-                self.driver.node_merge(node_id=tempid, properties=properties,
-                                       session=session)
+
+                self.driver.node_merge(
+                    node_id=tempid,
+                    properties=properties,
+                    session=session,
+                    max_retries=int(1e6),
+                    backoff=lambda x, y: time.sleep(random.randint(5, 30))
+                )
 
             node = self.driver.node_lookup_one(node_id=tempid, session=session)
             self.assertEqual(properties, node.properties, 'Node properties'
                              'do not match expected properties')
 
-        self.verify_node_count(update_count, tempid, voided=True)
+        if not tempid:
+            """if this is not part of another test, check the count"""
+            self.verify_node_count(update_count, tempid, voided=True)
 
     def test_concurrent_node_update(self):
 
         process_count = 3
         tempid = str(uuid.uuid4())
-
         processes = []
 
         for tally in range(process_count):
@@ -167,24 +228,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         self.verify_node_count(process_count*200, tempid, voided=True)
 
-    def test_sessioned_concurrent_node_update(self):
-
-        process_count = 10
-        tempid = str(uuid.uuid4())
-
-        processes = []
-
-        for tally in range(process_count):
-            p = Process(target=self.test_sessioned_node_update,
-                        kwargs={'tempid': tempid})
-            p.start()
-            processes.append(p)
-
-        for p in processes:
-            p.join()
-
-        self.verify_node_count(process_count*200, tempid, voided=True)
-
+    @unittest.skip('Not implemented')
     def test_node_clobber(self):
 
         tempid = str(uuid.uuid4())
@@ -203,6 +247,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(propertiesB, nodes[0].properties, 'Node properties do'
                          ' not match expected properties')
 
+    @unittest.skip('Not implemented')
     def test_node_delete_property_keys(self):
 
         tempid = str(uuid.uuid4())
@@ -218,6 +263,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                          'instead found {count}'.format(count=len(nodes)))
         self.assertEqual(properties, nodes[0].properties)
 
+    @unittest.skip('Not implemented')
     def test_node_delete_system_annotation_keys(self):
 
         tempid = str(uuid.uuid4())
@@ -235,6 +281,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                          'instead found {count}'.format(count=len(nodes)))
         self.assertEqual(annotations, nodes[0].properties)
 
+    @unittest.skip('Not implemented')
     def test_node_delete(self):
 
         tempid = str(uuid.uuid4())
@@ -247,6 +294,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                          'to be found, instead found {count}'.format(
                              count=len(nodes)))
 
+    @unittest.skip('Not implemented')
     def test_repeated_node_delete(self):
 
         tempid = str(uuid.uuid4())
@@ -266,6 +314,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                          'non-voided nodes to be found, instead found {real}'
                          ''.format(exp=void_count, real=len(nodes)))
 
+    @unittest.skip('Not implemented')
     def test_edge_merge_and_lookup(self):
         self.driver.connect_to_table('edges')
 
@@ -278,6 +327,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                          'instead found {count}'.format(count=len(edges)))
         self.assertTrue(cmp(properties, edges[0].properties) == 0)
 
+    @unittest.skip('Not implemented')
     def test_edge_update(self):
         self.driver.connect_to_table('edges')
 
@@ -300,6 +350,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(propertiesB, edges[0].properties, 'Edge properties do'
                          ' not match expected properties')
 
+    @unittest.skip('Not implemented')
     def test_repeated_edge_update(self):
         self.driver.connect_to_table('edges')
 
@@ -322,6 +373,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         edges = self.driver.edge_lookup(tempid, voided=True)
         self.assertEqual(len(edges), update_count - 1)
 
+    @unittest.skip('Not implemented')
     def test_edge_clobber(self):
 
         tempid = str(uuid.uuid4())
@@ -336,6 +388,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(len(edges), 1, 'Expected a single edge to be found, instead found {count}'.format(count=len(edges)))
         self.assertEqual(propertiesB, edges[0].properties, 'Edge properties do not match expected properties')
 
+    @unittest.skip('Not implemented')
     def test_edge_delete_property_keys(self):
 
         tempid = str(uuid.uuid4())
@@ -350,6 +403,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(len(edges), 1, 'Expected a single edge to be found, instead found {count}'.format(count=len(edges)))
         self.assertEqual(properties, edges[0].properties)
 
+    @unittest.skip('Not implemented')
     def test_edge_delete_system_annotation_keys(self):
 
         tempid = str(uuid.uuid4())
@@ -366,6 +420,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(len(edges), 1, 'Expected a single edge to be found, instead found {count}'.format(count=len(edges)))
         self.assertEqual(properties, edges[0].properties)
 
+    @unittest.skip('Not implemented')
     def test_edge_delete(self):
 
         tempid = str(uuid.uuid4())
@@ -379,6 +434,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         edges = self.driver.edge_lookup(tempid)
         self.assertEqual(len(edges), 0, 'Expected a single no non-voided edges to be found, instead found {count}'.format(count=len(edges)))
 
+    @unittest.skip('Not implemented')
     def test_repeated_edge_delete(self):
 
         tempid = str(uuid.uuid4())

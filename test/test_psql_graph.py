@@ -9,7 +9,7 @@ from multiprocessing import Process
 import logging
 import random
 from sqlalchemy.exc import IntegrityError
-
+import json
 
 host = 'localhost'
 user = 'test'
@@ -38,17 +38,37 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.driver = PsqlGraphDriver(host, user, password, database)
         self.REPEAT_COUNT = 200
 
-    def verify_node_count(self, count, node_id=None, matches=None,
-                          voided=False):
-        nodes = self.driver.node_lookup(
-            node_id=node_id,
-            property_matches=matches,
-            include_voided=voided
-        )
-        self.assertEqual(len(nodes), count, 'Expected a {n} nodes to '
-                         'be found, instead found {count}'.format(
-                             n=count, count=len(nodes)))
-        return nodes
+    def test_sanitize_int(self):
+        """ Test sanitization of castable integer type"""
+        self.assertEqual(psqlgraph.Sanitizer.cast(5), 5)
+
+    def test_sanitize_str(self):
+        """ Test sanitization of castable string type"""
+        self.assertEqual(psqlgraph.Sanitizer.cast('test'), 'test')
+
+    def test_sanitize_dict(self):
+        """ Test sanitization of castable dictionary type"""
+        test = {'first': 1, 'second': 2, 'third': 'This is a test'}
+        self.assertEqual(psqlgraph.Sanitizer.cast(test), json.dumps(test))
+
+    def test_sanitize_other(self):
+        """ Test sanitization of select non-standard types"""
+        A = psqlgraph.QueryError
+        self.assertEqual(psqlgraph.Sanitizer.cast(A), str(A))
+        B = logging
+        self.assertEqual(psqlgraph.Sanitizer.cast(B), str(B))
+
+    def test_sanitize(self):
+        """ Test sanitization of select non-standard types"""
+        self.assertEqual(psqlgraph.Sanitizer.sanitize({
+            'key1': 'First', 'key2': 25,
+            'nested': {'nestedkey1': "First's", 'nestedkey2': 25},
+            'other': psqlgraph.Sanitizer,
+        }), {
+            'key1': 'First', 'key2': 25,
+            'nested': '{"nestedkey1": "First\'s", "nestedkey2": 25}',
+            'other': str(psqlgraph.Sanitizer),
+        })
 
     def test_node_null_query_one(self):
         """Verify that the library handles the case where a user queries for a
@@ -67,6 +87,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         node = self.driver.node_lookup(str(uuid.uuid4()))
         self.assertEqual(node, [])
+
+    def verify_node_count(self, count, node_id=None, matches=None,
+                          voided=False):
+        nodes = self.driver.node_lookup(
+            node_id=node_id,
+            property_matches=matches,
+            include_voided=voided
+        )
+        self.assertEqual(len(nodes), count, 'Expected a {n} nodes to '
+                         'be found, instead found {count}'.format(
+                             n=count, count=len(nodes)))
+        return nodes
 
     def test_node_merge_and_lookup(self):
         """Insert a single node and query, compare that the result of the
@@ -145,17 +177,17 @@ class TestPsqlGraphDriver(unittest.TestCase):
         )
 
         # Merge properties
-        for key, val in propertiesA.iteritems():
-            propertiesB[key] = val
+        for key, val in propertiesB.iteritems():
+            propertiesA[key] = val
 
         node = self.driver.node_lookup_one(property_matches=propertiesB)
-        self.assertEqual(propertiesB, node.properties)
+        self.assertEqual(propertiesA, node.properties)
 
         node = self.driver.node_lookup_one(node_id=node_id)
-        self.assertEqual(propertiesB, node.properties)
+        self.assertEqual(propertiesA, node.properties)
 
         nodes = self.verify_node_count(2, node_id=node_id, voided=True)
-        self.assertEqual(propertiesB, nodes[1].properties)
+        self.assertEqual(propertiesA, nodes[1].properties)
 
         return propertiesB
 

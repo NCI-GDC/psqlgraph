@@ -1,7 +1,8 @@
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, Column, Integer, Text, String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.dialects.postgres import TIMESTAMP, ARRAY, JSONB
+from sqlalchemy.dialects.postgres import TIMESTAMP, ARRAY, JSONB, \
+    INTEGER, TEXT, FLOAT
 from sqlalchemy.exc import IntegrityError
 from contextlib import contextmanager
 from datetime import datetime
@@ -68,6 +69,46 @@ def session_scope(engine, session=None):
             local.close()
 
 
+class Sanitizer(object):
+
+    type_mapping = {
+        int: INTEGER,
+        str: TEXT,
+        dict: TEXT,
+        float: FLOAT,
+        datetime: TIMESTAMP,
+        NoneType: NoneType,
+    }
+
+    type_conversion = {
+        int: int,
+        str: str,
+        dict: json.dumps,
+        float: float,
+        datetime: datetime,
+        NoneType: lambda x: None,
+    }
+
+    @staticmethod
+    def cast(variable):
+        if type(variable) not in Sanitizer.type_conversion:
+            return str(variable)
+        return Sanitizer.type_conversion[type(variable)](variable)
+
+    @staticmethod
+    def sanitize(variable):
+        if not isinstance(variable, dict):
+            return Sanitizer.cast(variable)
+        variable = copy.deepcopy(variable)
+        for key, value in variable.iteritems():
+            variable[key] = Sanitizer.cast(value)
+        return variable
+
+    @staticmethod
+    def lookup(variable):
+        return Sanitizer.type_mapping.get(type(variable), TEXT)
+
+
 class PsqlNode(Base):
 
     __tablename__ = 'nodes'
@@ -80,15 +121,6 @@ class PsqlNode(Base):
     system_annotations = Column(JSONB, default={})
     label = Column(Text)
     properties = Column(JSONB, default={})
-
-    type_mapping = {
-        int: INTEGER,
-        str: STRING,
-        dict: JSONB,
-        float: DOUBLE_PRECISION,
-        datetime: TIMESTAMP,
-        NoneType: types.Nonetype,
-    }
 
     def __repr__(self):
         return "<PostgresNode(key={key}, node_id={node_id}, voided={voided})>"
@@ -105,8 +137,10 @@ class PsqlNode(Base):
         new_acl = self.acl[:] + (node.acl or [])
         new_label = (node.label or self.label)
 
-        new_system_annotations.update(node.system_annotations or {})
-        new_properties.update(node.properties or {})
+        new_system_annotations.update(Sanitizer.sanitize(
+            node.system_annotations) or {})
+        new_properties.update(Sanitizer.sanitize(
+            node.properties) or {})
 
         return PsqlNode(
             node_id=self.node_id,
@@ -115,12 +149,6 @@ class PsqlNode(Base):
             label=new_label,
             properties=new_properties,
         )
-
-    def sanitize(_jsonb):
-        jsonb = copy.deepcopy(_jsonb)
-        # for key, value in jsonb.iteritems():
-        #     if isinstance
-        #     jsonb[key]
 
 
 class PsqlEdge(Base):
@@ -406,28 +434,33 @@ class PsqlGraphDriver(object):
         """
         """
 
+        system_annotation_matches = Sanitizer.sanitize(
+            system_annotation_matches)
+        property_matches = Sanitizer.sanitize(property_matches)
+
         with session_scope(self.engine, session) as local:
             query = local.query(PsqlNode)
 
             # Filter system annotations
-            if system_annotation_matches:
-                for key, value in system_annotation_matches.iteritems():
-                    if not value:
-                        continue
-                    query = query.filter(
-                        PsqlNode.system_annotations[key].astext ==
-                        json.dumps(value)
-                    )
+            # if system_annotation_matches:
+            #     for key, value in system_annotation_matches.iteritems():
+            #         if not value:
+            #             continue
+
+            #         query = query.filter(
+            #             PsqlNode.system_annotations[key].astext ==
+            #             json.dumps(value)
+            #         )
 
             # Filter properties
             if property_matches:
                 for key, value in property_matches.iteritems():
-                    pprint([key, str(value)])
+                    pprint([key, value])
                     if not value:
                         continue
                     query = query.filter(
-                        PsqlNode.properties[key].astext ==
-                        str(value)
+                        PsqlNode.properties[key].cast(
+                            Sanitizer.lookup(value)) == value
                     )
                 # print dir(PsqlNode.properties)
                 # query = query.filter(

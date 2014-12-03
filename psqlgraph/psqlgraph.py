@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgres import TIMESTAMP, ARRAY, JSONB
 from sqlalchemy.exc import IntegrityError
 from contextlib import contextmanager
 from datetime import datetime
+from types import NoneType
 import time
 import random
 import logging
@@ -80,7 +81,14 @@ class PsqlNode(Base):
     label = Column(Text)
     properties = Column(JSONB, default={})
 
-    # type_mapping = {
+    type_mapping = {
+        int: INTEGER,
+        str: STRING,
+        dict: JSONB,
+        float: DOUBLE_PRECISION,
+        datetime: TIMESTAMP,
+        NoneType: types.Nonetype,
+    }
 
     def __repr__(self):
         return "<PostgresNode(key={key}, node_id={node_id}, voided={voided})>"
@@ -110,9 +118,9 @@ class PsqlNode(Base):
 
     def sanitize(_jsonb):
         jsonb = copy.deepcopy(_jsonb)
-        for key, value in jsonb.iteritems():
-            if isinstance
-            jsonb[key]
+        # for key, value in jsonb.iteritems():
+        #     if isinstance
+        #     jsonb[key]
 
 
 class PsqlEdge(Base):

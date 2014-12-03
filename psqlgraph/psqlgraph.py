@@ -9,7 +9,8 @@ import time
 import random
 import logging
 import copy
-
+import json
+from pprint import pprint
 Base = declarative_base()
 
 """
@@ -79,6 +80,8 @@ class PsqlNode(Base):
     label = Column(Text)
     properties = Column(JSONB, default={})
 
+    # type_mapping = {
+
     def __repr__(self):
         return "<PostgresNode(key={key}, node_id={node_id}, voided={voided})>"
         "".format(
@@ -104,6 +107,12 @@ class PsqlNode(Base):
             label=new_label,
             properties=new_properties,
         )
+
+    def sanitize(_jsonb):
+        jsonb = copy.deepcopy(_jsonb)
+        for key, value in jsonb.iteritems():
+            if isinstance
+            jsonb[key]
 
 
 class PsqlEdge(Base):
@@ -255,7 +264,7 @@ class PsqlGraphDriver(object):
 
                 if not node_id:
                     raise NodeCreationError(
-                        'Cannot create a node with no node_id')
+                        'Cannot create a node with no node_id.')
 
                 new_node = PsqlNode(
                     node_id=node_id,
@@ -385,59 +394,70 @@ class PsqlGraphDriver(object):
 
     def node_lookup_by_matches(self, property_matches=None,
                                system_annotation_matches=None,
-                               include_voided=False):
+                               include_voided=False, session=None):
         """
-        :param node_id: unique id that is only important inside postgres, referenced by edges
-        :param matches: key-values to match node if node_id is not provided
         """
 
-        raise NotImplementedError()
+        with session_scope(self.engine, session) as local:
+            query = local.query(PsqlNode)
+
+            # Filter system annotations
+            if system_annotation_matches:
+                for key, value in system_annotation_matches.iteritems():
+                    if not value:
+                        continue
+                    query = query.filter(
+                        PsqlNode.system_annotations[key].astext ==
+                        json.dumps(value)
+                    )
+
+            # Filter properties
+            if property_matches:
+                for key, value in property_matches.iteritems():
+                    pprint([key, str(value)])
+                    if not value:
+                        continue
+                    query = query.filter(
+                        PsqlNode.properties[key].astext ==
+                        str(value)
+                    )
+                # print dir(PsqlNode.properties)
+                # query = query.filter(
+                #     PsqlNode.properties.constains(
+                #         property_matches))
+
+            if not include_voided:
+                query = query.filter(PsqlNode.voided.is_(None))
+
+            print query
+            result = query.all()
+
+        print result
+        return result
 
     def node_clobber(self, node_id=None, matches={}, acl=[],
                      system_annotations={}, label=None, properties={}):
         """
-        :param node_id: unique id that is only important inside postgres, referenced by edges
-        :param matches: key-values to match node if node_id is not provided
-        :param acl: authoritative list that drives object store acl amongst others
-        :param system_annotations: the only property to be mutable? This would allow for flexible kv storage tied to the node that does not bloat the database for things like downloaders, and harmonizers
-        :param label: this is the node type
-        :param properties: the jsonb document containing the node properties
         """
 
         raise NotImplementedError()
 
     def node_delete_property_keys(self, node_id=None, matches={}, keys=[]):
         """
-        :param node_id: unique id that is only important inside postgres, referenced by edges
-        :param matches: key-values to match node if node_id is not provided
-        :param acl: authoritative list that drives object store acl amongst others
-        :param system_annotations: the only property to be mutable? This would allow for flexible kv storage tied to the node that does not bloat the database for things like downloaders, and harmonizers
-        :param label: this is the node type
-        :param properties: the jsonb document containing the node properties
         """
 
         raise NotImplementedError()
 
-    def node_delete_system_annotation_keys(self, node_id=None, matches={}, keys=[]):
+    def node_delete_system_annotation_keys(self, node_id=None, matches={},
+                                           keys=[]):
         """
-        :param node_id: unique id that is only important inside postgres, referenced by edges
-        :param matches: key-values to match node if node_id is not provided
-        :param acl: authoritative list that drives object store acl amongst others
-        :param system_annotations: the only property to be mutable? This would allow for flexible kv storage tied to the node that does not bloat the database for things like downloaders, and harmonizers
-        :param label: this is the node type
-        :param properties: the jsonb document containing the node properties
         """
 
         raise NotImplementedError()
 
-    def node_delete(self, node_id=None, matches={}, acl=[], system_annotations={}, label=None, properties={}):
+    def node_delete(self, node_id=None, matches={}, acl=[],
+                    system_annotations={}, label=None, properties={}):
         """
-        :param node_id: unique id that is only important inside postgres, referenced by edges
-        :param matches: key-values to match node if node_id is not provided
-        :param acl: authoritative list that drives object store acl amongst others
-        :param system_annotations: the only property to be mutable? This would allow for flexible kv storage tied to the node that does not bloat the database for things like downloaders, and harmonizers
-        :param label: this is the node type
-        :param properties: the jsonb document containing the node properties
         """
 
         raise NotImplementedError()

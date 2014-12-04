@@ -447,6 +447,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.driver.node_merge(node_id=src_id)
         self.driver.node_merge(node_id=dst_id)
         self.driver.edge_merge(src_id=src_id, dst_id=dst_id)
+
+        edge = self.driver.edge_lookup_one(dst_id=dst_id)
+        self.assertEqual(edge.src_id, src_id)
+        self.assertEqual(edge.dst_id, dst_id)
+
+        edge = self.driver.edge_lookup_one(src_id=src_id)
+        self.assertEqual(edge.src_id, src_id)
+        self.assertEqual(edge.dst_id, dst_id)
+
         edge = self.driver.edge_lookup_one(src_id=src_id, dst_id=dst_id)
         self.assertEqual(edge.src_id, src_id)
         self.assertEqual(edge.dst_id, dst_id)
@@ -454,13 +463,57 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_edge_merge_and_lookup_properties(self):
         src_id = str(uuid.uuid4())
         dst_id = str(uuid.uuid4())
-        props = {'key1': time.now(), 'key2': random.random()}
+        props = {'key1': str(random.random()), 'key2': random.random()}
         self.driver.node_merge(node_id=src_id)
         self.driver.node_merge(node_id=dst_id)
         self.driver.edge_merge(src_id=src_id, dst_id=dst_id, properties=props)
         edge = self.driver.edge_lookup_one(src_id=src_id, dst_id=dst_id)
         self.assertEqual(edge.src_id, src_id)
         self.assertEqual(edge.dst_id, dst_id)
+        self.assertEqual(edge.properties, props)
+
+    def test_edge_lookup_leaves(self):
+
+        leaf_count = 10
+        src_id = str(uuid.uuid4())
+        self.driver.node_merge(node_id=src_id)
+
+        dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
+        for dst_id in dst_ids:
+            dst_ids.append(str(uuid.uuid4()))
+            self.driver.node_merge(node_id=dst_id)
+            self.driver.edge_merge(src_id=src_id, dst_id=dst_id)
+
+        edge_ids = [e.dst_id for e in self.driver.edge_lookup(src_id=src_id)]
+        self.assertEqual(len(set(edge_ids)), leaf_count)
+
+        for dst_id in dst_ids:
+            self.assertTrue(dst_id in set(edge_ids))
+
+    def test_sessioned_path_insertion(self):
+
+        leaf_count = 10
+        src_id = str(uuid.uuid4())
+        dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
+        self.driver.node_merge(node_id=src_id)
+        with session_scope(self.driver.engine) as session:
+            for dst_id in dst_ids:
+                dst_ids.append(str(uuid.uuid4()))
+                self.driver.node_merge(node_id=dst_ids[-1], session=session)
+            self.assertTrue(False)
+
+            for dst_id in dst_ids:
+                node = self.driver.node_lookup_one(node_id=dst_id,
+                                                   session=session)
+                self.driver.edge_merge(src_id=src_id, dst_id=node.node_id,
+                                       session=session)
+
+        edge_ids = [e.dst_id for e in self.driver.edge_lookup(
+            src_id=src_id)]
+        self.assertEqual(len(set(edge_ids)), leaf_count)
+
+        for dst_id in dst_ids:
+            self.assertTrue(dst_id in set(edge_ids))
 
 
 if __name__ == '__main__':

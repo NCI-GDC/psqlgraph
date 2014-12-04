@@ -736,8 +736,8 @@ class PsqlGraphDriver(object):
                 self.edge_void(old_edge, session)
             local.add(new_edge)
 
-    def edge_lookup_one(self, src_id, dst_id, include_voided=False,
-                        session=None):
+    def edge_lookup_one(self, src_id=None, dst_id=None,
+                        include_voided=False, session=None):
         """
         This function is simply a wrapper for ``node_lookup`` that
         constrains the query to return a single node.  If multiple
@@ -762,7 +762,8 @@ class PsqlGraphDriver(object):
 
         return edges[0]
 
-    def edge_lookup(self, src_id, dst_id, include_voided=False, session=None):
+    def edge_lookup(self, src_id=None, dst_id=None,
+                    include_voided=False, session=None):
         """
         This function looks up a node by a given id.  If include_voided is
         true, then the returned list will include nodes that have been
@@ -773,9 +774,14 @@ class PsqlGraphDriver(object):
         new one will be created.
         """
 
+        if src_id is None and dst_id is None:
+            raise QueryError('Cannot lookup edge, no src_id or dst_id')
+
         with session_scope(self.engine, session) as local:
-            query = local.query(PsqlEdge).filter(PsqlEdge.src_id == src_id)
-            query = local.query(PsqlEdge).filter(PsqlEdge.dst_id == dst_id)
+            if src_id:
+                query = local.query(PsqlEdge).filter(PsqlEdge.src_id == src_id)
+            if dst_id:
+                query = local.query(PsqlEdge).filter(PsqlEdge.dst_id == dst_id)
 
             if not include_voided:
                 query = query.filter(PsqlEdge.voided.is_(None))

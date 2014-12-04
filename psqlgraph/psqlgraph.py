@@ -39,6 +39,10 @@ class NodeCreationError(Exception):
     pass
 
 
+class EdgeCreationError(Exception):
+    pass
+
+
 @contextmanager
 def session_scope(engine, session=None):
     """Provide a transactional scope around a series of operations."""
@@ -126,10 +130,8 @@ class PsqlNode(Base):
     properties = Column(JSONB, default={})
 
     def __repr__(self):
-        return "<PsqlNode(key={key}, node_id={node_id}, voided={voided})>"
-        "".format(
+        return '<PsqlNode({node_id}, voided={voided})>'.format(
             node_id=self.node_id,
-            key=self.key,
             voided=(self.voided is not None)
         )
 
@@ -168,10 +170,9 @@ class PsqlEdge(Base):
     properties = Column(JSONB, default={})
 
     def __repr__(self):
-        return "<PsqlEdge(key={key}, node_id={node_id}, voided={voided})>"
-        "".format(
-            node_id=self.node_id,
-            key=self.key,
+        return '<PsqlEdge(({src_id})->({dst_id}), voided={voided})>'.format(
+            src_id=self.src_id,
+            dst_id=self.dst_id,
             voided=(self.voided is not None)
         )
 
@@ -239,8 +240,9 @@ def retryable(func):
             try:
                 return func(*args, **kwargs)
             except IntegrityError:
-                logging.warn('Race-condition caught ({0}/{1} retries)'
-                             ''.format(retries, max_retries))
+                logging.warn(
+                    'Race-condition caught? ({0}/{1} retries)'.format(
+                        retries, max_retries))
                 if retries >= max_retries:
                     logging.error('Max retries exceeded')
                     raise
@@ -382,8 +384,9 @@ class PsqlGraphDriver(object):
         )
 
         if len(nodes) > 1:
-            raise QueryError('Expected a single result for query, got {n}'
-                             ''.format(n=len(nodes)))
+            raise QueryError(
+                'Expected a single result for query, got {n}'.format(
+                    n=len(nodes)))
         if len(nodes) < 1:
             return None
 
@@ -687,7 +690,6 @@ class PsqlGraphDriver(object):
                 edge = self.edge_lookup_one(
                     src_id=src_id,
                     dst_id=dst_id,
-                    label=label
                     session=local,
                 )
 
@@ -695,7 +697,6 @@ class PsqlGraphDriver(object):
                 """ there is a pre-existing edge """
                 new_edge = edge.merge(PsqlEdge(
                     system_annotations=system_annotations,
-                    acl=acl,
                     label=label,
                     properties=properties
                 ))
@@ -704,14 +705,17 @@ class PsqlGraphDriver(object):
                 """ we need to create a new edge """
                 self.logger.info('Creating a new edge')
 
-                if not edge_id:
+                if src_id is None:
                     raise EdgeCreationError(
-                        'Cannot create a edge with no edge_id.')
+                        'Cannot create a edge with no src_id.')
+                if dst_id is None:
+                    raise EdgeCreationError(
+                        'Cannot create a edge with no dst_id.')
 
                 new_edge = PsqlEdge(
-                    edge_id=edge_id,
+                    src_id=src_id,
+                    dst_id=dst_id,
                     system_annotations=system_annotations,
-                    acl=acl,
                     label=label,
                     properties=properties
                 )
@@ -731,6 +735,53 @@ class PsqlGraphDriver(object):
             if old_edge:
                 self.edge_void(old_edge, session)
             local.add(new_edge)
+
+    def edge_lookup_one(self, src_id, dst_id, include_voided=False,
+                        session=None):
+        """
+        This function is simply a wrapper for ``node_lookup`` that
+        constrains the query to return a single node.  If multiple
+        nodes are found matchin the query, an exception will be raised
+
+        If no nodes match the query, the return will be NoneType.
+        """
+
+        edges = self.edge_lookup(
+            src_id=src_id,
+            dst_id=dst_id,
+            include_voided=include_voided,
+            session=session,
+        )
+
+        if len(edges) > 1:
+            raise QueryError(
+                'Expected a single result for query, got {n}'.format(
+                    n=len(edges)))
+        if len(edges) < 1:
+            return None
+
+        return edges[0]
+
+    def edge_lookup(self, src_id, dst_id, include_voided=False, session=None):
+        """
+        This function looks up a node by a given id.  If include_voided is
+        true, then the returned list will include nodes that have been
+        voided. If one is true then the return will be constrained to
+        a single result (if more than a single result is found, then
+        an exception will be raised.  If session is specified, the
+        query will be performed within the givin session, otherwise a
+        new one will be created.
+        """
+
+        with session_scope(self.engine, session) as local:
+            query = local.query(PsqlEdge).filter(PsqlEdge.src_id == src_id)
+            query = local.query(PsqlEdge).filter(PsqlEdge.dst_id == dst_id)
+
+            if not include_voided:
+                query = query.filter(PsqlEdge.voided.is_(None))
+
+            result = query.all()
+        return result
 
     def edge_void(self, edge, session=None):
         """if passed a non-null edge, then ``edge_void`` will set the

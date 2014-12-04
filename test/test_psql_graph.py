@@ -425,7 +425,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(annotations, nodes[0].system_annotations)
 
     def test_node_delete(self):
-
         tempid = str(uuid.uuid4())
         self.driver.node_merge(node_id=tempid)
         self.driver.node_delete(node_id=tempid)
@@ -444,13 +443,25 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_edge_merge_and_lookup(self):
         src_id = str(uuid.uuid4())
-        properties = {'key1': None, 'key2': 2, 'key3': time.time()}
-        self.driver.edge_merge(node_id=tempid, properties=properties)
+        dst_id = str(uuid.uuid4())
+        self.driver.node_merge(node_id=src_id)
+        self.driver.node_merge(node_id=dst_id)
+        self.driver.edge_merge(src_id=src_id, dst_id=dst_id)
+        edge = self.driver.edge_lookup_one(src_id=src_id, dst_id=dst_id)
+        self.assertEqual(edge.src_id, src_id)
+        self.assertEqual(edge.dst_id, dst_id)
 
-        edges = self.driver.edge_lookup(tempid)
-        self.assertEqual(len(edges), 1, 'Expected a single edge to be found, '
-                         'instead found {count}'.format(count=len(edges)))
-        self.assertTrue(cmp(properties, edges[0].properties) == 0)
+    def test_edge_merge_and_lookup_properties(self):
+        src_id = str(uuid.uuid4())
+        dst_id = str(uuid.uuid4())
+        props = {'key1': time.now(), 'key2': random.random()}
+        self.driver.node_merge(node_id=src_id)
+        self.driver.node_merge(node_id=dst_id)
+        self.driver.edge_merge(src_id=src_id, dst_id=dst_id, properties=props)
+        edge = self.driver.edge_lookup_one(src_id=src_id, dst_id=dst_id)
+        self.assertEqual(edge.src_id, src_id)
+        self.assertEqual(edge.dst_id, dst_id)
+
 
 if __name__ == '__main__':
 

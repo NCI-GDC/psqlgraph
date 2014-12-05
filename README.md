@@ -1,4 +1,4 @@
-[![Build Status](https://magnum.travis-ci.com/NCI-GDC/psqlgraph.svg?token=LApTVTN34FyXpxo5zU44&branch=jsm-dev)](https://magnum.travis-ci.com/NCI-GDC/psqlgraph)
+[![Build Status](https://magnum.travis-ci.com/NCI-GDC/psqlgraph.svg?token=LApTVTN34FyXpxo5zU44&branch=master)](https://magnum.travis-ci.com/NCI-GDC/psqlgraph)
 
 # Installation
 

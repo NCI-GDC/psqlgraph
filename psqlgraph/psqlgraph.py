@@ -750,7 +750,7 @@ class PsqlGraphDriver(object):
             local.merge(edge)
 
     def edge_delete_by_node_id(self, node_id, session=None):
-        """Looks up all edges that referecen ``node_id`` and voids them.
+        """Looks up all edges that reference ``node_id`` and voids them.
 
         This function is used primarily to cascade node deletions to
         related edges

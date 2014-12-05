@@ -738,11 +738,11 @@ class PsqlGraphDriver(object):
     def edge_lookup_one(self, src_id=None, dst_id=None,
                         include_voided=False, session=None):
         """
-        This function is simply a wrapper for ``node_lookup`` that
-        constrains the query to return a single node.  If multiple
-        nodes are found matchin the query, an exception will be raised
+        This function is simply a wrapper for ``edge_lookup`` that
+        constrains the query to return a single edge.  If multiple
+        edges are found matchin the query, an exception will be raised
 
-        If no nodes match the query, the return will be NoneType.
+        If no edges match the query, the return will be NoneType.
         """
 
         edges = self.edge_lookup(
@@ -764,8 +764,8 @@ class PsqlGraphDriver(object):
     def edge_lookup(self, src_id=None, dst_id=None,
                     include_voided=False, session=None):
         """
-        This function looks up a node by a given id.  If include_voided is
-        true, then the returned list will include nodes that have been
+        This function looks up a edge by a given id.  If include_voided is
+        true, then the returned list will include edges that have been
         voided. If one is true then the return will be constrained to
         a single result (if more than a single result is found, then
         an exception will be raised.  If session is specified, the
@@ -789,16 +789,10 @@ class PsqlGraphDriver(object):
         return result
 
     def edge_void(self, edge, session=None):
-        """if passed a non-null edge, then ``edge_void`` will set the
-        timestamp on the voided column of the entry.
-
-        If a session is provided, then this action will be carried out
-        within the session (and not commited).
-
-        If no session is provided, this function will commit to the
-        database in a self-contained session.
-
         """
+        Voids an edge entry
+        """
+
         if not edge:
             raise ProgrammingError('edge_void was passed a NoneType PsqlEdge')
 
@@ -809,16 +803,12 @@ class PsqlGraphDriver(object):
             local.merge(edge)
 
     def edge_delete_by_node_id(self, node_id, session=None):
-        """if passed a non-null edge, then ``edge_void`` will set the
-        timestamp on the voided column of the entry.
+        """Looks up all edges that referecen ``node_id`` and voids them.
 
-        If a session is provided, then this action will be carried out
-        within the session (and not commited).
-
-        If no session is provided, this function will commit to the
-        database in a self-contained session.
-
+        This function is used primarily to cascade node deletions to
+        related edges
         """
+
         if not node_id:
             raise ProgrammingError('node_id cannot be NoneType')
 

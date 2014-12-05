@@ -4,5 +4,5 @@ python:
     # command to install dependencies
     install: "sudo python setup.py install"
     # command to run tests
-    before_script: "/bin/sh tests/travis_setup.sh"
+    before_script: "/bin/sh test/travis_setup.sh"
     script: "nosetests"

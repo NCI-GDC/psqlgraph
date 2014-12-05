@@ -659,6 +659,8 @@ class PsqlGraphDriver(object):
             if not node:
                 raise QueryError('Node not found')
 
+            # Void this node's edges and the node entry
+            self.edge_delete_by_node_id(node.node_id, session=local)
             self.node_void(node, session=local)
 
     @retryable
@@ -806,3 +808,25 @@ class PsqlGraphDriver(object):
         with session_scope(self.engine, session) as local:
             edge.voided = datetime.now()
             local.merge(edge)
+
+    def edge_delete_by_node_id(self, node_id, session=None):
+        """if passed a non-null edge, then ``edge_void`` will set the
+        timestamp on the voided column of the entry.
+
+        If a session is provided, then this action will be carried out
+        within the session (and not commited).
+
+        If no session is provided, this function will commit to the
+        database in a self-contained session.
+
+        """
+        if not node_id:
+            raise ProgrammingError('node_id cannot be NoneType')
+
+        with session_scope(self.engine, session) as local:
+
+            src_nodes = self.edge_lookup(src_id=node_id, session=local)
+            dst_nodes = self.edge_lookup(dst_id=node_id, session=local)
+
+            for edge in src_nodes + dst_nodes:
+                self.edge_void(edge)

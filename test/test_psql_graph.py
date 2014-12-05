@@ -503,6 +503,37 @@ class TestPsqlGraphDriver(unittest.TestCase):
         for dst_id in dst_ids:
             self.assertTrue(dst_id in set(edge_ids))
 
+    def test_path_deletion(self):
+
+        leaf_count = 10
+        src_id = str(uuid.uuid4())
+        dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
+        self.driver.node_merge(node_id=src_id)
+
+        # Create nodes and link them to source
+        for dst_id in dst_ids:
+            self.driver.node_merge(node_id=dst_id)
+            self.driver.edge_merge(src_id=src_id, dst_id=dst_id)
+
+        # Verify that the edges there are correct
+        for dst_id in dst_ids:
+            edge = self.driver.edge_lookup_one(dst_id=dst_id)
+            self.assertEqual(edge.src_id, src_id)
+
+            edges = [e.dst_id for e in self.driver.edge_lookup(src_id=src_id)]
+            for dst_id in dst_ids:
+                self.assertTrue(dst_id in set(edges))
+
+        # Delete all dst nodes
+        for dst_id in dst_ids:
+            self.driver.node_delete(node_id=dst_id)
+
+        # Make sure that there are no hanging edges
+        edges = [e.dst_id for e in self.driver.edge_lookup(src_id=src_id)]
+        for dst_id in dst_ids:
+            self.assertTrue(dst_id not in set(edges))
+        for dst_id in dst_ids:
+            self.assertIs(self.driver.edge_lookup_one(dst_id=dst_id), None)
 
 if __name__ == '__main__':
 

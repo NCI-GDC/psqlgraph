@@ -1,7 +1,8 @@
 import uuid
 import unittest
 import time
-from cdisutils import log
+# from cdisutils import log
+import logging
 import psqlgraph
 from psqlgraph import PsqlGraphDriver, session_scope
 from psqlgraph.setup_psql_graph import setup_database, create_tables
@@ -17,13 +18,14 @@ password = 'test'
 database = 'automated_test'
 
 
-logging.basicConfig(level=logging.WARN)
+# logging.basicConfig(level=logging.WARN)
 
 
 class TestPsqlGraphDriver(unittest.TestCase):
 
     def setUp(self):
-        self.logger = log.get_logger(__name__)
+        # self.logger = log.get_logger(__name__)
+        self.logger = logging.getLogger(__name__)
         self.driver = PsqlGraphDriver(host, user, password, database)
         self.REPEAT_COUNT = 200
 

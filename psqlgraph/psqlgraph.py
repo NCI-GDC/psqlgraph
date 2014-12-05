@@ -1,13 +1,15 @@
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, Column, Integer, Text, String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.dialects.postgres import TIMESTAMP, ARRAY, JSONB, \
-    INTEGER, TEXT, FLOAT
+from sqlalchemy.dialects.postgres import TIMESTAMP, ARRAY, JSONB
+from exc import QueryError, ProgrammingError, NodeCreationError, \
+    EdgeCreationError
 from sqlalchemy.exc import IntegrityError
 from contextlib import contextmanager
 from datetime import datetime
-from types import NoneType
 from functools import wraps
+
+import sanitizer
 import time
 import random
 import logging
@@ -20,22 +22,6 @@ Driver to implement the graph model in postgres
 """
 
 DEFAULT_RETRIES = 2
-
-
-class QueryError(Exception):
-    pass
-
-
-class ProgrammingError(Exception):
-    pass
-
-
-class NodeCreationError(Exception):
-    pass
-
-
-class EdgeCreationError(Exception):
-    pass
 
 
 @contextmanager
@@ -71,45 +57,6 @@ def session_scope(engine, session=None):
             local.close()
 
 
-class Sanitizer(object):
-
-    type_mapping = {
-        int: INTEGER,
-        str: TEXT,
-        float: FLOAT,
-        datetime: TIMESTAMP,
-        NoneType: NoneType,
-    }
-
-    type_conversion = {
-        int: int,
-        str: str,
-        float: float,
-        datetime: datetime,
-        NoneType: lambda x: None,
-    }
-
-    @staticmethod
-    def cast(variable):
-        if type(variable) not in Sanitizer.type_conversion:
-            raise ProgrammingError(
-                'Disallowed value type for jsonb properties')
-        return Sanitizer.type_conversion[type(variable)](variable)
-
-    @staticmethod
-    def sanitize(variable):
-        if not isinstance(variable, dict):
-            return Sanitizer.cast(variable)
-        variable = copy.deepcopy(variable)
-        for key, value in variable.iteritems():
-            variable[key] = Sanitizer.cast(value)
-        return variable
-
-    @staticmethod
-    def get_type(variable):
-        return Sanitizer.type_mapping.get(type(variable), TEXT)
-
-
 class PsqlNode(Base):
 
     __tablename__ = 'nodes'
@@ -136,9 +83,9 @@ class PsqlNode(Base):
         new_acl = self.acl[:] + (node.acl or [])
         new_label = (node.label or self.label)
 
-        new_system_annotations.update(Sanitizer.sanitize(
+        new_system_annotations.update(sanitizer.sanitize(
             node.system_annotations) or {})
-        new_properties.update(Sanitizer.sanitize(
+        new_properties.update(sanitizer.sanitize(
             node.properties) or {})
 
         return PsqlNode(
@@ -176,9 +123,9 @@ class PsqlEdge(Base):
         new_properties = copy.copy(self.properties)
         new_label = (edge.label or self.label)
 
-        new_system_annotations.update(Sanitizer.sanitize(
+        new_system_annotations.update(sanitizer.sanitize(
             edge.system_annotations) or {})
-        new_properties.update(Sanitizer.sanitize(
+        new_properties.update(sanitizer.sanitize(
             edge.properties) or {})
 
         return PsqlEdge(
@@ -455,9 +402,9 @@ class PsqlGraphDriver(object):
         """
         """
 
-        system_annotation_matches = Sanitizer.sanitize(
+        system_annotation_matches = sanitizer.sanitize(
             system_annotation_matches)
-        property_matches = Sanitizer.sanitize(property_matches)
+        property_matches = sanitizer.sanitize(property_matches)
 
         with session_scope(self.engine, session) as local:
             query = local.query(PsqlNode)
@@ -469,7 +416,7 @@ class PsqlGraphDriver(object):
                     if value is not None:
                         query = query.filter(
                             PsqlNode.system_annotations[key].cast(
-                                Sanitizer.get_type(value)) == value
+                                sanitizer.get_type(value)) == value
                         )
 
             # Filter properties
@@ -478,7 +425,7 @@ class PsqlGraphDriver(object):
                     if value is not None:
                         query = query.filter(
                             PsqlNode.properties[key].cast(
-                                Sanitizer.get_type(value)) == value
+                                sanitizer.get_type(value)) == value
                         )
 
             if not include_voided:
@@ -803,7 +750,7 @@ class PsqlGraphDriver(object):
             local.merge(edge)
 
     def edge_delete_by_node_id(self, node_id, session=None):
-        """Looks up all edges that referecen ``node_id`` and voids them.
+        """Looks up all edges that reference ``node_id`` and voids them.
 
         This function is used primarily to cascade node deletions to
         related edges
@@ -816,7 +763,6 @@ class PsqlGraphDriver(object):
             node_id))
 
         with session_scope(self.engine, session) as local:
-
             src_nodes = self.edge_lookup(src_id=node_id, session=local)
             dst_nodes = self.edge_lookup(dst_id=node_id, session=local)
             for edge in src_nodes + dst_nodes:

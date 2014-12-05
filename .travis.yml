@@ -14,5 +14,5 @@ before_script:
   - sudo sed -i s/5433/5432/g /etc/postgresql/9.4/main/postgresql.conf
   - sudo service postgresql restart
   - yes | python setup.py install
-  - python psqlgraph/setup_psqlgraph.py
+  - python bin/setup_psqlgraph.py
 script: "nosetests -v"

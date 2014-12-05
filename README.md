@@ -2,15 +2,24 @@
 
 # Installation
 
-## Global Dependencies
+## Dependencies
 
 Before continuing you must have the following programs installed:
 
 - [Python 2.7+](http://python.org/)
 - [Postgresql 9.4](http://www.postgresql.org/download/)
-- [SQLAlchemy](http://www.sqlalchemy.org/)
 
-## Setup Script
+The psqlgraph library requires the following pip dependencies
+
+- [SQLAlchemy](http://www.sqlalchemy.org/)
+- [Psycopg2](http://initd.org/psycopg/)
+
+### Project Dependencies
+
+Project dependencies are managed using [PIP](https://pip.readthedocs.org/en/latest/)
+
+
+## Test Setup
 
 Running the setup script will:
 
@@ -22,10 +31,6 @@ Setting up test database
 Dropping old test data
 Creating tables in test database
 ```
-
-### Project Dependencies
-
-Project dependencies are managed using [PIP](https://pip.readthedocs.org/en/latest/)
 
 # Tests
 

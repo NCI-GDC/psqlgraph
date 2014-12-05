@@ -1,9 +1,10 @@
 import argparse
-from psqlgraph import Base, PsqlGraphDriver, PsqlEdge, PsqlNode
+from psqlgraph import Base, PsqlGraphDriver
 from sqlalchemy import create_engine
+import logging
 
-from cdisutils import log
-logger = log.get_logger(__name__)
+# from cdisutils import log
+# logger = log.get_logger(__name__)
 
 """
 This is a one-time use script to set up a fresh install of Postgres 9.4
@@ -29,7 +30,7 @@ def try_drop_test_data(user, database, root_user='postgres', host=''):
         conn.execute(user_stmt)
 
     except Exception, msg:
-        logger.warn("Unable to drop test data:" + str(msg))
+        logging.warn("Unable to drop test data:" + str(msg))
 
     else:
         conn.close()

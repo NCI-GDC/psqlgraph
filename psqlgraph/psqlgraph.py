@@ -1,5 +1,5 @@
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, Column, Integer, Text, String, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, Text, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgres import TIMESTAMP, ARRAY, JSONB, \
     INTEGER, TEXT, FLOAT

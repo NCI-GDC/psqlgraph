@@ -12,7 +12,6 @@ import time
 import random
 import logging
 import copy
-import json
 
 Base = declarative_base()
 
@@ -93,7 +92,8 @@ class Sanitizer(object):
     @staticmethod
     def cast(variable):
         if type(variable) not in Sanitizer.type_conversion:
-            raise ProgrammingError('Disallowed value type for jsonb properties')
+            raise ProgrammingError(
+                'Disallowed value type for jsonb properties')
         return Sanitizer.type_conversion[type(variable)](variable)
 
     @staticmethod
@@ -162,7 +162,6 @@ class PsqlEdge(Base):
     system_annotations = Column(JSONB, default={})
     label = Column(Text)
     properties = Column(JSONB, default={})
-    # ForeignKey('nodes.node_id', onupdate="CASCADE", ondelete="CASCADE")
 
     def __repr__(self):
         return '<PsqlEdge(({src_id})->({dst_id}), voided={voided})>'.format(
@@ -235,11 +234,13 @@ def retryable(func):
             try:
                 return func(*args, **kwargs)
             except IntegrityError:
-                logging.warn(
+                logging.debug(
                     'Race-condition caught? ({0}/{1} retries)'.format(
                         retries, max_retries))
                 if retries >= max_retries:
-                    logging.error('Max retries exceeded')
+                    logging.error(
+                        'Unabel to execute {f}, max retries exceeded'.format(
+                            f=func))
                     raise
                 retries += 1
                 backoff(retries, max_retries)
@@ -288,8 +289,6 @@ class PsqlGraphDriver(object):
 
         """
 
-        self.logger.info('Merging node')
-
         with session_scope(self.engine, session) as local:
             if not node:
                 """ try and lookup the node """
@@ -311,7 +310,7 @@ class PsqlGraphDriver(object):
 
             else:
                 """ we need to create a new node """
-                self.logger.info('Creating a new node')
+                self.logger.debug('Creating a new node')
 
                 if not node_id:
                     raise NodeCreationError(
@@ -325,6 +324,7 @@ class PsqlGraphDriver(object):
                     properties=properties
                 )
 
+            self.logger.debug('Merging node: {0}'.format(new_node.node_id))
             self.node_void_and_create(new_node, node, session=local)
 
     def node_void_and_create(self, new_node, old_node, session=None):
@@ -334,7 +334,7 @@ class PsqlGraphDriver(object):
         create a new node entry in its place
         """
 
-        self.logger.info('Voiding a node to create a new one')
+        self.logger.debug('Voiding to update: {0}'.format(new_node.node_id))
 
         with session_scope(self.engine, session) as local:
             if old_node:
@@ -436,7 +436,7 @@ class PsqlGraphDriver(object):
         new one will be created.
         """
 
-        self.logger.info('Looking up node by id: {id}'.format(id=node_id))
+        self.logger.debug('Looking up node by id: {id}'.format(id=node_id))
 
         with session_scope(self.engine, session) as local:
             query = local.query(PsqlNode).filter(PsqlNode.node_id == node_id)
@@ -514,8 +514,6 @@ class PsqlGraphDriver(object):
 
         """
 
-        self.logger.info('Overwriting node')
-
         with session_scope(self.engine, session) as local:
             if not node:
                 """ try and lookup the node """
@@ -541,6 +539,7 @@ class PsqlGraphDriver(object):
                 properties=properties
             )
 
+            self.logger.debug('overwritting node: {0}'.format(node.node_id))
             self.node_void_and_create(new_node, node, session=local)
 
     @retryable
@@ -619,6 +618,8 @@ class PsqlGraphDriver(object):
                 properties=node.properties
             )
 
+            self.logger.debug('updating node properties: {0}'.format(
+                node.node_id))
             self.node_void_and_create(new_node, node, session=local)
 
     @retryable
@@ -637,8 +638,6 @@ class PsqlGraphDriver(object):
 
         """
 
-        self.logger.info('Deleting node')
-
         with session_scope(self.engine, session) as local:
             if not node:
                 """ try and lookup the node """
@@ -654,6 +653,7 @@ class PsqlGraphDriver(object):
                 raise QueryError('Node not found')
 
             # Void this node's edges and the node entry
+            self.logger.debug('deleting node: {0}'.format(node.node_id))
             self.edge_delete_by_node_id(node.node_id, session=local)
             self.node_void(node, session=local)
 
@@ -680,8 +680,6 @@ class PsqlGraphDriver(object):
 
         """
 
-        self.logger.info('Merging node')
-
         with session_scope(self.engine, session) as local:
             if not edge:
                 """ try and lookup the edge """
@@ -700,7 +698,7 @@ class PsqlGraphDriver(object):
 
             else:
                 """ we need to create a new edge """
-                self.logger.info('Creating a new edge')
+                self.logger.debug('Creating a new edge')
 
                 if src_id is None:
                     raise EdgeCreationError(
@@ -716,6 +714,10 @@ class PsqlGraphDriver(object):
                     properties=properties
                 )
 
+            if edge is not None:
+                self.logger.debug('merging edge: ({src})->({dst})'.format(
+                    src=edge.src_id, dst_id=edge.dst_id))
+
             self.edge_void_and_create(new_edge, edge, session=local)
 
     def edge_void_and_create(self, new_edge, old_edge, session=None):
@@ -725,7 +727,8 @@ class PsqlGraphDriver(object):
         create a new edge entry in its place
         """
 
-        self.logger.info('Voiding a edge to create a new one')
+        self.logger.debug('voiding to update edge: ({src})->({dst})'.format(
+            src=new_edge.src_id, dst=new_edge.dst_id))
 
         with session_scope(self.engine, session) as local:
             if old_edge:
@@ -799,6 +802,8 @@ class PsqlGraphDriver(object):
         if not edge:
             raise ProgrammingError('edge_void was passed a NoneType PsqlEdge')
 
+        self.logger.debug('voiding edge: ({src})->({dst})'.format(
+            src=edge.src_id, dst=edge.dst_id))
         with session_scope(self.engine, session) as local:
             edge.voided = datetime.now()
             local.merge(edge)
@@ -817,10 +822,12 @@ class PsqlGraphDriver(object):
         if not node_id:
             raise ProgrammingError('node_id cannot be NoneType')
 
+        self.logger.debug('cascading node deletion to edge: {0})'.format(
+            node_id))
+
         with session_scope(self.engine, session) as local:
 
             src_nodes = self.edge_lookup(src_id=node_id, session=local)
             dst_nodes = self.edge_lookup(dst_id=node_id, session=local)
-
             for edge in src_nodes + dst_nodes:
                 self.edge_void(edge)

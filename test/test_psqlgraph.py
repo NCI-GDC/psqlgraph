@@ -7,7 +7,6 @@ from psqlgraph import PsqlGraphDriver, session_scope
 from multiprocessing import Process
 import random
 from sqlalchemy.exc import IntegrityError
-import json
 
 host = 'localhost'
 user = 'test'
@@ -15,13 +14,12 @@ password = 'test'
 database = 'automated_test'
 
 
-# logging.basicConfig(level=logging.WARN)
+logging.basicConfig(level=logging.INFO)
 
 
 class TestPsqlGraphDriver(unittest.TestCase):
 
     def setUp(self):
-        # self.logger = log.get_logger(__name__)
         self.logger = logging.getLogger(__name__)
         self.driver = PsqlGraphDriver(host, user, password, database)
         self.REPEAT_COUNT = 200
@@ -37,25 +35,24 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_sanitize_dict(self):
         """ Test sanitization of castable dictionary type"""
         test = {'first': 1, 'second': 2, 'third': 'This is a test'}
-        self.assertEqual(psqlgraph.Sanitizer.cast(test), json.dumps(test))
+        self.assertRaises(psqlgraph.ProgrammingError,
+                          psqlgraph.Sanitizer.cast, test)
 
     def test_sanitize_other(self):
         """ Test sanitization of select non-standard types"""
         A = psqlgraph.QueryError
-        self.assertEqual(psqlgraph.Sanitizer.cast(A), str(A))
+        self.assertRaises(psqlgraph.ProgrammingError,
+                          psqlgraph.Sanitizer.cast, A)
         B = logging
-        self.assertEqual(psqlgraph.Sanitizer.cast(B), str(B))
+        self.assertRaises(psqlgraph.ProgrammingError,
+                          psqlgraph.Sanitizer.cast, B)
 
     def test_sanitize(self):
         """ Test sanitization of select non-standard types"""
         self.assertEqual(psqlgraph.Sanitizer.sanitize({
-            'key1': 'First', 'key2': 25,
-            'nested': {'nestedkey1': "First's", 'nestedkey2': 25},
-            'other': psqlgraph.Sanitizer,
+            'key1': 'First', 'key2': 25, 'key3': 1.2, 'key4': None
         }), {
-            'key1': 'First', 'key2': 25,
-            'nested': '{"nestedkey1": "First\'s", "nestedkey2": 25}',
-            'other': str(psqlgraph.Sanitizer),
+            'key1': 'First', 'key2': 25, 'key3': 1.2, 'key4': None
         })
 
     def test_node_null_query_one(self):

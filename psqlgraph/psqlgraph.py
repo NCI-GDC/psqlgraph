@@ -23,10 +23,6 @@ Driver to implement the graph model in postgres
 DEFAULT_RETRIES = 2
 
 
-class NotConnected(Exception):
-    pass
-
-
 class QueryError(Exception):
     pass
 
@@ -81,7 +77,6 @@ class Sanitizer(object):
     type_mapping = {
         int: INTEGER,
         str: TEXT,
-        dict: TEXT,
         float: FLOAT,
         datetime: TIMESTAMP,
         NoneType: NoneType,
@@ -90,7 +85,6 @@ class Sanitizer(object):
     type_conversion = {
         int: int,
         str: str,
-        dict: json.dumps,
         float: float,
         datetime: datetime,
         NoneType: lambda x: None,
@@ -99,7 +93,7 @@ class Sanitizer(object):
     @staticmethod
     def cast(variable):
         if type(variable) not in Sanitizer.type_conversion:
-            return str(variable)
+            raise ProgrammingError('Disallowed value type for jsonb properties')
         return Sanitizer.type_conversion[type(variable)](variable)
 
     @staticmethod

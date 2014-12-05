@@ -20,17 +20,6 @@ database = 'automated_test'
 logging.basicConfig(level=logging.WARN)
 
 
-class TestPsqlGraphSetup(unittest.TestCase):
-
-    def setUp(self):
-        self.logger = log.get_logger(__name__)
-
-    @unittest.skip('Will interfere with other tests')
-    def test_setup(self):
-        setup_database(user, password, database)
-        create_tables(host, user, password, database)
-
-
 class TestPsqlGraphDriver(unittest.TestCase):
 
     def setUp(self):
@@ -480,10 +469,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
         for dst_id in dst_ids:
-            dst_ids.append(str(uuid.uuid4()))
             self.driver.node_merge(node_id=dst_id)
             self.driver.edge_merge(src_id=src_id, dst_id=dst_id)
 
+        # edges = self.driver.edge_lookup(src_id=src_id)
         edge_ids = [e.dst_id for e in self.driver.edge_lookup(src_id=src_id)]
         self.assertEqual(len(set(edge_ids)), leaf_count)
 
@@ -496,15 +485,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
         src_id = str(uuid.uuid4())
         dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
         self.driver.node_merge(node_id=src_id)
+
         with session_scope(self.driver.engine) as session:
             for dst_id in dst_ids:
-                dst_ids.append(str(uuid.uuid4()))
-                self.driver.node_merge(node_id=dst_ids[-1], session=session)
-            self.assertTrue(False)
+                self.driver.node_merge(node_id=dst_id, session=session)
 
+        with session_scope(self.driver.engine) as session:
             for dst_id in dst_ids:
-                node = self.driver.node_lookup_one(node_id=dst_id,
-                                                   session=session)
+                node = self.driver.node_lookup_one(
+                    node_id=dst_id, session=session)
                 self.driver.edge_merge(src_id=src_id, dst_id=node.node_id,
                                        session=session)
 
@@ -522,5 +511,4 @@ if __name__ == '__main__':
         suite = unittest.TestLoader().loadTestsFromTestCase(test)
         unittest.TextTestRunner(verbosity=2).run(suite)
 
-    run_test(TestPsqlGraphSetup)
     run_test(TestPsqlGraphDriver)

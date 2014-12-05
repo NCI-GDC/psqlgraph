@@ -1,5 +1,5 @@
 import argparse
-from psqlgraph import Base, PsqlGraphDriver
+from psqlgraph import Base, PsqlGraphDriver, PsqlEdge, PsqlNode
 from sqlalchemy import create_engine
 
 from cdisutils import log

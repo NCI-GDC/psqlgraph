@@ -1,5 +1,5 @@
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, Column, Integer, Text, String
+from sqlalchemy import create_engine, Column, Integer, Text, String, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgres import TIMESTAMP, ARRAY, JSONB, \
     INTEGER, TEXT, FLOAT
@@ -168,6 +168,7 @@ class PsqlEdge(Base):
     system_annotations = Column(JSONB, default={})
     label = Column(Text)
     properties = Column(JSONB, default={})
+    # ForeignKey('nodes.node_id', onupdate="CASCADE", ondelete="CASCADE")
 
     def __repr__(self):
         return '<PsqlEdge(({src_id})->({dst_id}), voided={voided})>'.format(
@@ -651,6 +652,7 @@ class PsqlGraphDriver(object):
                     node_id=node_id,
                     property_matches=property_matches,
                     system_annotation_matches=system_annotation_matches,
+                    label=label,
                     session=local,
                 )
 
@@ -661,8 +663,8 @@ class PsqlGraphDriver(object):
 
     @retryable
     def edge_merge(self, src_id=None, dst_id=None, edge=None, acl=[],
-                   system_annotations={}, label=None, properties={},
-                   session=None, max_retries=DEFAULT_RETRIES,
+                   system_annotations={}, properties={}, session=None,
+                   max_retries=DEFAULT_RETRIES,
                    backoff=default_backoff):
         """
 
@@ -697,7 +699,6 @@ class PsqlGraphDriver(object):
                 """ there is a pre-existing edge """
                 new_edge = edge.merge(PsqlEdge(
                     system_annotations=system_annotations,
-                    label=label,
                     properties=properties
                 ))
 
@@ -716,7 +717,6 @@ class PsqlGraphDriver(object):
                     src_id=src_id,
                     dst_id=dst_id,
                     system_annotations=system_annotations,
-                    label=label,
                     properties=properties
                 )
 

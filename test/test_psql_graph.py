@@ -1,13 +1,10 @@
 import uuid
 import unittest
 import time
-# from cdisutils import log
 import logging
 import psqlgraph
 from psqlgraph import PsqlGraphDriver, session_scope
-from psqlgraph.setup_psql_graph import setup_database, create_tables
 from multiprocessing import Process
-import logging
 import random
 from sqlalchemy.exc import IntegrityError
 import json

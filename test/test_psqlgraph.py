@@ -26,30 +26,30 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_sanitize_int(self):
         """ Test sanitization of castable integer type"""
-        self.assertEqual(psqlgraph.Sanitizer.cast(5), 5)
+        self.assertEqual(psqlgraph.sanitizer.cast(5), 5)
 
     def test_sanitize_str(self):
         """ Test sanitization of castable string type"""
-        self.assertEqual(psqlgraph.Sanitizer.cast('test'), 'test')
+        self.assertEqual(psqlgraph.sanitizer.cast('test'), 'test')
 
     def test_sanitize_dict(self):
         """ Test sanitization of castable dictionary type"""
         test = {'first': 1, 'second': 2, 'third': 'This is a test'}
         self.assertRaises(psqlgraph.ProgrammingError,
-                          psqlgraph.Sanitizer.cast, test)
+                          psqlgraph.sanitizer.cast, test)
 
     def test_sanitize_other(self):
         """ Test sanitization of select non-standard types"""
         A = psqlgraph.QueryError
         self.assertRaises(psqlgraph.ProgrammingError,
-                          psqlgraph.Sanitizer.cast, A)
+                          psqlgraph.sanitizer.cast, A)
         B = logging
         self.assertRaises(psqlgraph.ProgrammingError,
-                          psqlgraph.Sanitizer.cast, B)
+                          psqlgraph.sanitizer.cast, B)
 
     def test_sanitize(self):
         """ Test sanitization of select non-standard types"""
-        self.assertEqual(psqlgraph.Sanitizer.sanitize({
+        self.assertEqual(psqlgraph.sanitizer.sanitize({
             'key1': 'First', 'key2': 25, 'key3': 1.2, 'key4': None
         }), {
             'key1': 'First', 'key2': 25, 'key3': 1.2, 'key4': None

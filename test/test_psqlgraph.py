@@ -138,6 +138,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
         return propertiesB
 
     def test_query_by_label(self, node_id=None):
+        """
+        Test ability to query for nodes by label
+        """
 
         label = 'test_' + str(random.random())
         for i in range(self.REPEAT_COUNT):
@@ -235,6 +238,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
             session.add(node)
 
     def test_node_unique_id_constraint(self):
+        """
+        Verify that the table constraints prevent the existance two
+        non-voided nodes with the same id
+        """
 
         tempid = str(uuid.uuid4())
 
@@ -254,6 +261,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertRaises(IntegrityError, self._insert_node, bad_node)
 
     def test_null_node_void(self):
+        """
+        Verify that the library handles null nodes properly on voiding
+        """
+
         self.assertRaises(
             psqlgraph.ProgrammingError,
             self.driver.node_void,
@@ -261,15 +272,16 @@ class TestPsqlGraphDriver(unittest.TestCase):
         )
 
     def test_null_node_merge(self):
+        """
+        Verify that the library handles null nodes properly on merging
+        """
         self.assertRaises(psqlgraph.QueryError, self.driver.node_merge)
 
     def test_repeated_node_update_properties_by_id(self, node_id=None):
         """
-
         Verify that updates repeated updates to a single node create
         the correct number of voided transactions and a single valid
         node with the correct properties
-
         """
 
         if not node_id:
@@ -285,11 +297,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_repeated_node_update_system_annotations_by_id(self, node_id=None):
         """
-
         Verify that updates repeated updates to a single node create
         the correct number of voided transactions and a single valid
         node with the correct properties
-
         """
 
         REPEAT_COUNT = 200
@@ -306,10 +316,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_sessioned_node_update(self, tempid=None):
         """
-
         Repeate test_repeated_node_update but passing a single session for
         all interactions to use
-
         """
 
         if not tempid:
@@ -339,6 +347,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.verify_node_count(self.REPEAT_COUNT, tempid, voided=True)
 
     def test_concurrent_node_update_by_id(self):
+        """
+        Test that insertion of nodes is thread-safe and that retries
+        succeed eventually
+        """
 
         process_count = 3
         tempid = str(uuid.uuid4())
@@ -360,6 +372,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
                                voided=True)
 
     def test_node_clobber(self):
+        """
+        Test that clobbering a node replaces all of it's properties
+        """
 
         tempid = str(uuid.uuid4())
 
@@ -378,6 +393,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
                          ' not match expected properties')
 
     def test_node_delete_property_keys(self):
+        """
+        Test the ability to remove property keys from nodes
+        """
 
         tempid = str(uuid.uuid4())
         properties = {'key1':  None, 'key2':  2, 'key3':  time.time()}
@@ -393,6 +411,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(properties, nodes[0].properties)
 
     def test_node_delete_system_annotation_keys(self):
+        """
+        Test the ability to remove property keys from nodes
+        """
 
         tempid = str(uuid.uuid4())
         annotations = {'key1':  None, 'key2':  2, 'key3':  time.time()}
@@ -410,6 +431,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(annotations, nodes[0].system_annotations)
 
     def test_node_delete(self):
+        """
+        Test node deletion functionality
+        """
+
         tempid = str(uuid.uuid4())
         self.driver.node_merge(node_id=tempid)
         self.driver.node_delete(node_id=tempid)
@@ -420,6 +445,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
                              count=len(nodes)))
 
     def test_repeated_node_delete(self):
+        """
+        Test repeated node deletion correctness
+        """
+
         node_id = str(uuid.uuid4())
         for i in range(self.REPEAT_COUNT):
             self.test_node_update_properties_by_id(node_id=node_id)
@@ -427,6 +456,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertIs(self.driver.node_lookup_one(node_id=node_id), None)
 
     def test_edge_merge_and_lookup(self):
+        """
+        Test edge creation and lookup by dst_id, src_id, dst_id and src_id
+        """
+
         src_id = str(uuid.uuid4())
         dst_id = str(uuid.uuid4())
         self.driver.node_merge(node_id=src_id)
@@ -446,6 +479,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(edge.dst_id, dst_id)
 
     def test_edge_merge_and_lookup_properties(self):
+        """
+        Test edge property merging
+        """
         src_id = str(uuid.uuid4())
         dst_id = str(uuid.uuid4())
         props = {'key1': str(random.random()), 'key2': random.random()}
@@ -458,6 +494,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(edge.properties, props)
 
     def test_edge_lookup_leaves(self):
+        """
+        Create a star topology, verify lookup by src_id and that all nodes
+        are attached
+        """
 
         leaf_count = 10
         src_id = str(uuid.uuid4())
@@ -476,6 +516,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertTrue(dst_id in set(edge_ids))
 
     def test_sessioned_path_insertion(self):
+        """
+        Test creation of a sample graph with pre-existing nodes in a
+        single session
+        """
 
         leaf_count = 10
         src_id = str(uuid.uuid4())
@@ -501,6 +545,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertTrue(dst_id in set(edge_ids))
 
     def test_path_deletion(self):
+        """
+        Test path deletion. Verify that nodes deletion is cascaded to edges
+        """
 
         leaf_count = 10
         src_id = str(uuid.uuid4())

@@ -212,11 +212,9 @@ class PsqlGraphDriver(object):
         self.engine = create_engine(conn_str)
 
     @retryable
-    def node_merge(self, node=None, node_id=None, property_matches=None,
-                   system_annotation_matches=None, acl=[],
+    def node_merge(self, node_id=None, node=None, acl=[],
                    system_annotations={}, label=None, properties={},
-                   session=None,
-                   max_retries=DEFAULT_RETRIES,
+                   session=None, max_retries=DEFAULT_RETRIES,
                    backoff=default_backoff):
         """
 
@@ -239,12 +237,7 @@ class PsqlGraphDriver(object):
         with session_scope(self.engine, session) as local:
             if not node:
                 """ try and lookup the node """
-                node = self.node_lookup_one(
-                    node_id=node_id,
-                    property_matches=property_matches,
-                    system_annotation_matches=system_annotation_matches,
-                    session=local,
-                )
+                node = self.node_lookup_one(node_id=node_id, session=local)
 
             if node:
                 """ there is a pre-existing node """
@@ -438,10 +431,10 @@ class PsqlGraphDriver(object):
         return result
 
     @retryable
-    def node_clobber(self, node=None, node_id=None, property_matches=None,
-                     system_annotation_matches=None, acl=[],
-                     system_annotations={}, label=None, properties={},
-                     session=None, max_retries=DEFAULT_RETRIES,
+    def node_clobber(self, node_id=None, node=None, acl=[],
+                     system_annotations={}, label=None,
+                     properties={}, session=None,
+                     max_retries=DEFAULT_RETRIES,
                      backoff=default_backoff):
         """
 
@@ -466,8 +459,6 @@ class PsqlGraphDriver(object):
                 """ try and lookup the node """
                 node = self.node_lookup_one(
                     node_id=node_id,
-                    property_matches=property_matches,
-                    system_annotation_matches=system_annotation_matches,
                     session=local,
                 )
 
@@ -490,26 +481,18 @@ class PsqlGraphDriver(object):
             self.node_void_and_create(new_node, node, session=local)
 
     @retryable
-    def node_delete_property_keys(self, property_keys, node=None,
-                                  node_id=None,
-                                  property_matches=None,
-                                  system_annotation_matches=None,
-                                  acl=[], system_annotations={},
-                                  label=None, session=None,
+    def node_delete_property_keys(self, property_keys, node_id=None,
+                                  node=None, session=None,
                                   max_retries=DEFAULT_RETRIES,
                                   backoff=default_backoff):
         """
+
         """
 
         with session_scope(self.engine, session) as local:
             if not node:
                 """ try and lookup the node """
-                node = self.node_lookup_one(
-                    node_id=node_id,
-                    property_matches=property_matches,
-                    system_annotation_matches=system_annotation_matches,
-                    session=local,
-                )
+                node = self.node_lookup_one(node_id=node_id, session=local)
 
             if not node:
                 raise QueryError('Node not found')
@@ -529,12 +512,10 @@ class PsqlGraphDriver(object):
             self.node_void_and_create(new_node, node, session=local)
 
     @retryable
-    def node_delete_system_annotation_keys(self, system_annotation_keys,
-                                           node=None, node_id=None,
-                                           property_matches=None,
-                                           system_annotation_matches=None,
-                                           acl=[], system_annotations={},
-                                           label=None, session=None,
+    def node_delete_system_annotation_keys(self,
+                                           system_annotation_keys,
+                                           node_id=None, node=None,
+                                           session=None,
                                            max_retries=DEFAULT_RETRIES,
                                            backoff=default_backoff):
         """
@@ -543,12 +524,7 @@ class PsqlGraphDriver(object):
         with session_scope(self.engine, session) as local:
             if not node:
                 """ try and lookup the node """
-                node = self.node_lookup_one(
-                    node_id=node_id,
-                    property_matches=property_matches,
-                    system_annotation_matches=system_annotation_matches,
-                    session=local,
-                )
+                node = self.node_lookup_one(node_id=node_id, session=local)
 
             if not node:
                 raise QueryError('Node not found')
@@ -570,10 +546,7 @@ class PsqlGraphDriver(object):
             self.node_void_and_create(new_node, node, session=local)
 
     @retryable
-    def node_delete(self, node=None, node_id=None,
-                    property_matches=None,
-                    system_annotation_matches=None, acl=[],
-                    system_annotations={}, label=None, properties={},
+    def node_delete(self, node_id=None, node=None,
                     session=None, max_retries=DEFAULT_RETRIES,
                     backoff=default_backoff):
         """
@@ -588,13 +561,7 @@ class PsqlGraphDriver(object):
         with session_scope(self.engine, session) as local:
             if not node:
                 """ try and lookup the node """
-                node = self.node_lookup_one(
-                    node_id=node_id,
-                    property_matches=property_matches,
-                    system_annotation_matches=system_annotation_matches,
-                    label=label,
-                    session=local,
-                )
+                node = self.node_lookup_one(node_id=node_id, session=local)
 
             if not node:
                 raise QueryError('Node not found')

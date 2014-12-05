@@ -170,9 +170,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         # Add second node
         propertiesB = {'key1': b, 'key4': str(b)}
-        self.driver.node_merge(
-            property_matches=propertiesA, properties=propertiesB
-        )
+        node = self.driver.node_lookup_one(property_matches=propertiesA)
+        self.driver.node_merge(node=node, properties=propertiesB)
 
         # Merge properties
         for key, val in propertiesB.iteritems():

@@ -1,11 +1,13 @@
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, MetaData, Table, Column, \
-    Integer, Text, String
+from sqlalchemy import create_engine, Column, Integer, Text, String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.dialects.postgres import TIMESTAMP, ARRAY, JSONB
+from sqlalchemy.dialects.postgres import TIMESTAMP, ARRAY, JSONB, \
+    INTEGER, TEXT, FLOAT
 from sqlalchemy.exc import IntegrityError
 from contextlib import contextmanager
 from datetime import datetime
+from types import NoneType
+from functools import wraps
 import time
 import random
 import logging
@@ -17,16 +19,22 @@ Base = declarative_base()
 Driver to implement the graph model in postgres
 """
 
+DEFAULT_RETRIES = 2
 
-class NotConnected(Exception):
+
+class QueryError(Exception):
     pass
 
 
-class QueryException(Exception):
+class ProgrammingError(Exception):
     pass
 
 
-class NodeCreationException(Exception):
+class NodeCreationError(Exception):
+    pass
+
+
+class EdgeCreationError(Exception):
     pass
 
 
@@ -63,6 +71,45 @@ def session_scope(engine, session=None):
             local.close()
 
 
+class Sanitizer(object):
+
+    type_mapping = {
+        int: INTEGER,
+        str: TEXT,
+        float: FLOAT,
+        datetime: TIMESTAMP,
+        NoneType: NoneType,
+    }
+
+    type_conversion = {
+        int: int,
+        str: str,
+        float: float,
+        datetime: datetime,
+        NoneType: lambda x: None,
+    }
+
+    @staticmethod
+    def cast(variable):
+        if type(variable) not in Sanitizer.type_conversion:
+            raise ProgrammingError(
+                'Disallowed value type for jsonb properties')
+        return Sanitizer.type_conversion[type(variable)](variable)
+
+    @staticmethod
+    def sanitize(variable):
+        if not isinstance(variable, dict):
+            return Sanitizer.cast(variable)
+        variable = copy.deepcopy(variable)
+        for key, value in variable.iteritems():
+            variable[key] = Sanitizer.cast(value)
+        return variable
+
+    @staticmethod
+    def get_type(variable):
+        return Sanitizer.type_mapping.get(type(variable), TEXT)
+
+
 class PsqlNode(Base):
 
     __tablename__ = 'nodes'
@@ -77,10 +124,8 @@ class PsqlNode(Base):
     properties = Column(JSONB, default={})
 
     def __repr__(self):
-        return "<PostgresNode(key={key}, node_id={node_id}, voided={voided})>"
-        "".format(
+        return '<PsqlNode({node_id}, voided={voided})>'.format(
             node_id=self.node_id,
-            key=self.key,
             voided=(self.voided is not None)
         )
 
@@ -91,8 +136,10 @@ class PsqlNode(Base):
         new_acl = self.acl[:] + (node.acl or [])
         new_label = (node.label or self.label)
 
-        new_system_annotations.update(node.system_annotations or {})
-        new_properties.update(node.properties or {})
+        new_system_annotations.update(Sanitizer.sanitize(
+            node.system_annotations) or {})
+        new_properties.update(Sanitizer.sanitize(
+            node.properties) or {})
 
         return PsqlNode(
             node_id=self.node_id,
@@ -108,26 +155,39 @@ class PsqlEdge(Base):
     __tablename__ = 'edges'
 
     key = Column(Integer, primary_key=True)
-    edge_id = Column(String(36), nullable=False)
-    voided = Column(TIMESTAMP)
-    created = Column(TIMESTAMP, nullable=False, default=datetime.now())
     src_id = Column(String(36), nullable=False)
     dst_id = Column(String(36), nullable=False)
-    acl = Column(ARRAY(Text))
+    voided = Column(TIMESTAMP)
+    created = Column(TIMESTAMP, nullable=False, default=datetime.now())
     system_annotations = Column(JSONB, default={})
     label = Column(Text)
     properties = Column(JSONB, default={})
 
     def __repr__(self):
-        return "<PostgresNode(node_id={node_id}, key={key}, acl={acl})>"
-        "".format(
-            node_id=self.node_id,
-            key=self.key,
-            acl=self.acl
+        return '<PsqlEdge(({src_id})->({dst_id}), voided={voided})>'.format(
+            src_id=self.src_id,
+            dst_id=self.dst_id,
+            voided=(self.voided is not None)
         )
 
+    def merge(self, edge):
 
-DEFAULT_RETRIES = 32
+        new_system_annotations = copy.copy(self.system_annotations)
+        new_properties = copy.copy(self.properties)
+        new_label = (edge.label or self.label)
+
+        new_system_annotations.update(Sanitizer.sanitize(
+            edge.system_annotations) or {})
+        new_properties.update(Sanitizer.sanitize(
+            edge.properties) or {})
+
+        return PsqlEdge(
+            src_id=self.src_id,
+            dst_id=self.dst_id,
+            system_annotations=new_system_annotations,
+            label=new_label,
+            properties=new_properties,
+        )
 
 
 def default_backoff(retries, max_retries):
@@ -142,7 +202,7 @@ def default_backoff(retries, max_retries):
     time.sleep(random.random()*(max_retries-retries)/max_retries*2)
 
 
-def retryable(func, backoff=default_backoff):
+def retryable(func):
     """
 
     This wrapper can be used to decorate a function to retry an
@@ -165,24 +225,28 @@ def retryable(func, backoff=default_backoff):
 
     """
 
-    def inner(*args, **kwargs):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
         retries = 0
         max_retries = kwargs.get('max_retries', DEFAULT_RETRIES)
         backoff = kwargs.get('backoff', default_backoff)
         while retries <= max_retries:
             try:
-                func(*args, **kwargs)
+                return func(*args, **kwargs)
             except IntegrityError:
-                logging.warn('Race-condition caught ({0}/{1} retries)'
-                             ''.format(retries, max_retries))
+                logging.debug(
+                    'Race-condition caught? ({0}/{1} retries)'.format(
+                        retries, max_retries))
                 if retries >= max_retries:
-                    logging.error('Max retries exceeded')
+                    logging.error(
+                        'Unabel to execute {f}, max retries exceeded'.format(
+                            f=func))
                     raise
                 retries += 1
                 backoff(retries, max_retries)
             else:
                 break
-    return inner
+    return wrapper
 
 
 class PsqlGraphDriver(object):
@@ -225,8 +289,6 @@ class PsqlGraphDriver(object):
 
         """
 
-        self.logger.info('Merging node')
-
         with session_scope(self.engine, session) as local:
             if not node:
                 """ try and lookup the node """
@@ -248,11 +310,11 @@ class PsqlGraphDriver(object):
 
             else:
                 """ we need to create a new node """
-                self.logger.info('Creating a new node')
+                self.logger.debug('Creating a new node')
 
                 if not node_id:
-                    raise NodeCreationException(
-                        'Cannot create a node with no node_id')
+                    raise NodeCreationError(
+                        'Cannot create a node with no node_id.')
 
                 new_node = PsqlNode(
                     node_id=node_id,
@@ -262,6 +324,7 @@ class PsqlGraphDriver(object):
                     properties=properties
                 )
 
+            self.logger.debug('Merging node: {0}'.format(new_node.node_id))
             self.node_void_and_create(new_node, node, session=local)
 
     def node_void_and_create(self, new_node, old_node, session=None):
@@ -271,14 +334,12 @@ class PsqlGraphDriver(object):
         create a new node entry in its place
         """
 
-        self.logger.info('Voiding a node to create a new one')
+        self.logger.debug('Voiding to update: {0}'.format(new_node.node_id))
 
         with session_scope(self.engine, session) as local:
-            try:
+            if old_node:
                 self.node_void(old_node, session)
-                local.add(new_node)
-            except:
-                raise
+            local.add(new_node)
 
     def node_void(self, node, session=None):
         """if passed a non-null node, then ``node_void`` will set the
@@ -292,7 +353,7 @@ class PsqlGraphDriver(object):
 
         """
         if not node:
-            return
+            raise ProgrammingError('node_void was passed a NoneType PsqlNode')
 
         with session_scope(self.engine, session) as local:
             node.voided = datetime.now()
@@ -300,7 +361,7 @@ class PsqlGraphDriver(object):
 
     def node_lookup_one(self, node_id=None, property_matches=None,
                         system_annotation_matches=None, include_voided=False,
-                        session=None):
+                        session=None, label=None):
         """
         This function is simply a wrapper for ``node_lookup`` that
         constrains the query to return a single node.  If multiple
@@ -312,19 +373,21 @@ class PsqlGraphDriver(object):
             node_id=node_id,
             property_matches=property_matches,
             system_annotation_matches=system_annotation_matches,
+            label=label,
             include_voided=include_voided,
             session=session,
         )
 
         if len(nodes) > 1:
-            raise QueryException('Expected a single result for query, got {n}'
-                                 ''.format(n=len(nodes)))
+            raise QueryError(
+                'Expected a single result for query, got {n}'.format(
+                    n=len(nodes)))
         if len(nodes) < 1:
             return None
 
         return nodes[0]
 
-    def node_lookup(self, node_id=None, property_matches=None,
+    def node_lookup(self, node_id=None, property_matches=None, label=None,
                     system_annotation_matches=None, include_voided=False,
                     session=None):
         """
@@ -335,15 +398,17 @@ class PsqlGraphDriver(object):
         treated as an invalid query.
         """
 
-        if not ((node_id is not None) ^
-                (property_matches is not None or
-                 system_annotation_matches is not None)):
-            raise QueryException("Node lookup by node_id and kv matches not"
-                                 " accepted.")
+        if ((node_id is not None) and
+            ((property_matches is not None) or (label is not None)
+             or (system_annotation_matches is not None))):
+            raise QueryError('Node lookup by node_id and kv/label matches not'
+                             ' accepted.')
 
-        if ((not node_id) and (not property_matches) and
-                (not system_annotation_matches)):
-            raise QueryException("No node_id or matches specified")
+        if ((node_id is None) and
+            ((property_matches is None) and
+             (system_annotation_matches is None) and
+             (label is None))):
+            raise QueryError('No node_id or matches specified')
 
         if node_id is not None:
             return self.node_lookup_by_id(
@@ -354,8 +419,10 @@ class PsqlGraphDriver(object):
 
         else:
             return self.node_lookup_by_matches(
-                property_matches,
-                include_voided
+                property_matches=property_matches,
+                system_annotation_matches=system_annotation_matches,
+                include_voided=include_voided,
+                label=label,
             )
 
     def node_lookup_by_id(self, node_id, include_voided=False, session=None):
@@ -369,7 +436,7 @@ class PsqlGraphDriver(object):
         new one will be created.
         """
 
-        self.logger.info('Looking up node by id: {id}'.format(id=node_id))
+        self.logger.debug('Looking up node by id: {id}'.format(id=node_id))
 
         with session_scope(self.engine, session) as local:
             query = local.query(PsqlNode).filter(PsqlNode.node_id == node_id)
@@ -383,59 +450,374 @@ class PsqlGraphDriver(object):
 
     def node_lookup_by_matches(self, property_matches=None,
                                system_annotation_matches=None,
-                               include_voided=False):
+                               include_voided=False, label=None,
+                               session=None):
         """
-        :param node_id: unique id that is only important inside postgres, referenced by edges
-        :param matches: key-values to match node if node_id is not provided
-        """
-
-        raise NotImplementedError()
-
-    def node_clobber(self, node_id=None, matches={}, acl=[],
-                     system_annotations={}, label=None, properties={}):
-        """
-        :param node_id: unique id that is only important inside postgres, referenced by edges
-        :param matches: key-values to match node if node_id is not provided
-        :param acl: authoritative list that drives object store acl amongst others
-        :param system_annotations: the only property to be mutable? This would allow for flexible kv storage tied to the node that does not bloat the database for things like downloaders, and harmonizers
-        :param label: this is the node type
-        :param properties: the jsonb document containing the node properties
         """
 
-        raise NotImplementedError()
+        system_annotation_matches = Sanitizer.sanitize(
+            system_annotation_matches)
+        property_matches = Sanitizer.sanitize(property_matches)
 
-    def node_delete_property_keys(self, node_id=None, matches={}, keys=[]):
-        """
-        :param node_id: unique id that is only important inside postgres, referenced by edges
-        :param matches: key-values to match node if node_id is not provided
-        :param acl: authoritative list that drives object store acl amongst others
-        :param system_annotations: the only property to be mutable? This would allow for flexible kv storage tied to the node that does not bloat the database for things like downloaders, and harmonizers
-        :param label: this is the node type
-        :param properties: the jsonb document containing the node properties
+        with session_scope(self.engine, session) as local:
+            query = local.query(PsqlNode)
+
+            # Filter system_annotations
+            if system_annotation_matches:
+                print system_annotation_matches
+                for key, value in system_annotation_matches.iteritems():
+                    if value is not None:
+                        query = query.filter(
+                            PsqlNode.system_annotations[key].cast(
+                                Sanitizer.get_type(value)) == value
+                        )
+
+            # Filter properties
+            if property_matches:
+                for key, value in property_matches.iteritems():
+                    if value is not None:
+                        query = query.filter(
+                            PsqlNode.properties[key].cast(
+                                Sanitizer.get_type(value)) == value
+                        )
+
+            if not include_voided:
+                query = query.filter(PsqlNode.voided.is_(None))
+
+            if label is not None:
+                query = query.filter(PsqlNode.label == label)
+
+            result = query.all()
+        return result
+
+    @retryable
+    def node_clobber(self, node=None, node_id=None, property_matches=None,
+                     system_annotation_matches=None, acl=[],
+                     system_annotations={}, label=None, properties={},
+                     session=None, max_retries=DEFAULT_RETRIES,
+                     backoff=default_backoff):
         """
 
-        raise NotImplementedError()
+        It handles the traditional get_one_or_create while
+        overloading the complete updating of properties,
+        system_annotations.
 
-    def node_delete_system_annotation_keys(self, node_id=None, matches={}, keys=[]):
-        """
-        :param node_id: unique id that is only important inside postgres, referenced by edges
-        :param matches: key-values to match node if node_id is not provided
-        :param acl: authoritative list that drives object store acl amongst others
-        :param system_annotations: the only property to be mutable? This would allow for flexible kv storage tied to the node that does not bloat the database for things like downloaders, and harmonizers
-        :param label: this is the node type
-        :param properties: the jsonb document containing the node properties
-        """
+        - If the node does not exist, it will be created.
 
-        raise NotImplementedError()
+        - If the node does exist, it will be updated.
 
-    def node_delete(self, node_id=None, matches={}, acl=[], system_annotations={}, label=None, properties={}):
-        """
-        :param node_id: unique id that is only important inside postgres, referenced by edges
-        :param matches: key-values to match node if node_id is not provided
-        :param acl: authoritative list that drives object store acl amongst others
-        :param system_annotations: the only property to be mutable? This would allow for flexible kv storage tied to the node that does not bloat the database for things like downloaders, and harmonizers
-        :param label: this is the node type
-        :param properties: the jsonb document containing the node properties
+        - This function is thread safe.
+
+        - This function is wrapped by ``retryable`` decorator, set the
+          number of maximum number of times that the merge will retry
+          after a concurrency error, set the keyword arg ``max_retries``
+
         """
 
-        raise NotImplementedError()
+        with session_scope(self.engine, session) as local:
+            if not node:
+                """ try and lookup the node """
+                node = self.node_lookup_one(
+                    node_id=node_id,
+                    property_matches=property_matches,
+                    system_annotation_matches=system_annotation_matches,
+                    session=local,
+                )
+
+            if not node_id and node:
+                node_id = node.node_id
+
+            elif not node_id:
+                raise NodeCreationError(
+                    'Cannot create a node with no node_id.')
+
+            new_node = PsqlNode(
+                node_id=node_id,
+                system_annotations=system_annotations,
+                acl=acl,
+                label=label,
+                properties=properties
+            )
+
+            self.logger.debug('overwritting node: {0}'.format(node.node_id))
+            self.node_void_and_create(new_node, node, session=local)
+
+    @retryable
+    def node_delete_property_keys(self, property_keys, node=None,
+                                  node_id=None,
+                                  property_matches=None,
+                                  system_annotation_matches=None,
+                                  acl=[], system_annotations={},
+                                  label=None, session=None,
+                                  max_retries=DEFAULT_RETRIES,
+                                  backoff=default_backoff):
+        """
+        """
+
+        with session_scope(self.engine, session) as local:
+            if not node:
+                """ try and lookup the node """
+                node = self.node_lookup_one(
+                    node_id=node_id,
+                    property_matches=property_matches,
+                    system_annotation_matches=system_annotation_matches,
+                    session=local,
+                )
+
+            if not node:
+                raise QueryError('Node not found')
+
+            properties = node.properties
+            for key in property_keys:
+                properties.pop(key)
+
+            new_node = PsqlNode(
+                node_id=node.node_id,
+                system_annotations=node.system_annotations,
+                acl=node.acl,
+                label=node.label,
+                properties=properties
+            )
+
+            self.node_void_and_create(new_node, node, session=local)
+
+    @retryable
+    def node_delete_system_annotation_keys(self, system_annotation_keys,
+                                           node=None, node_id=None,
+                                           property_matches=None,
+                                           system_annotation_matches=None,
+                                           acl=[], system_annotations={},
+                                           label=None, session=None,
+                                           max_retries=DEFAULT_RETRIES,
+                                           backoff=default_backoff):
+        """
+        """
+
+        with session_scope(self.engine, session) as local:
+            if not node:
+                """ try and lookup the node """
+                node = self.node_lookup_one(
+                    node_id=node_id,
+                    property_matches=property_matches,
+                    system_annotation_matches=system_annotation_matches,
+                    session=local,
+                )
+
+            if not node:
+                raise QueryError('Node not found')
+
+            system_annotations = node.system_annotations
+            for key in system_annotation_keys:
+                system_annotations.pop(key)
+
+            new_node = PsqlNode(
+                node_id=node.node_id,
+                system_annotations=system_annotations,
+                acl=node.acl,
+                label=node.label,
+                properties=node.properties
+            )
+
+            self.logger.debug('updating node properties: {0}'.format(
+                node.node_id))
+            self.node_void_and_create(new_node, node, session=local)
+
+    @retryable
+    def node_delete(self, node=None, node_id=None,
+                    property_matches=None,
+                    system_annotation_matches=None, acl=[],
+                    system_annotations={}, label=None, properties={},
+                    session=None, max_retries=DEFAULT_RETRIES,
+                    backoff=default_backoff):
+        """
+        - This function is thread safe.
+
+        - This function is wrapped by ``retryable`` decorator, set the
+          number of maximum number of times that the merge will retry
+          after a concurrency error, set the keyword arg ``max_retries``
+
+        """
+
+        with session_scope(self.engine, session) as local:
+            if not node:
+                """ try and lookup the node """
+                node = self.node_lookup_one(
+                    node_id=node_id,
+                    property_matches=property_matches,
+                    system_annotation_matches=system_annotation_matches,
+                    label=label,
+                    session=local,
+                )
+
+            if not node:
+                raise QueryError('Node not found')
+
+            # Void this node's edges and the node entry
+            self.logger.debug('deleting node: {0}'.format(node.node_id))
+            self.edge_delete_by_node_id(node.node_id, session=local)
+            self.node_void(node, session=local)
+
+    @retryable
+    def edge_merge(self, src_id=None, dst_id=None, edge=None, acl=[],
+                   system_annotations={}, properties={}, session=None,
+                   max_retries=DEFAULT_RETRIES,
+                   backoff=default_backoff):
+        """
+
+        This is meant to be the main interaction function with the
+        library. It handles the traditional get_one_or_create while
+        overloading the merging of properties, system_annotations.
+
+        - If the edge does not exist, it will be created.
+
+        - If the edge does exist, it will be updated.
+
+        - This function is thread safe.
+
+        - This function is wrapped by ``retryable`` decorator, set the
+          number of maximum number of times that the merge will retry
+          after a concurrency error, set the keyword arg ``max_retries``
+
+        """
+
+        with session_scope(self.engine, session) as local:
+            if not edge:
+                """ try and lookup the edge """
+                edge = self.edge_lookup_one(
+                    src_id=src_id,
+                    dst_id=dst_id,
+                    session=local,
+                )
+
+            if edge:
+                """ there is a pre-existing edge """
+                new_edge = edge.merge(PsqlEdge(
+                    system_annotations=system_annotations,
+                    properties=properties
+                ))
+
+            else:
+                """ we need to create a new edge """
+                self.logger.debug('Creating a new edge')
+
+                if src_id is None:
+                    raise EdgeCreationError(
+                        'Cannot create a edge with no src_id.')
+                if dst_id is None:
+                    raise EdgeCreationError(
+                        'Cannot create a edge with no dst_id.')
+
+                new_edge = PsqlEdge(
+                    src_id=src_id,
+                    dst_id=dst_id,
+                    system_annotations=system_annotations,
+                    properties=properties
+                )
+
+            if edge is not None:
+                self.logger.debug('merging edge: ({src})->({dst})'.format(
+                    src=edge.src_id, dst_id=edge.dst_id))
+
+            self.edge_void_and_create(new_edge, edge, session=local)
+
+    def edge_void_and_create(self, new_edge, old_edge, session=None):
+        """
+        This function assumes that you have already done a query for an
+        existing edge!  This function will take an edge, void it and
+        create a new edge entry in its place
+        """
+
+        self.logger.debug('voiding to update edge: ({src})->({dst})'.format(
+            src=new_edge.src_id, dst=new_edge.dst_id))
+
+        with session_scope(self.engine, session) as local:
+            if old_edge:
+                self.edge_void(old_edge, session)
+            local.add(new_edge)
+
+    def edge_lookup_one(self, src_id=None, dst_id=None,
+                        include_voided=False, session=None):
+        """
+        This function is simply a wrapper for ``edge_lookup`` that
+        constrains the query to return a single edge.  If multiple
+        edges are found matchin the query, an exception will be raised
+
+        If no edges match the query, the return will be NoneType.
+        """
+
+        edges = self.edge_lookup(
+            src_id=src_id,
+            dst_id=dst_id,
+            include_voided=include_voided,
+            session=session,
+        )
+
+        if len(edges) > 1:
+            raise QueryError(
+                'Expected a single result for query, got {n}'.format(
+                    n=len(edges)))
+        if len(edges) < 1:
+            return None
+
+        return edges[0]
+
+    def edge_lookup(self, src_id=None, dst_id=None,
+                    include_voided=False, session=None):
+        """
+        This function looks up a edge by a given id.  If include_voided is
+        true, then the returned list will include edges that have been
+        voided. If one is true then the return will be constrained to
+        a single result (if more than a single result is found, then
+        an exception will be raised.  If session is specified, the
+        query will be performed within the givin session, otherwise a
+        new one will be created.
+        """
+
+        if src_id is None and dst_id is None:
+            raise QueryError('Cannot lookup edge, no src_id or dst_id')
+
+        with session_scope(self.engine, session) as local:
+            if src_id:
+                query = local.query(PsqlEdge).filter(PsqlEdge.src_id == src_id)
+            if dst_id:
+                query = local.query(PsqlEdge).filter(PsqlEdge.dst_id == dst_id)
+
+            if not include_voided:
+                query = query.filter(PsqlEdge.voided.is_(None))
+
+            result = query.all()
+        return result
+
+    def edge_void(self, edge, session=None):
+        """
+        Voids an edge entry
+        """
+
+        if not edge:
+            raise ProgrammingError('edge_void was passed a NoneType PsqlEdge')
+
+        self.logger.debug('voiding edge: ({src})->({dst})'.format(
+            src=edge.src_id, dst=edge.dst_id))
+        with session_scope(self.engine, session) as local:
+            edge.voided = datetime.now()
+            local.merge(edge)
+
+    def edge_delete_by_node_id(self, node_id, session=None):
+        """Looks up all edges that referecen ``node_id`` and voids them.
+
+        This function is used primarily to cascade node deletions to
+        related edges
+        """
+
+        if not node_id:
+            raise ProgrammingError('node_id cannot be NoneType')
+
+        self.logger.debug('cascading node deletion to edge: {0})'.format(
+            node_id))
+
+        with session_scope(self.engine, session) as local:
+
+            src_nodes = self.edge_lookup(src_id=node_id, session=local)
+            dst_nodes = self.edge_lookup(dst_id=node_id, session=local)
+            for edge in src_nodes + dst_nodes:
+                self.edge_void(edge)

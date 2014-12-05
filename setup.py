@@ -6,9 +6,9 @@ setup(
     install_requires=[
         'psycopg2',
         'sqlalchemy',
-        'cdisutils',
+        # 'cdisutils',
         ],
-    dependency_links=[
-        'git+ssh://git@github.com/NCI-GDC/cdisutils.git#egg=cdisutils',
-        ]
+    # dependency_links=[
+    # 'git+ssh://git@github.com/NCI-GDC/cdisutils.git#egg=cdisutils',
+    # ]
     )

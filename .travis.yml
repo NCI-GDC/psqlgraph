@@ -15,4 +15,4 @@ before_script:
   - sudo service postgresql restart
   - yes | python setup.py install
   - python psqlgraph/setup_psql_graph.py
-script: "nosetests"
+script: "nosetests -v"

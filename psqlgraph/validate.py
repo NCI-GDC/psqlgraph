@@ -2,8 +2,8 @@ class PsqlEdgeValidator(object):
     def __init__(self, driver, *args, **kwargs):
         self.driver = driver
 
-    def __call__(self, node, *args, **kwargs):
-        return self.validate(node, *args, **kwargs)
+    def __call__(self, edge, *args, **kwargs):
+        return self.validate(edge, *args, **kwargs)
 
     def validate(self, edge, *args, **kwargs):
         return True

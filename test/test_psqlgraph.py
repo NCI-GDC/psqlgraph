@@ -268,7 +268,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         self.assertRaises(
             psqlgraph.ProgrammingError,
-            self.driver.node_void,
+            self.driver._node_void,
             None
         )
 

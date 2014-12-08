@@ -8,6 +8,8 @@ from multiprocessing import Process
 import random
 from sqlalchemy.exc import IntegrityError
 
+from psqlgraph.exc import NodeCreationError, EdgeCreationError
+
 host = 'localhost'
 user = 'test'
 password = 'test'
@@ -577,6 +579,37 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertTrue(dst_id not in set(edges))
         for dst_id in dst_ids:
             self.assertIs(self.driver.edge_lookup_one(dst_id=dst_id), None)
+
+    def test_node_validator_error(self):
+        node_id = str(uuid.uuid4())
+        self.driver.node_validator.validate = lambda x: False
+        prop = {'key1': None, 'key2': 2, 'key3': time.time()}
+
+        try:
+            self.assertRaises(
+                NodeCreationError,
+                self.driver.node_merge, node_id, properties=prop
+            )
+        except:
+            self.driver.node_validator.validate = lambda x: True
+            raise
+
+    def test_edge_validator_error(self):
+        src_id = str(uuid.uuid4())
+        dst_id = str(uuid.uuid4())
+        self.driver.edge_validator.validate = lambda x: False
+        self.driver.node_merge(src_id)
+        self.driver.node_merge(dst_id)
+
+        try:
+            self.assertRaises(
+                EdgeCreationError,
+                self.driver.edge_merge, src_id, dst_id
+            )
+        except:
+            self.driver.edge_validator.validate = lambda x: True
+            raise
+
 
 if __name__ == '__main__':
 

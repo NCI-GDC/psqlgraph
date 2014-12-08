@@ -1,26 +1,32 @@
+# ======== External modules ========
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, Column, Integer, Text, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgres import TIMESTAMP, ARRAY, JSONB
-from exc import QueryError, ProgrammingError, NodeCreationError, \
-    EdgeCreationError
 from sqlalchemy.exc import IntegrityError
 from contextlib import contextmanager
 from datetime import datetime
 from functools import wraps
-
-import sanitizer
 import time
 import random
 import logging
 import copy
 
+# ======== PsqlNode modules ========
+from validate import PsqlNodeValidator, PsqlEdgeValidator
+from exc import QueryError, ProgrammingError, NodeCreationError, \
+    EdgeCreationError
+import sanitizer
+
+# ======== ORM object base ========
 Base = declarative_base()
 
 """
 Driver to implement the graph model in postgres
 """
 
+# ======== Default constants ========
+# Used for retrying a write to postgres on exception catch
 DEFAULT_RETRIES = 2
 
 
@@ -58,6 +64,10 @@ def session_scope(engine, session=None):
 
 
 class PsqlNode(Base):
+
+    """Node class to represent a node entry in the postgresql table
+    'nodes' inherits the SQLAlchemy Base class
+    """
 
     __tablename__ = 'nodes'
 
@@ -98,6 +108,10 @@ class PsqlNode(Base):
 
 
 class PsqlEdge(Base):
+
+    """Edge class to represent a edge entry in the postgresql table
+    'edges' inherits the SQLAlchemy Base class
+    """
 
     __tablename__ = 'edges'
 
@@ -206,10 +220,19 @@ class PsqlGraphDriver(object):
         self.logger = logging.getLogger('psqlgraph')
         self.default_retries = 10
 
+        self.node_validator = PsqlNodeValidator(self)
+        self.edge_validator = PsqlEdgeValidator(self)
+
         conn_str = 'postgresql://{user}:{password}@{host}/{database}'.format(
             user=user, password=password, host=host, database=database)
 
         self.engine = create_engine(conn_str)
+
+    def set_node_validator(self, node_validator):
+        self.node_validator = node_validator
+
+    def set_edge_validator(self, edge_validator):
+        self.edge_validator = edge_validator
 
     @retryable
     def node_merge(self, node_id=None, node=None, acl=[],
@@ -279,6 +302,10 @@ class PsqlGraphDriver(object):
         with session_scope(self.engine, session) as local:
             if old_node:
                 self.node_void(old_node, session)
+
+            if not self.node_validator(new_node):
+                raise NodeCreationError('Node failed schema constraints')
+
             local.add(new_node)
 
     def node_void(self, node, session=None):
@@ -647,6 +674,10 @@ class PsqlGraphDriver(object):
         with session_scope(self.engine, session) as local:
             if old_edge:
                 self.edge_void(old_edge, session)
+
+            if not self.edge_validator(new_edge):
+                raise EdgeCreationError('Edge failed schema constraints')
+
             local.add(new_edge)
 
     def edge_lookup_one(self, src_id=None, dst_id=None,

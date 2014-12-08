@@ -26,7 +26,8 @@ Driver to implement the graph model in postgres
 """
 
 # ======== Default constants ========
-# Used for retrying a write to postgres on exception catch
+"""Used for retrying a write to postgres on exception catch
+.. |DEFAULT_RETRIES| replace:: 2"""
 DEFAULT_RETRIES = 2
 
 
@@ -87,11 +88,30 @@ class PsqlNode(Base):
         )
 
     def merge(self, node):
+        """Merges a new node onto this instance.  The parameter ``node``
+        should contain the 'new' values with the following effects. In
+        general, updates are additive. New properties will be added to
+        old properties.  New system annotations will be added system
+        annotations. New acl will will be added to old acl.  For
+        removal of a property, system_annotation, or acl entry is
+        required, see :func
+        PsqlGraphDriver.node_delete_property_keys:, :func
+        PsqlGraphDriver.node_delete_system_annotation_keys:, :func
+        PsqlGraphDriver.node_remove_acl_item:
+
+        .. note::
+           If the new node contains an acl list, it be appended to
+           the previous acl list
+
+        The following class members cannot be updated: ``label, key, node_id``
+
+        :param PsqlNode node: The new node to be merged onto this instance
+
+        """
 
         new_system_annotations = copy.copy(self.system_annotations)
         new_properties = copy.copy(self.properties)
         new_acl = self.acl[:] + (node.acl or [])
-        new_label = (node.label or self.label)
 
         new_system_annotations.update(sanitizer.sanitize(
             node.system_annotations) or {})
@@ -102,7 +122,7 @@ class PsqlNode(Base):
             node_id=self.node_id,
             acl=new_acl,
             system_annotations=new_system_annotations,
-            label=new_label,
+            label=self.label,
             properties=new_properties,
         )
 
@@ -110,7 +130,9 @@ class PsqlNode(Base):
 class PsqlEdge(Base):
 
     """Edge class to represent a edge entry in the postgresql table
-    'edges' inherits the SQLAlchemy Base class
+    'edges' inherits the SQLAlchemy Base class.
+
+    See tools/setup_psqlgraph script for details on table setup.
     """
 
     __tablename__ = 'edges'
@@ -132,10 +154,30 @@ class PsqlEdge(Base):
         )
 
     def merge(self, edge):
+        """Merges a new edge onto this instance.  The parameter ``edge``
+        should contain the 'new' values with the following effects. In
+        general, updates are additive. New properties will be added to
+        old properties.  New system annotations will be added system
+        annotations. New acl will will be added to old acl.  For
+        removal of a property, system_annotation, or acl entry is
+        required, see :func:
+        PsqlGraphDriver.edge_delete_property_keys, :func:
+        PsqlGraphDriver.edge_delete_system_annotation_keys, :func:
+        PsqlGraphDriver.edge_remove_acl_item
+
+        .. note::
+            If the new edge contains an acl list, it be appended
+            to the previous acl list
+
+        The following class members cannot be updated: ``label, key,
+        src_id, dst_id``
+
+        :param PsqlEdge edge: The new edge to be merged onto this instance
+
+        """
 
         new_system_annotations = copy.copy(self.system_annotations)
         new_properties = copy.copy(self.properties)
-        new_label = (edge.label or self.label)
 
         new_system_annotations.update(sanitizer.sanitize(
             edge.system_annotations) or {})
@@ -146,7 +188,7 @@ class PsqlEdge(Base):
             src_id=self.src_id,
             dst_id=self.dst_id,
             system_annotations=new_system_annotations,
-            label=new_label,
+            label=self.label,
             properties=new_properties,
         )
 
@@ -164,9 +206,7 @@ def default_backoff(retries, max_retries):
 
 
 def retryable(func):
-    """
-
-    This wrapper can be used to decorate a function to retry an
+    """This wrapper can be used to decorate a function to retry an
     operation in the case of an SQLalchemy IntegrityError.  This error
     means that a race-condition has occured and operations that have
     occured within the session may no longer be valid.
@@ -212,7 +252,13 @@ def retryable(func):
 
 class PsqlGraphDriver(object):
 
-    def __init__(self, host, user, password, database):
+    """Driver to represent graphical structure with Postgresql using a
+    table of node entries and edge entries
+
+    """
+
+    def __init__(self, host, user, password, database,
+                 node_validator=None, edge_validator=None):
 
         self.user = user
         self.database = database
@@ -220,8 +266,13 @@ class PsqlGraphDriver(object):
         self.logger = logging.getLogger('psqlgraph')
         self.default_retries = 10
 
-        self.node_validator = PsqlNodeValidator(self)
-        self.edge_validator = PsqlEdgeValidator(self)
+        if node_validator is None:
+            node_validator = PsqlNodeValidator(self)
+        if edge_validator is None:
+            edge_validator = PsqlEdgeValidator(self)
+
+        self.node_validator = node_validator
+        self.edge_validator = edge_validator
 
         conn_str = 'postgresql://{user}:{password}@{host}/{database}'.format(
             user=user, password=password, host=host, database=database)
@@ -229,19 +280,19 @@ class PsqlGraphDriver(object):
         self.engine = create_engine(conn_str)
 
     def set_node_validator(self, node_validator):
+        """Override the node validation callback."""
         self.node_validator = node_validator
 
     def set_edge_validator(self, edge_validator):
+        """Override the edge validation callback."""
         self.edge_validator = edge_validator
 
     @retryable
     def node_merge(self, node_id=None, node=None, acl=[],
-                   system_annotations={}, label=None, properties={},
+                   label=None, system_annotations={}, properties={},
                    session=None, max_retries=DEFAULT_RETRIES,
                    backoff=default_backoff):
-        """
-
-        This is meant to be the main interaction function with the
+        """This is meant to be the main interaction function with the
         library. It handles the traditional get_one_or_create while
         overloading the merging of properties, system_annotations.
 
@@ -255,6 +306,75 @@ class PsqlGraphDriver(object):
           number of maximum number of times that the merge will retry
           after a concurrency error, set the keyword arg ``max_retries``
 
+        .. note::
+            You must pass either a ``node_id`` or a ``node`` (not both).
+
+        .. |label| replace:: The label to add to a new node.  Labels
+            on existing nodes are immutable. In order to modify a
+            label, you must manually delete the node and recreate it
+            with a new label.
+
+
+        .. |system_annotations| replace::
+            The dictionary representing arbitrary system annotation on
+            the node.  These annotations will be sanitized and
+            inserted into the table as JSONB.
+
+        .. |properties| replace:: The dictionary representing
+            properties on the node.  These properties will be
+            sanitized and validated with the
+            ``PsqlGraphDriver.node_validator`` instance of a
+            PsqlNodeValidator class before insertion into the table as
+            JSONB.
+
+        .. |session| replace:: The SQLAlchemy session within which to
+            perform operations.  This session is transactional.  If
+            this function or those it calls cause the transaction to
+            fail, it will be rolled-back, along with all previous
+            actions taken within this session.  If a session is
+            provided, it will not be committed before returning from
+            this function.  If a session is not provided, a
+            transactional session will be created that will be
+            committed before returning.
+
+        .. |max_retries| replace:: This function is retriable.  If not
+            passed the parameter ``max_retries``, it will only attempt
+            to retry modifications to the table ``DEFAULT_RETRIES=``2
+            times. Retries will only occur on IntegrityError, as this
+            is the most likely case for an integrity violation due to
+            race condition.  This functionality is provided by the
+            decorator wrapper function ``retryable``
+
+        .. |backoff| replace::
+            This function is retriable.  If not passed the parameter
+            ``backoff``, it will only attempt to retry modifications
+            to the table using the default backoff function
+            DEFAULT_BACKOFF. Retries will only occur on
+            IntegrityError, as this is the most likely case for an
+            integrity violation due to race condition.  This
+            functionality is provided by the decorator wrapper
+            function @:func:retryable. See :func:default_backoff for
+            details on over-riding this callback
+
+        :param str node_id:
+            The id specifying a single node. If the
+            node entry does not exist, it will be created. This
+            parameter is mutually exlucsive with ``node``
+        :param PsqlNode node:
+            The ORM instance of a node. If the node
+            instance is not represented in the table, it will be
+            inserted. This parameter is mutually exlucsive with
+            ``node``
+        :param str[] acl:
+            The acl list to merge.  If a node entry exists in the
+            table, the acl list will be appended.
+        :param str label: |label|
+        :param dict system_annotations: |system_annotations|
+        :param dict properties: |properties|
+        :param session: |session|
+        :param int max_retries: |max_retries|
+        :param callable backoff: |backoff|
+
         """
 
         with session_scope(self.engine, session) as local:
@@ -264,6 +384,13 @@ class PsqlGraphDriver(object):
 
             if node:
                 """ there is a pre-existing node """
+
+                if label is not None and label != node.label:
+                    raise NodeCreationError(
+                        'Labels are immutable.  You must delete the node and '
+                        'add a new one with an updated label.'
+                    )
+
                 new_node = node.merge(PsqlNode(
                     system_annotations=system_annotations,
                     acl=acl,
@@ -295,28 +422,45 @@ class PsqlGraphDriver(object):
         This function assumes that you have already done a query for an
         existing node!  This function will take an node, void it and
         create a new node entry in its place
+
+        :param PsqlNode new_node: The node with which to overwrite ``old_node``
+        :param PsqlNode old_node:
+            The existing node in the table to be overwritten
+
+        :param session: |session|
+
         """
 
         self.logger.debug('Voiding to update: {0}'.format(new_node.node_id))
 
         with session_scope(self.engine, session) as local:
             if old_node:
-                self.node_void(old_node, session)
+                self._node_void(old_node, session)
 
             if not self.node_validator(new_node):
                 raise NodeCreationError('Node failed schema constraints')
 
             local.add(new_node)
 
-    def node_void(self, node, session=None):
+    def _node_void(self, node, session=None):
         """if passed a non-null node, then ``node_void`` will set the
         timestamp on the voided column of the entry.
+
+        .. warning:: This function does not propagate deletion to
+        nodes.  If you are deleting a node from the table, use
+        :func:node_delete
 
         If a session is provided, then this action will be carried out
         within the session (and not commited).
 
         If no session is provided, this function will commit to the
         database in a self-contained session.
+
+        Voiding a node consists of setting the timestamp column
+        ``voided`` to be equal to the current time.
+
+        :param PsqlNode node: The node to timestamp as voided.
+        :param session: |session|
 
         """
         if not node:
@@ -327,14 +471,44 @@ class PsqlGraphDriver(object):
             local.merge(node)
 
     def node_lookup_one(self, node_id=None, property_matches=None,
-                        system_annotation_matches=None, include_voided=False,
-                        session=None, label=None):
-        """
-        This function is simply a wrapper for ``node_lookup`` that
-        constrains the query to return a single node.  If multiple
-        nodes are found matchin the query, an exception will be raised
+                        system_annotation_matches=None, label=None,
+                        include_voided=False, session=None):
+        """This function is a simple wrapper for ``node_lookup`` that
+        constrains the query to return a single node.
 
-        If no nodes match the query, the return will be NoneType.
+        .. note::
+            If multiple nodes are found matchin the query, an
+            exception will be raised.
+
+        .. note::
+            If no nodes match the query, the return will be NoneType.
+
+        :param str node_id:
+            The unique id that specifies a node in the table.
+
+        :param str node_id:
+            The dictionary that specifies a filter for
+            node.properties.  The properties of matching nodes in the
+            table must be a subset of those provided
+
+        :param str system_annotation_matches:
+            The dictionary that specifies a filter for
+            node.system_annotations.  The system_annotations of
+            matching nodes in the table must be a subset of those
+            provided
+
+        :param str label:
+            Adds filter to query such that results must have label ``label``
+
+        :param bool include_voided:
+           Specifies whether results include voided nodes (deleted and
+           transactional records).  This parameter defaults to
+           ``False`` in order to only return active nodes.
+
+        :param session: |session|
+
+        :returns: PsqlNode or None
+
         """
         nodes = self.node_lookup(
             node_id=node_id,
@@ -363,6 +537,36 @@ class PsqlGraphDriver(object):
         nodes will be queried by id. If id is provided, then the nodes
         will be queried by id.  Providing both id and matches will be
         treated as an invalid query.
+
+        .. note::
+            A query with no resulting nodes will return an empty list ``[]``.
+
+        :param str node_id:
+            The unique id that specifies a node in the table.
+
+        :param dict property_matches:
+            The dictionary that specifies a filter for
+            node.properties.  The properties of matching nodes in the
+            table must be a subset of those provided
+
+        :param str system_annotation_matches:
+            The dictionary that specifies a filter for
+            node.system_annotations.  The system_annotations of
+            matching nodes in the table must be a subset of those
+            provided
+
+        :param str label:
+            Adds filter to query such that results must have label ``label``
+
+        :param bool include_voided:
+           Specifies whether results include voided nodes (deleted and
+           transactional records).  This parameter defaults to
+           ``False`` in order to only return active nodes.
+
+        :param session: |session|
+
+        :returns: list of PsqlNode
+
         """
 
         if ((node_id is not None) and
@@ -393,14 +597,25 @@ class PsqlGraphDriver(object):
             )
 
     def node_lookup_by_id(self, node_id, include_voided=False, session=None):
-        """
-        This function looks up a node by a given id.  If include_voided is
+        """This function looks up a node by a given id.  If include_voided is
         true, then the returned list will include nodes that have been
-        voided. If one is true then the return will be constrained to
-        a single result (if more than a single result is found, then
-        an exception will be raised.  If session is specified, the
-        query will be performed within the givin session, otherwise a
-        new one will be created.
+        voided (deleted or replaced in a transaction).
+
+        .. note::
+            A query with no resulting nodes will return an empty list ``[]``.
+
+        :param str node_id:
+            The unique id that specifies a node in the table.
+
+        :param bool include_voided:
+           Specifies whether results include voided nodes (deleted and
+           transactional records).  This parameter defaults to
+           ``False`` in order to only return active nodes.
+
+        :param session: |session|
+
+        :returns: list of PsqlNode
+
         """
 
         self.logger.debug('Looking up node by id: {id}'.format(id=node_id))
@@ -417,9 +632,37 @@ class PsqlGraphDriver(object):
 
     def node_lookup_by_matches(self, property_matches=None,
                                system_annotation_matches=None,
-                               include_voided=False, label=None,
+                               label=None, include_voided=False,
                                session=None):
-        """
+        """Query the node table for nodes whose properties or
+        system_annotation are supersets of ``properties_matches`` and
+        ``system_annotation_matches`` respectively
+
+        .. note::
+            A query with no resulting nodes will return an empty list ``[]``.
+
+        :param dict property_matches:
+            The dictionary that specifies a filter for
+            node.properties.  The properties of matching nodes in the
+            table must be a subset of those provided
+
+        :param dict system_annotation_matches:
+            The dictionary that specifies a filter for
+            node.system_annotations.  The system_annotations of
+            matching nodes in the table must be a subset of those
+            provided
+
+        :param str label:
+            Adds filter to query such that results must have label ``label``
+
+        :param bool include_voided:
+           Specifies whether results include voided nodes (deleted and
+           transactional records).  This parameter defaults to
+           ``False`` in order to only return active nodes.
+
+        :param session: |session|
+
+        :returns: list of PsqlNode
         """
 
         system_annotation_matches = sanitizer.sanitize(
@@ -463,21 +706,39 @@ class PsqlGraphDriver(object):
                      properties={}, session=None,
                      max_retries=DEFAULT_RETRIES,
                      backoff=default_backoff):
-        """
-
-        It handles the traditional get_one_or_create while
-        overloading the complete updating of properties,
-        system_annotations.
+        """This function will overwrite an ORM node instance in the table or
+        a node relating to a give ``node_id``.
 
         - If the node does not exist, it will be created.
 
-        - If the node does exist, it will be updated.
+        - If the node does exist, it will be overwritten.
 
         - This function is thread safe.
 
         - This function is wrapped by ``retryable`` decorator, set the
           number of maximum number of times that the merge will retry
           after a concurrency error, set the keyword arg ``max_retries``
+
+        .. note:: You must pass either a ``node_id`` or a ``node`` (not both)
+
+        :param str node_id:
+            The id specifying a single node. If the
+            node entry does not exist, it will be created. This
+            parameter is mutually exlucsive with ``node``
+
+        :param PsqlNode node:
+            The ORM instance of a node. If the node
+            instance is not represented in the table, it will be
+            inserted. This parameter is mutually exlucsive with
+            ``node``
+
+        :param str[] acl: The acl list to overwrite with.
+        :param str label: |label|
+        :param dict system_annotations: |system_annotations|
+        :param dict properties: |properties|
+        :param session: |session|
+        :param int max_retries: |max_retries|
+        :param callable backoff: |backoff|
 
         """
 
@@ -512,7 +773,39 @@ class PsqlGraphDriver(object):
                                   node=None, session=None,
                                   max_retries=DEFAULT_RETRIES,
                                   backoff=default_backoff):
-        """
+        """This function will remove properties from the entry
+        representing a node in the nodes table.
+
+        - If the node does not exist, a QueryError exception will be raised
+
+        - If the node does exist, the keys in the list
+          property_keys will be removed from the
+          properties JSONB document
+
+        - This function is thread safe.
+
+        - This function is wrapped by ``retryable`` decorator, set the
+          number of maximum number of times that the merge will retry
+          after a concurrency error, set the keyword arg ``max_retries``
+
+        note:: You must pass either a ``node_id`` or a ``node``
+
+        :param str node_id:
+            The id specifying a single node. This parameter is
+            mutually exlucsive with ``node_id``
+
+        :param PsqlNode node:
+            The ORM instance of a node. This
+            parameter is mutually exlucsive with ``node``
+
+        :param list(str) property_keys:
+            A list of string values designating which key value pairs
+            to remove from the properties JSONB document of
+            the node entry
+
+        :param session: |session|
+        :param int max_retries: |max_retries|
+        :param callable backoff: |backoff|
 
         """
 
@@ -545,7 +838,40 @@ class PsqlGraphDriver(object):
                                            session=None,
                                            max_retries=DEFAULT_RETRIES,
                                            backoff=default_backoff):
-        """
+        """This function will remove system_annotations from the entry
+        representing a node in the nodes table.
+
+        - If the node does not exist, a QueryError exception will be raised
+
+        - If the node does exist, the keys in the list
+          system_annotation_keys will be removed from the
+          system_annotations JSONB document
+
+        - This function is thread safe.
+
+        - This function is wrapped by ``retryable`` decorator, set the
+          number of maximum number of times that the merge will retry
+          after a concurrency error, set the keyword arg ``max_retries``
+
+        note:: You must pass either a ``node_id`` or a ``node``
+
+        :param str node_id:
+            The id specifying a single node. This parameter is
+            mutually exlucsive with ``node_id``
+
+        :param PsqlNode node:
+            The ORM instance of a node. This
+            parameter is mutually exlucsive with ``node``
+
+        :param list(str) system_annotation_keys:
+            A list of string values designating which key value pairs
+            to remove from the system_annotations JSONB document of
+            the node entry
+
+        :param session: |session|
+        :param int max_retries: |max_retries|
+        :param callable backoff: |backoff|
+
         """
 
         with session_scope(self.engine, session) as local:
@@ -576,12 +902,39 @@ class PsqlGraphDriver(object):
     def node_delete(self, node_id=None, node=None,
                     session=None, max_retries=DEFAULT_RETRIES,
                     backoff=default_backoff):
-        """
+        """This function will void an ORM node instance, or a node entry with
+        node_id=``node_id`` if one exists.
+
+        - If the node does not exist, a QueryError exception will be raised
+
+        - If the node does exist, the keys in the list
+          system_annotation_keys will be removed from the
+          system_annotations JSONB document
+
         - This function is thread safe.
 
         - This function is wrapped by ``retryable`` decorator, set the
           number of maximum number of times that the merge will retry
           after a concurrency error, set the keyword arg ``max_retries``
+
+        note:: You must pass either a ``node_id`` or a ``node``
+
+        :param str node_id:
+            The id specifying a single node. This parameter is
+            mutually exlucsive with ``node_id``
+
+        :param PsqlNode node:
+            The ORM instance of a node. This
+            parameter is mutually exlucsive with ``node``
+
+        :param list(str) system_annotation_keys:
+            A list of string values designating which key value pairs
+            to remove from the system_annotations JSONB document of
+            the node entry
+
+        :param session: |session|
+        :param int max_retries: |max_retries|
+        :param callable backoff: |backoff|
 
         """
 
@@ -596,7 +949,7 @@ class PsqlGraphDriver(object):
             # Void this node's edges and the node entry
             self.logger.debug('deleting node: {0}'.format(node.node_id))
             self.edge_delete_by_node_id(node.node_id, session=local)
-            self.node_void(node, session=local)
+            self._node_void(node, session=local)
 
     @retryable
     def edge_merge(self, src_id=None, dst_id=None, edge=None, acl=[],
@@ -620,6 +973,11 @@ class PsqlGraphDriver(object):
           after a concurrency error, set the keyword arg ``max_retries``
 
         """
+
+        if ((src_id is not None or dst_id is not None) and edge):
+            raise ProgrammingError(
+                'Specifying src_id/dst_id and an edge is invalid'
+            )
 
         with session_scope(self.engine, session) as local:
             if not edge:

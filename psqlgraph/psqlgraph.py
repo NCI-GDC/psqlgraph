@@ -15,7 +15,7 @@ import copy
 # ======== PsqlNode modules ========
 from validate import PsqlNodeValidator, PsqlEdgeValidator
 from exc import QueryError, ProgrammingError, NodeCreationError, \
-    EdgeCreationError
+    EdgeCreationError, ValidationError
 import sanitizer
 
 # ======== ORM object base ========
@@ -437,7 +437,7 @@ class PsqlGraphDriver(object):
                 self._node_void(old_node, session)
 
             if not self.node_validator(new_node):
-                raise NodeCreationError('Node failed schema constraints')
+                raise ValidationError('Node failed schema constraints')
 
             local.add(new_node)
 
@@ -1056,7 +1056,7 @@ class PsqlGraphDriver(object):
                 self.edge_void(old_edge, session)
 
             if not self.edge_validator(new_edge):
-                raise EdgeCreationError('Edge failed schema constraints')
+                raise ValidationError('Edge failed schema constraints')
 
             local.add(new_edge)
 

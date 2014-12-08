@@ -3,30 +3,37 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to psqlgraph's documentation!
-=====================================
-
-Contents:
+psqlgraph documentation
+=========================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 4
 
 :mod:`psqlgraph` -- Postgresql Graph Represetation Library
 ----------------------------------------------------------
 
 
 Install
-+++++++++
++++++++
 .. code-block:: bash
 
-    $ python setup.py install
+    $ python setup.py install # suggested to install using a virtualenv
 
-Install
-+++++++++
+Test
+++++
 .. code-block:: bash
 
     $ python bin/setup_psqlgraph.py
     $ nosetest -v
+
+Build Documentation
++++++++++++++++++++
+.. code-block:: bash
+
+    $ python setup.py install # suggested to install using a virtualenv
+    $ cd doc
+    $ make latexpdf
+
 
 Module Methods
 ++++++++++++++

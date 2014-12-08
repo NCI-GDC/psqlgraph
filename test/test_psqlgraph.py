@@ -26,6 +26,13 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.driver = PsqlGraphDriver(host, user, password, database)
         self.REPEAT_COUNT = 200
 
+    def _clear_tables(self):
+        conn = self.driver.engine.connect()
+        conn.execute('commit')
+        conn.execute('delete from edges')
+        conn.execute('delete from nodes')
+        conn.close()
+
     def test_sanitize_int(self):
         """ Test sanitization of castable integer type"""
         self.assertEqual(psqlgraph.sanitizer.cast(5), 5)
@@ -610,6 +617,24 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.driver.edge_validator.validate = temp
             raise
 
+    def test_get_nodes(self):
+        self._clear_tables()
+
+        ret_node_ids = []
+        node_ids = [str(uuid.uuid4()) for i in range(self.REPEAT_COUNT*10)]
+
+        for node_id in node_ids:
+            print node_id
+            self.driver.node_merge(node_id)
+
+        nodes = self.driver.get_nodes()
+
+        for node in nodes:
+            self.assertTrue(node.node_id in node_ids)
+            ret_node_ids.append(node.node_id)
+        for node_id in node_ids:
+            self.assertTrue(node_id in ret_node_ids)
+        self.assertEqual(len(node_ids), len(ret_node_ids))
 
 if __name__ == '__main__':
 

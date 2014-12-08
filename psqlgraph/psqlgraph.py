@@ -309,23 +309,22 @@ class PsqlGraphDriver(object):
         .. note::
             You must pass either a ``node_id`` or a ``node`` (not both).
 
-        .. |label| replace:: The label to add to a new node.  Labels
-            on existing nodes are immutable. In order to modify a
-            label, you must manually delete the node and recreate it
+        .. |label| replace:: The label to add to a new entry.  Labels
+            on existing entries are immutable. In order to modify a
+            label, you must manually delete the entry and recreate it
             with a new label.
 
 
         .. |system_annotations| replace::
             The dictionary representing arbitrary system annotation on
-            the node.  These annotations will be sanitized and
+            the entry.  These annotations will be sanitized and
             inserted into the table as JSONB.
 
         .. |properties| replace:: The dictionary representing
-            properties on the node.  These properties will be
-            sanitized and validated with the
-            ``PsqlGraphDriver.node_validator`` instance of a
-            PsqlNodeValidator class before insertion into the table as
-            JSONB.
+            properties on the entry.  These properties will be
+            sanitized and validated with the validator instance
+            assigned to the entry type before insertion into the table
+            as JSONB.
 
         .. |session| replace:: The SQLAlchemy session within which to
             perform operations.  This session is transactional.  If
@@ -956,11 +955,10 @@ class PsqlGraphDriver(object):
                    system_annotations={}, properties={}, session=None,
                    max_retries=DEFAULT_RETRIES,
                    backoff=default_backoff):
-        """
-
-        This is meant to be the main interaction function with the
-        library. It handles the traditional get_one_or_create while
-        overloading the merging of properties, system_annotations.
+        """This is meant to be the main interaction function with the library
+        when dealing with edges. It handles the traditional
+        get_one_or_create while overloading the merging of properties,
+        system_annotations.
 
         - If the edge does not exist, it will be created.
 
@@ -971,6 +969,25 @@ class PsqlGraphDriver(object):
         - This function is wrapped by ``retryable`` decorator, set the
           number of maximum number of times that the merge will retry
           after a concurrency error, set the keyword arg ``max_retries``
+
+        .. note::
+            You must pass either a ``src_id/dst_id`` or a ``edge`` (not both).
+
+        :param str src_id:
+            A string specifying the node_id of the source node.
+        :param str edge_id:
+            A string specifying the node_id of the destination node.
+        :param PsqlEdge edge:
+            The ORM instance of a edge. If the edge
+            instance is not represented in the table, it will be
+            inserted. This parameter is mutually exlucsive with
+            ``edge``
+        :param str label: |label|
+        :param dict system_annotations: |system_annotations|
+        :param dict properties: |properties|
+        :param session: |session|
+        :param int max_retries: |max_retries|
+        :param callable backoff: |backoff|
 
         """
 
@@ -1024,6 +1041,11 @@ class PsqlGraphDriver(object):
         This function assumes that you have already done a query for an
         existing edge!  This function will take an edge, void it and
         create a new edge entry in its place
+
+        :param PsqlEdge new_edge: The new edge with which to replace the old one
+        :param PsqlEdge old_edge: The edge to be voided
+        :param session: |session|
+
         """
 
         self.logger.debug('voiding to update edge: ({src})->({dst})'.format(
@@ -1040,12 +1062,23 @@ class PsqlGraphDriver(object):
 
     def edge_lookup_one(self, src_id=None, dst_id=None,
                         include_voided=False, session=None):
-        """
-        This function is simply a wrapper for ``edge_lookup`` that
+        """This function is a simple wrapper for ``edge_lookup`` that
         constrains the query to return a single edge.  If multiple
         edges are found matchin the query, an exception will be raised
 
-        If no edges match the query, the return will be NoneType.
+        .. note:: If no edges match the query, the return will be NoneType.
+
+        :param str src_id:
+            The node_id of the source node
+        :param str dst_id: The edge to be voided
+            The node_id of the destination node
+        :param bool include_voided:
+           Specifies whether results include voided nodes (deleted and
+           transactional records).  This parameter defaults to
+           ``False`` in order to only return active nodes.
+        :param session: |session|
+        :returns: A single PsqlEdge instances or None
+
         """
 
         edges = self.edge_lookup(
@@ -1066,14 +1099,29 @@ class PsqlGraphDriver(object):
 
     def edge_lookup(self, src_id=None, dst_id=None,
                     include_voided=False, session=None):
-        """
-        This function looks up a edge by a given id.  If include_voided is
-        true, then the returned list will include edges that have been
-        voided. If one is true then the return will be constrained to
-        a single result (if more than a single result is found, then
-        an exception will be raised.  If session is specified, the
-        query will be performed within the givin session, otherwise a
-        new one will be created.
+        """This function looks up a edge by a given src_id and dst_id.  If
+        include_voided is true, then the returned list will include
+        edges that have been voided.
+
+        .. note::
+            If one is true then the return will be constrained to a
+            single result
+
+        .. note::
+            If more than a single result is found, then an exception
+            will be raised.
+
+        :param str src_id:
+            The node_id of the source node
+        :param str dst_id: The edge to be voided
+            The node_id of the destination node
+        :param bool include_voided:
+           Specifies whether results include voided nodes (deleted and
+           transactional records).  This parameter defaults to
+           ``False`` in order to only return active nodes.
+        :param session: |session|
+        :returns: A list of PsqlEdge instances ([] if none found)
+
         """
 
         if src_id is None and dst_id is None:
@@ -1092,8 +1140,13 @@ class PsqlGraphDriver(object):
         return result
 
     def edge_void(self, edge, session=None):
-        """
-        Voids an edge entry
+        """Voids an edge.
+
+        :param PsqlEdge edge:
+            The ORM instance representing the edge entry
+        :param session: |session|
+        :returns: None
+
         """
 
         if not edge:
@@ -1105,11 +1158,31 @@ class PsqlGraphDriver(object):
             edge.voided = datetime.now()
             local.merge(edge)
 
+    def edge_delete(self, edge, session=None):
+        """Voids an edge.
+
+        .. note:: Included for syntax similarity with :func:edge_delete.
+
+        :param PsqlEdge edge:
+            The ORM instance representing the edge entry
+        :param session: |session|
+        :returns: None
+
+        """
+        return self.edge_void(edge, session)
+
     def edge_delete_by_node_id(self, node_id, session=None):
         """Looks up all edges that reference ``node_id`` and voids them.
 
-        This function is used primarily to cascade node deletions to
-        related edges
+        This function is used to cascade node deletions to related
+        edges. A query will be performed for nodes that have a src_id
+        or dst_id matching parameter ``node_id``.  All of these edges
+        will be voided.
+
+        :param str node_id:
+             The node_id which any edge contains as a source or destination.
+        :returns: None
+
         """
 
         if not node_id:

@@ -8,7 +8,7 @@ from multiprocessing import Process
 import random
 from sqlalchemy.exc import IntegrityError
 
-from psqlgraph.exc import NodeCreationError, EdgeCreationError
+from psqlgraph.exc import ValidationError
 
 host = 'localhost'
 user = 'test'
@@ -586,7 +586,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.driver.node_validator.validate = lambda x: False
         try:
             self.assertRaises(
-                NodeCreationError,
+                ValidationError,
                 self.driver.node_merge, node_id
             )
         except:
@@ -603,7 +603,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         try:
             self.assertRaises(
-                EdgeCreationError,
+                ValidationError,
                 self.driver.edge_merge, src_id, dst_id
             )
         except:

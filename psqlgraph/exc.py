@@ -12,3 +12,7 @@ class NodeCreationError(Exception):
 
 class EdgeCreationError(Exception):
     pass
+
+
+class ValidationError(Exception):
+    pass

@@ -338,7 +338,7 @@ class PsqlGraphDriver(object):
 
         .. |max_retries| replace:: This function is retriable.  If not
             passed the parameter ``max_retries``, it will only attempt
-            to retry modifications to the table ``DEFAULT_RETRIES=``2
+            to retry modifications to the table ``DEFAULT_RETRIES``
             times. Retries will only occur on IntegrityError, as this
             is the most likely case for an integrity violation due to
             race condition.  This functionality is provided by the

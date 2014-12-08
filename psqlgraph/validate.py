@@ -16,5 +16,5 @@ class PsqlNodeValidator(object):
     def __call__(self, node, *args, **kwargs):
         return self.validate(node, *args, **kwargs)
 
-    def validate(self, edge, *args, **kwargs):
+    def validate(self, node, *args, **kwargs):
         return True

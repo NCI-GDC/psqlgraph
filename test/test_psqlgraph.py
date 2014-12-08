@@ -582,21 +582,21 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_node_validator_error(self):
         node_id = str(uuid.uuid4())
+        temp = self.driver.node_validator.validate
         self.driver.node_validator.validate = lambda x: False
-        prop = {'key1': None, 'key2': 2, 'key3': time.time()}
-
         try:
             self.assertRaises(
                 NodeCreationError,
-                self.driver.node_merge, node_id, properties=prop
+                self.driver.node_merge, node_id
             )
         except:
-            self.driver.node_validator.validate = lambda x: True
+            self.driver.node_validator.validate = temp
             raise
 
     def test_edge_validator_error(self):
         src_id = str(uuid.uuid4())
         dst_id = str(uuid.uuid4())
+        temp = self.driver.edge_validator.validate
         self.driver.edge_validator.validate = lambda x: False
         self.driver.node_merge(src_id)
         self.driver.node_merge(dst_id)
@@ -607,7 +607,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 self.driver.edge_merge, src_id, dst_id
             )
         except:
-            self.driver.edge_validator.validate = lambda x: True
+            self.driver.edge_validator.validate = temp
             raise
 
 

@@ -676,7 +676,7 @@ class PsqlGraphDriver(object):
                 self.edge_void(old_edge, session)
 
             if not self.edge_validator(new_edge):
-                raise EdgeCreationError('Node failed schema constraints')
+                raise EdgeCreationError('Edge failed schema constraints')
 
             local.add(new_edge)
 

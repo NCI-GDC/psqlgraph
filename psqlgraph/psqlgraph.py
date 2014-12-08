@@ -39,14 +39,14 @@ def session_scope(engine, session=None):
         Session = sessionmaker(expire_on_commit=False)
         Session.configure(bind=engine)
         local = Session()
-        logging.info('Created session {session}'.format(session=local))
+        logging.debug('Created session {session}'.format(session=local))
     else:
         local = session
 
     try:
         yield local
         if not session:
-            logging.info('Committing session {session}'.format(session=local))
+            logging.debug('Committing session {session}'.format(session=local))
             local.commit()
 
     except Exception, msg:
@@ -57,10 +57,10 @@ def session_scope(engine, session=None):
 
     finally:
         if not session:
-            logging.info('Expunging objects from {session}'.format(
+            logging.debug('Expunging objects from {session}'.format(
                 session=local))
             local.expunge_all()
-            logging.info('Closing session {session}'.format(session=local))
+            logging.debug('Closing session {session}'.format(session=local))
             local.close()
 
 
@@ -78,7 +78,7 @@ class PsqlNode(Base):
     created = Column(TIMESTAMP, nullable=False, default=datetime.now())
     acl = Column(ARRAY(Text))
     system_annotations = Column(JSONB, default={})
-    label = Column(Text)
+    label = Column(Text, nullable=False)
     properties = Column(JSONB, default={})
 
     def __repr__(self):
@@ -143,7 +143,7 @@ class PsqlEdge(Base):
     voided = Column(TIMESTAMP)
     created = Column(TIMESTAMP, nullable=False, default=datetime.now())
     system_annotations = Column(JSONB, default={})
-    label = Column(Text)
+    label = Column(Text, nullable=False)
     properties = Column(JSONB, default={})
 
     def __repr__(self):
@@ -286,6 +286,16 @@ class PsqlGraphDriver(object):
     def set_edge_validator(self, edge_validator):
         """Override the edge validation callback."""
         self.edge_validator = edge_validator
+
+    def get_nodes(self, batch_size=1000, session=None):
+        with session_scope(self.engine, session) as local:
+            query = local.query(PsqlNode).filter(PsqlNode.voided.is_(None))
+        return query.yield_per(batch_size)
+
+    def get_edges(self, batch_size=1000, session=None):
+        with session_scope(self.engine, session) as local:
+            query = local.query(PsqlEdge).filter(PsqlEdge.voided.is_(None))
+        return query.yield_per(batch_size)
 
     @retryable
     def node_merge(self, node_id=None, node=None, acl=[],

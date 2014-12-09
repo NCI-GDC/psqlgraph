@@ -64,5 +64,12 @@ class PsqlGraph2Neo4j(object):
 
         for edge in self.psqlgraphDriver.get_edges():
             self.neo4jDriver.cypher.execute(
-                'CREATE'
+                """
+                MATCH (s), (d) where s.id = {{src_id}} and d.id = {{dst_id}}
+                CREATE (s)-[:{label}]->(d)
+                """.format(label=edge.label),
+                parameters={
+                    'src_id': edge.src_id,
+                    'dst_id': edge.dst_id,
+                }
             )

@@ -72,6 +72,18 @@ class Test_psql2neo(unittest.TestCase):
         for node_prop in node_props:
             self.assertTrue(node_prop in test_props)
 
+    def test_neo_single_path(self):
+        self._clear_tables()
+        src_id = str(uuid.uuid4())
+        dst_id = str(uuid.uuid4())
+        self.psqlDriver.node_merge(node_id=src_id, label='test')
+        self.psqlDriver.node_merge(node_id=dst_id, label='test')
+        self.psqlDriver.edge_merge(src_id=src_id, dst_id=dst_id, label='test')
+        self.driver.export()
+
+        nodes = self.neo4jDriver.cypher.execute('match (n:test) return n')
+        self.assertEqual(len(nodes), 2)
+
 if __name__ == '__main__':
 
     def run_test(test):

@@ -675,6 +675,38 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertTrue(node_id in ret_node_ids)
         self.assertEqual(len(node_ids), len(ret_node_ids))
 
+    def test_get_edges(self):
+        self._clear_tables()
+
+        # count = self.REPEAT_COUNT*10
+        count = 10
+        src_ids = [str(uuid.uuid4()) for i in range(count)]
+        dst_ids = [str(uuid.uuid4()) for i in range(count)]
+
+        for src_id, dst_id in zip(src_ids, dst_ids):
+            self.driver.node_merge(src_id, label='test_src')
+            self.driver.node_merge(dst_id, label='test_dst')
+            self.driver.edge_merge(
+                src_id=src_id,
+                dst_id=dst_id,
+                label='test_edge',
+            )
+
+        edges = self.driver.get_edges()
+        ret_src_ids = []
+        ret_dst_ids = []
+        for edge in edges:
+            self.assertTrue(edge.src_id in src_ids)
+            self.assertTrue(edge.dst_id in dst_ids)
+            ret_src_ids.append(edge.src_id)
+            ret_dst_ids.append(edge.dst_id)
+        for src_id in src_ids:
+            self.assertTrue(src_id in ret_src_ids)
+        for dst_id in dst_ids:
+            self.assertTrue(dst_id in ret_dst_ids)
+        self.assertEqual(len(ret_src_ids), len(src_ids))
+        self.assertEqual(len(ret_dst_ids), len(dst_ids))
+
 if __name__ == '__main__':
 
     def run_test(test):

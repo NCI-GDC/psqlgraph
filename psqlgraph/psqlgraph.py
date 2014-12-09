@@ -158,12 +158,10 @@ class PsqlEdge(Base):
         should contain the 'new' values with the following effects. In
         general, updates are additive. New properties will be added to
         old properties.  New system annotations will be added system
-        annotations. New acl will will be added to old acl.  For
-        removal of a property, system_annotation, or acl entry is
-        required, see :func:
+        annotations. For removal of a property or system_annotation
+        entry is required, see :func:
         PsqlGraphDriver.edge_delete_property_keys, :func:
-        PsqlGraphDriver.edge_delete_system_annotation_keys, :func:
-        PsqlGraphDriver.edge_remove_acl_item
+        PsqlGraphDriver.edge_delete_system_annotation_keys
 
         .. note::
             If the new edge contains an acl list, it be appended

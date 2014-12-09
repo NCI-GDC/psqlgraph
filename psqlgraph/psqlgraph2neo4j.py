@@ -3,6 +3,10 @@ import psqlgraph
 from datetime import datetime
 
 
+class ExportError(Exception):
+    pass
+
+
 class PsqlGraph2Neo4j(object):
 
     def __init__(self):
@@ -53,6 +57,17 @@ class PsqlGraph2Neo4j(object):
                 self.neo4jDriver.schema.create_index(label, key)
 
     def export(self):
+
+        if not self.psqlgraphDriver:
+            raise ExportError(
+                'No psqlgraph driver.  Please call .connect_to_psql()'
+            )
+
+        if not self.neo4jDriver:
+            raise ExportError(
+                'No neo4j driver.  Please call .connect_to_neo4j()'
+            )
+
         try:
             self.create_indexes()
         except Exception, msg:

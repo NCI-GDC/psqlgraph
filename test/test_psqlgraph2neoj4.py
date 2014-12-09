@@ -32,8 +32,18 @@ class Test_psql2neo(unittest.TestCase):
         conn.close()
 
         # clear neo4j
-        self.neo4jDriver.cypher.execute('match (n:test) delete n')
-        self.neo4jDriver.cypher.execute('match (n:test2) delete n')
+        self.neo4jDriver.cypher.execute(
+            """MATCH (n:test)
+            OPTIONAL MATCH (n:test)-[r]-()
+            DELETE n,r
+            """
+        )
+        self.neo4jDriver.cypher.execute(
+            """MATCH (n:test)
+            OPTIONAL MATCH (n:test2)-[r]-()
+            DELETE n,r
+            """
+        )
 
     def test_neo_single_node(self):
         self._clear_tables()
@@ -83,6 +93,43 @@ class Test_psql2neo(unittest.TestCase):
 
         nodes = self.neo4jDriver.cypher.execute('match (n:test) return n')
         self.assertEqual(len(nodes), 2)
+        nodes = self.neo4jDriver.cypher.execute("""
+        match (n)-[r]-(m)
+        where n.id = "{src_id}" and m.id = "{dst_id}"
+        return n
+        """.format(src_id=src_id, dst_id=dst_id))
+        self.assertEqual(len(nodes), 1)
+        nodes = self.neo4jDriver.cypher.execute("""
+        match (n)-[r]-(m)
+        where n.id = "{dst_id}" and m.id = "{src_id}"
+        return n
+        """.format(src_id=src_id, dst_id=dst_id))
+        self.assertEqual(len(nodes), 1)
+        edges = self.neo4jDriver.cypher.execute('match (n)-[r]->(m) return r')
+        self.assertEqual(len(edges), 1)
+
+    def test_neo_star_topology(self):
+        """
+        Create a star topology, verify lookup by src_id and that all nodes
+        are attached
+        """
+
+        self._clear_tables()
+        leaf_count = 10
+        src_id = str(uuid.uuid4())
+        self.psqlDriver.node_merge(node_id=src_id, label='test')
+
+        dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
+        for dst_id in dst_ids:
+            self.psqlDriver.node_merge(node_id=dst_id, label='test')
+            self.psqlDriver.edge_merge(src_id=src_id, dst_id=dst_id,
+                                       label='test')
+        self.driver.export()
+        nodes = self.neo4jDriver.cypher.execute(
+            'match (n)-[r]-(m) where n.id = "{src_id}" return n'.format(
+                src_id=src_id)
+        )
+        self.assertEqual(len(nodes), leaf_count)
 
 if __name__ == '__main__':
 

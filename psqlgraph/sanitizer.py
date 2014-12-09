@@ -1,5 +1,5 @@
-from sqlalchemy.dialects.postgres import TIMESTAMP, INTEGER, TEXT, \
-    FLOAT, BOOLEAN
+from sqlalchemy.dialects.postgres import INTEGER, TEXT, FLOAT,\
+    BOOLEAN, TIMESTAMP
 from datetime import datetime
 from types import NoneType
 from exc import ProgrammingError
@@ -21,8 +21,8 @@ type_conversion = {
     str: str,
     unicode: unicode,
     float: float,
-    bool: bool,
     datetime: str,
+    bool: bool,
     NoneType: lambda x: None,
 }
 

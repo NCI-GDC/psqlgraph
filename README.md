@@ -18,6 +18,21 @@ The psqlgraph library requires the following pip dependencies
 
 Project dependencies are managed using [PIP](https://pip.readthedocs.org/en/latest/)
 
+### Building Documentation
+
+Documentation is built using [Sphinx](http://sphinx-doc.org/).
+
+```
+❯ cd doc
+❯ make html
+sphinx-build -b html -d build/doctrees   source build/html
+Running Sphinx v1.2.3
+     ...
+dumping object inventory... done
+build succeeded.
+
+Build finished. The HTML pages are in build/html.
+```
 
 ## Test Setup
 
@@ -34,9 +49,7 @@ Creating tables in test database
 
 # Tests
 
-Running the setup script will:
-
-1. Test the library against local postgres installation
+Running the setup script will test the library against a local postgres installation
 
 ```
 ❯  nosetests -v

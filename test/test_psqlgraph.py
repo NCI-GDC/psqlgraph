@@ -8,7 +8,7 @@ from multiprocessing import Process
 import random
 from sqlalchemy.exc import IntegrityError
 
-from psqlgraph.exc import ValidationError
+from psqlgraph.exc import ValidationError, NodeCreationError
 
 host = 'localhost'
 user = 'test'
@@ -63,6 +63,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
         }), {
             'key1': 'First', 'key2': 25, 'key3': 1.2, 'key4': None
         })
+
+    def test_node_null_label_merge(self):
+        """Verify that the library handles the case where a user queries for a
+        a single non-existant node
+
+        """
+
+        self.assertRaises(
+            IntegrityError,
+            self.driver.node_merge,
+            node_id=str(uuid.uuid4())
+        )
 
     def test_node_null_query_one(self):
         """Verify that the library handles the case where a user queries for a
@@ -473,6 +485,19 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.test_node_update_properties_by_id(node_id=node_id)
             self.driver.node_delete(node_id=node_id)
             self.assertIs(self.driver.node_lookup_one(node_id=node_id), None)
+
+    def test_edge_null_label_merge(self):
+        """Verify that the library handles the case where a user queries for a
+        a single non-existant node
+
+        """
+
+        self.assertRaises(
+            IntegrityError,
+            self.driver.edge_merge,
+            src_id=str(uuid.uuid4()),
+            dst_id=str(uuid.uuid4()),
+        )
 
     def test_edge_merge_and_lookup(self):
         """

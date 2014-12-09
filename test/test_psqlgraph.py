@@ -7,8 +7,10 @@ from multiprocessing import Process
 import random
 from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError
+
 from datetime import datetime
 import time
+
 
 host = 'localhost'
 user = 'test'

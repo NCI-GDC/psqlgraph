@@ -1,16 +1,17 @@
-from sqlalchemy.dialects.postgres import TIMESTAMP, INTEGER, TEXT, FLOAT
-from sqlalchemy import DateTime
+from sqlalchemy.dialects.postgres import INTEGER, TEXT, FLOAT,\
+    BOOLEAN, TIMESTAMP
 from datetime import datetime
 from types import NoneType
 from exc import ProgrammingError
-import time
 
 import copy
 
 type_mapping = {
     int: INTEGER,
     str: TEXT,
+    unicode: TEXT,
     float: FLOAT,
+    bool: BOOLEAN,
     datetime: TIMESTAMP,
     NoneType: NoneType,
 }
@@ -18,8 +19,10 @@ type_mapping = {
 type_conversion = {
     int: int,
     str: str,
+    unicode: unicode,
     float: float,
-    datetime: lambda x: time.mktime(x.timetuple()) * 1000,
+    datetime: str,
+    bool: bool,
     NoneType: lambda x: None,
 }
 
@@ -27,7 +30,9 @@ type_conversion = {
 def cast(variable):
     if type(variable) not in type_conversion:
         raise ProgrammingError(
-            'Disallowed value type for jsonb properties')
+            'Disallowed value type for jsonb properties: {}'.format(
+                type(variable)
+            ))
     return type_conversion[type(variable)](variable)
 
 

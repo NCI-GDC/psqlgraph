@@ -131,6 +131,29 @@ class Test_psql2neo(unittest.TestCase):
         )
         self.assertEqual(len(nodes), leaf_count)
 
+    def _create_subtree(self, parent_id, level):
+        for i in range(5):
+            node_id = str(uuid.uuid4())
+            self.psqlDriver.node_merge(node_id=node_id, label='test')
+            self.psqlDriver.edge_merge(
+                src_id=parent_id, dst_id=node_id, label='test'
+            )
+            if level < 2:
+                self._create_subtree(node_id, level+1)
+
+    def test_neo_tree_topology(self):
+        """
+        Create a star topology, verify lookup by src_id and that all nodes
+        are attached
+        """
+
+        self._clear_tables()
+        node_id = str(uuid.uuid4())
+        self.psqlDriver.node_merge(node_id=node_id, label='test')
+        self._create_subtree(node_id, 0)
+        self.driver.export()
+
+
 if __name__ == '__main__':
 
     def run_test(test):

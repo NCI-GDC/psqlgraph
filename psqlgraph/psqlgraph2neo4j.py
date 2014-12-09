@@ -77,8 +77,9 @@ class PsqlGraph2Neo4j(object):
             self.convert_node(node)
             self.neo4jDriver.create(py2neo.Node(node.label, **node.properties))
 
+        transaction = self.neo4jDriver.cypher.begin()
         for edge in self.psqlgraphDriver.get_edges():
-            self.neo4jDriver.cypher.execute(
+            transaction.append(
                 """
                 MATCH (s), (d) where s.id = {{src_id}} and d.id = {{dst_id}}
                 CREATE (s)-[:{label}]->(d)
@@ -88,3 +89,4 @@ class PsqlGraph2Neo4j(object):
                     'dst_id': edge.dst_id,
                 }
             )
+        transaction.commit()

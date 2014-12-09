@@ -7,8 +7,7 @@ from psqlgraph import PsqlGraphDriver, session_scope
 from multiprocessing import Process
 import random
 from sqlalchemy.exc import IntegrityError
-
-from psqlgraph.exc import ValidationError, NodeCreationError
+from psqlgraph.exc import ValidationError
 
 host = 'localhost'
 user = 'test'
@@ -36,6 +35,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_sanitize_int(self):
         """ Test sanitization of castable integer type"""
         self.assertEqual(psqlgraph.sanitizer.cast(5), 5)
+
+    def test_sanitize_bool(self):
+        """ Test sanitization of castable integer type"""
+        self.assertEqual(psqlgraph.sanitizer.cast(True), True)
 
     def test_sanitize_str(self):
         """ Test sanitization of castable string type"""

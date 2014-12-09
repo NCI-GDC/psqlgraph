@@ -413,7 +413,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
                                properties=propertiesA)
 
         propertiesB = {'key1':  True, 'key2':  0, 'key3':  time.time()}
-        self.driver.node_clobber(node_id=tempid, properties=propertiesB)
+        self.driver.node_clobber(node_id=tempid, properties=propertiesB,
+                                 label='test')
 
         nodes = self.driver.node_lookup(node_id=tempid)
         self.assertEqual(len(nodes), 1, 'Expected a single node to be found, '

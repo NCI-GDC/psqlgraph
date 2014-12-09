@@ -1,7 +1,9 @@
 from sqlalchemy.dialects.postgres import TIMESTAMP, INTEGER, TEXT, FLOAT
+from sqlalchemy import DateTime
 from datetime import datetime
 from types import NoneType
 from exc import ProgrammingError
+import time
 
 import copy
 
@@ -17,7 +19,7 @@ type_conversion = {
     int: int,
     str: str,
     float: float,
-    datetime: datetime,
+    datetime: lambda x: time.mktime(x.timetuple()) * 1000,
     NoneType: lambda x: None,
 }
 

@@ -1,6 +1,6 @@
 # ======== External modules ========
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, Column, Integer, Text, String
+from sqlalchemy import create_engine, Column, Integer, Text, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgres import TIMESTAMP, ARRAY, JSONB
 from sqlalchemy.exc import IntegrityError
@@ -74,11 +74,11 @@ class PsqlNode(Base):
 
     key = Column(Integer, primary_key=True)
     node_id = Column(String(36), nullable=False)
-    voided = Column(TIMESTAMP)
-    created = Column(TIMESTAMP, nullable=False, default=datetime.now())
+    label = Column(Text, nullable=False)
+    voided = Column(DateTime)
+    created = Column(DateTime, nullable=False, default=datetime.now())
     acl = Column(ARRAY(Text))
     system_annotations = Column(JSONB, default={})
-    label = Column(Text, nullable=False)
     properties = Column(JSONB, default={})
 
     def __repr__(self):
@@ -86,6 +86,18 @@ class PsqlNode(Base):
             node_id=self.node_id,
             voided=(self.voided is not None)
         )
+
+    def __init__(self, node_id=node_id, label=label, acl=acl,
+                 system_annotations=system_annotations,
+                 properties=properties):
+
+        system_annotations = sanitizer.sanitize(system_annotations)
+        properties = sanitizer.sanitize(properties)
+        self.node_id = node_id
+        self.acl = acl
+        self.system_annotations = system_annotations
+        self.label = label
+        self.properties = properties
 
     def merge(self, node):
         """Merges a new node onto this instance.  The parameter ``node``
@@ -140,11 +152,23 @@ class PsqlEdge(Base):
     key = Column(Integer, primary_key=True)
     src_id = Column(String(36), nullable=False)
     dst_id = Column(String(36), nullable=False)
-    voided = Column(TIMESTAMP)
-    created = Column(TIMESTAMP, nullable=False, default=datetime.now())
+    voided = Column(DateTime)
+    created = Column(DateTime, nullable=False, default=datetime.now())
     system_annotations = Column(JSONB, default={})
     label = Column(Text, nullable=False)
     properties = Column(JSONB, default={})
+
+    def __init__(self, src_id=src_id, dst_id=dst_id, label=label,
+                 system_annotations=system_annotations,
+                 properties=properties):
+
+        system_annotations = sanitizer.sanitize(system_annotations)
+        properties = sanitizer.sanitize(properties)
+        self.src_id = src_id
+        self.dst_id = dst_id
+        self.system_annotations = system_annotations
+        self.label = label
+        self.properties = properties
 
     def __repr__(self):
         return '<PsqlEdge(({src_id})->({dst_id}), voided={voided})>'.format(

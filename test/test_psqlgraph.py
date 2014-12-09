@@ -1,14 +1,14 @@
 import uuid
 import unittest
-import time
 import logging
 import psqlgraph
-from psqlgraph import PsqlGraphDriver, session_scope
+from psqlgraph import PsqlGraphDriver, session_scope, sanitizer
 from multiprocessing import Process
 import random
 from sqlalchemy.exc import IntegrityError
-
-from psqlgraph.exc import ValidationError, NodeCreationError
+from psqlgraph.exc import ValidationError
+from datetime import datetime
+import time
 
 host = 'localhost'
 user = 'test'
@@ -35,30 +35,34 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_sanitize_int(self):
         """ Test sanitization of castable integer type"""
-        self.assertEqual(psqlgraph.sanitizer.cast(5), 5)
+        self.assertEqual(sanitizer.cast(5), 5)
+
+    def test_sanitize_bool(self):
+        """ Test sanitization of castable integer type"""
+        self.assertEqual(sanitizer.cast(True), True)
 
     def test_sanitize_str(self):
         """ Test sanitization of castable string type"""
-        self.assertEqual(psqlgraph.sanitizer.cast('test'), 'test')
+        self.assertEqual(sanitizer.cast('test'), 'test')
 
     def test_sanitize_dict(self):
         """ Test sanitization of castable dictionary type"""
         test = {'first': 1, 'second': 2, 'third': 'This is a test'}
         self.assertRaises(psqlgraph.ProgrammingError,
-                          psqlgraph.sanitizer.cast, test)
+                          sanitizer.cast, test)
 
     def test_sanitize_other(self):
         """ Test sanitization of select non-standard types"""
         A = psqlgraph.QueryError
         self.assertRaises(psqlgraph.ProgrammingError,
-                          psqlgraph.sanitizer.cast, A)
+                          sanitizer.cast, A)
         B = logging
         self.assertRaises(psqlgraph.ProgrammingError,
-                          psqlgraph.sanitizer.cast, B)
+                          sanitizer.cast, B)
 
     def test_sanitize(self):
         """ Test sanitization of select non-standard types"""
-        self.assertEqual(psqlgraph.sanitizer.sanitize({
+        self.assertEqual(sanitizer.sanitize({
             'key1': 'First', 'key2': 25, 'key3': 1.2, 'key4': None
         }), {
             'key1': 'First', 'key2': 25, 'key3': 1.2, 'key4': None
@@ -112,12 +116,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         tempid = str(uuid.uuid4())
-        properties = {'key1': None, 'key2': 2, 'key3': time.time()}
+        properties = {'key1': None, 'key2': 2, 'key3': datetime.now()}
         self.driver.node_merge(node_id=tempid, label='test',
                                properties=properties)
 
         node = self.driver.node_lookup_one(tempid)
-        self.assertEqual(properties, node.properties)
+        self.assertEqual(sanitizer.sanitize(properties), node.properties)
 
     def test_node_update_properties_by_id(self, node_id=None, label=None):
         """
@@ -137,12 +141,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
             label = 'test'
 
         # Add first node
-        propertiesA = {'key1': None, 'key2': 2, 'key3': time.time()}
+        propertiesA = {'key1': None, 'key2': 2, 'key3': datetime.now()}
         self.driver.node_merge(node_id=node_id, properties=propertiesA,
                                label=label, max_retries=int(1e6))
 
         # Add second node
-        propertiesB = {'key1': None, 'new_key': 2, 'timestamp': time.time()}
+        propertiesB = {'key1': None, 'new_key': 2, 'timestamp': datetime.now()}
         self.driver.node_merge(node_id=node_id, properties=propertiesB,
                                label=label, max_retries=int(1e6))
 
@@ -155,10 +159,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
         # if this is not part of another test, check the count
         if not node_id:
             node = self.driver.node_lookup_one(node_id)
-            self.assertEqual(propertiesB, node.properties)
+            self.assertEqual(sanitizer.sanitize(propertiesB),
+                             node.properties)
 
             nodes = self.verify_node_count(2, node_id=node_id, voided=True)
-            self.assertEqual(propertiesB, nodes[1].properties)
+            self.assertEqual(sanitizer.sanitize(propertiesB),
+                             nodes[1].properties)
 
         return propertiesB
 
@@ -231,14 +237,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         # Add first node
         system_annotationsA = {
-            'key1': None, 'key2': 2, 'key3': time.time()
+            'key1': None, 'key2': 2, 'key3': datetime.now()
         }
         self.driver.node_merge(node_id=node_id, label='test',
                                system_annotations=system_annotationsA)
 
         # Add second node
         system_annotationsB = {
-            'key1': None, 'new_key': 2, 'timestamp': time.time()
+            'key1': None, 'new_key': 2, 'timestamp': datetime.now()
         }
         self.driver.node_merge(node_id=node_id, label='test',
                                system_annotations=system_annotationsB)
@@ -272,11 +278,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
         tempid = str(uuid.uuid4())
 
         # Add first node
-        propertiesA = {'key1': None, 'key2': 2, 'key3': time.time()}
+        propertiesA = {'key1': None, 'key2': 2, 'key3': datetime.now()}
         self.driver.node_merge(node_id=tempid, label='test',
                                properties=propertiesA)
 
-        propertiesB = {'key1': None, 'key2': 2, 'key3': time.time()}
+        propertiesB = {'key1': None, 'key2': 2, 'key3': datetime.now()}
         bad_node = psqlgraph.PsqlNode(
             node_id=tempid,
             system_annotations={},
@@ -354,7 +360,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             for tally in range(self.REPEAT_COUNT):
                 properties = {'key1': None,
                               'key2': 2,
-                              'key3': time.time(),
+                              'key3': datetime.now(),
                               'rand':  random.random()}
 
                 self.driver.node_merge(
@@ -366,6 +372,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                     backoff=lambda x, y: time.sleep(random.randint(5, 30))
                 )
 
+            properties = sanitizer.sanitize(properties)
             node = self.driver.node_lookup_one(node_id=tempid, session=session)
             self.assertEqual(properties, node.properties, 'Node properties'
                              'do not match expected properties')
@@ -406,16 +413,17 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         tempid = str(uuid.uuid4())
 
-        propertiesA = {'key1':  None, 'key2':  3, 'key3':  time.time()}
+        propertiesA = {'key1':  None, 'key2':  3, 'key3':  'test'}
 
-        {'key1':  None, 'key2':  2, 'key3':  time.time()}
+        {'key1':  None, 'key2':  2, 'key3':  datetime.now()}
         self.driver.node_merge(node_id=tempid, label='test',
                                properties=propertiesA)
 
-        propertiesB = {'key1':  True, 'key2':  0, 'key3':  time.time()}
+        propertiesB = {'key1':  True, 'key2':  0, 'key3':  'test'}
         self.driver.node_clobber(node_id=tempid, properties=propertiesB,
                                  label='test')
 
+        propertiesB = sanitizer.sanitize(propertiesB)
         nodes = self.driver.node_lookup(node_id=tempid)
         self.assertEqual(len(nodes), 1, 'Expected a single node to be found, '
                          'instead found {count}'.format(count=len(nodes)))
@@ -428,7 +436,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """
 
         tempid = str(uuid.uuid4())
-        properties = {'key1':  None, 'key2':  2, 'key3':  time.time()}
+        properties = {'key1':  None, 'key2':  2, 'key3':  'test'}
         self.driver.node_merge(node_id=tempid, label='test',
                                properties=properties)
 
@@ -447,7 +455,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """
 
         tempid = str(uuid.uuid4())
-        annotations = {'key1':  None, 'key2':  2, 'key3':  time.time()}
+        annotations = {'key1':  None, 'key2':  2, 'key3':  'test'}
         self.driver.node_merge(node_id=tempid, label='test',
                                system_annotations=annotations)
 

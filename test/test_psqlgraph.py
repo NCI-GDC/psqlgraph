@@ -8,7 +8,7 @@ from multiprocessing import Process
 import random
 from sqlalchemy.exc import IntegrityError
 
-from psqlgraph.exc import ValidationError
+from psqlgraph.exc import ValidationError, NodeCreationError
 
 host = 'localhost'
 user = 'test'
@@ -25,6 +25,13 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.logger = logging.getLogger(__name__)
         self.driver = PsqlGraphDriver(host, user, password, database)
         self.REPEAT_COUNT = 200
+
+    def _clear_tables(self):
+        conn = self.driver.engine.connect()
+        conn.execute('commit')
+        conn.execute('delete from edges')
+        conn.execute('delete from nodes')
+        conn.close()
 
     def test_sanitize_int(self):
         """ Test sanitization of castable integer type"""
@@ -56,6 +63,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
         }), {
             'key1': 'First', 'key2': 25, 'key3': 1.2, 'key4': None
         })
+
+    def test_node_null_label_merge(self):
+        """Verify that the library handles the case where a user queries for a
+        a single non-existant node
+
+        """
+
+        self.assertRaises(
+            IntegrityError,
+            self.driver.node_merge,
+            node_id=str(uuid.uuid4())
+        )
 
     def test_node_null_query_one(self):
         """Verify that the library handles the case where a user queries for a
@@ -94,7 +113,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """
         tempid = str(uuid.uuid4())
         properties = {'key1': None, 'key2': 2, 'key3': time.time()}
-        self.driver.node_merge(node_id=tempid, properties=properties)
+        self.driver.node_merge(node_id=tempid, label='test',
+                               properties=properties)
 
         node = self.driver.node_lookup_one(tempid)
         self.assertEqual(properties, node.properties)
@@ -112,6 +132,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         if not node_id:
             node_id = str(uuid.uuid4())
+
+        if not label:
+            label = 'test'
 
         # Add first node
         propertiesA = {'key1': None, 'key2': 2, 'key3': time.time()}
@@ -168,12 +191,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         # Add first node
         propertiesA = {'key1': a, 'key2': str(a), 'key3': 12345}
-        self.driver.node_merge(node_id=node_id, properties=propertiesA)
+        self.driver.node_merge(node_id=node_id, label='test',
+                               properties=propertiesA)
 
         # Add second node
         propertiesB = {'key1': b, 'key4': str(b)}
         node = self.driver.node_lookup_one(property_matches=propertiesA)
-        self.driver.node_merge(node=node, properties=propertiesB)
+        self.driver.node_merge(node=node, label='test',
+                               properties=propertiesB)
 
         # Merge properties
         for key, val in propertiesB.iteritems():
@@ -208,14 +233,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
         system_annotationsA = {
             'key1': None, 'key2': 2, 'key3': time.time()
         }
-        self.driver.node_merge(node_id=node_id,
+        self.driver.node_merge(node_id=node_id, label='test',
                                system_annotations=system_annotationsA)
 
         # Add second node
         system_annotationsB = {
             'key1': None, 'new_key': 2, 'timestamp': time.time()
         }
-        self.driver.node_merge(node_id=node_id,
+        self.driver.node_merge(node_id=node_id, label='test',
                                system_annotations=system_annotationsB)
 
         # Merge system_annotations
@@ -248,7 +273,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         # Add first node
         propertiesA = {'key1': None, 'key2': 2, 'key3': time.time()}
-        self.driver.node_merge(node_id=tempid, properties=propertiesA)
+        self.driver.node_merge(node_id=tempid, label='test',
+                               properties=propertiesA)
 
         propertiesB = {'key1': None, 'key2': 2, 'key3': time.time()}
         bad_node = psqlgraph.PsqlNode(
@@ -333,6 +359,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
                 self.driver.node_merge(
                     node_id=tempid,
+                    label='test',
                     properties=properties,
                     session=session,
                     max_retries=int(1e6),
@@ -382,10 +409,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
         propertiesA = {'key1':  None, 'key2':  3, 'key3':  time.time()}
 
         {'key1':  None, 'key2':  2, 'key3':  time.time()}
-        self.driver.node_merge(node_id=tempid, properties=propertiesA)
+        self.driver.node_merge(node_id=tempid, label='test',
+                               properties=propertiesA)
 
         propertiesB = {'key1':  True, 'key2':  0, 'key3':  time.time()}
-        self.driver.node_clobber(node_id=tempid, properties=propertiesB)
+        self.driver.node_clobber(node_id=tempid, properties=propertiesB,
+                                 label='test')
 
         nodes = self.driver.node_lookup(node_id=tempid)
         self.assertEqual(len(nodes), 1, 'Expected a single node to be found, '
@@ -400,7 +429,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         tempid = str(uuid.uuid4())
         properties = {'key1':  None, 'key2':  2, 'key3':  time.time()}
-        self.driver.node_merge(node_id=tempid, properties=properties)
+        self.driver.node_merge(node_id=tempid, label='test',
+                               properties=properties)
 
         self.driver.node_delete_property_keys(['key2', 'key3'], node_id=tempid)
         properties.pop('key2')
@@ -418,7 +448,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         tempid = str(uuid.uuid4())
         annotations = {'key1':  None, 'key2':  2, 'key3':  time.time()}
-        self.driver.node_merge(node_id=tempid, system_annotations=annotations)
+        self.driver.node_merge(node_id=tempid, label='test',
+                               system_annotations=annotations)
 
         self.driver.node_delete_system_annotation_keys(
             ['key2', 'key3'], node_id=tempid)
@@ -437,7 +468,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """
 
         tempid = str(uuid.uuid4())
-        self.driver.node_merge(node_id=tempid)
+        self.driver.node_merge(node_id=tempid, label='test')
         self.driver.node_delete(node_id=tempid)
 
         nodes = self.driver.node_lookup(tempid)
@@ -456,6 +487,19 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.driver.node_delete(node_id=node_id)
             self.assertIs(self.driver.node_lookup_one(node_id=node_id), None)
 
+    def test_edge_null_label_merge(self):
+        """Verify that the library handles the case where a user queries for a
+        a single non-existant node
+
+        """
+
+        self.assertRaises(
+            IntegrityError,
+            self.driver.edge_merge,
+            src_id=str(uuid.uuid4()),
+            dst_id=str(uuid.uuid4()),
+        )
+
     def test_edge_merge_and_lookup(self):
         """
         Test edge creation and lookup by dst_id, src_id, dst_id and src_id
@@ -463,9 +507,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         src_id = str(uuid.uuid4())
         dst_id = str(uuid.uuid4())
-        self.driver.node_merge(node_id=src_id)
-        self.driver.node_merge(node_id=dst_id)
-        self.driver.edge_merge(src_id=src_id, dst_id=dst_id)
+        self.driver.node_merge(node_id=src_id, label='test')
+        self.driver.node_merge(node_id=dst_id, label='test')
+        self.driver.edge_merge(src_id=src_id, dst_id=dst_id, label='test')
 
         edge = self.driver.edge_lookup_one(dst_id=dst_id)
         self.assertEqual(edge.src_id, src_id)
@@ -486,9 +530,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
         src_id = str(uuid.uuid4())
         dst_id = str(uuid.uuid4())
         props = {'key1': str(random.random()), 'key2': random.random()}
-        self.driver.node_merge(node_id=src_id)
-        self.driver.node_merge(node_id=dst_id)
-        self.driver.edge_merge(src_id=src_id, dst_id=dst_id, properties=props)
+        self.driver.node_merge(node_id=src_id, label='test')
+        self.driver.node_merge(node_id=dst_id, label='test')
+        self.driver.edge_merge(
+            src_id=src_id, dst_id=dst_id, properties=props, label='test'
+        )
         edge = self.driver.edge_lookup_one(src_id=src_id, dst_id=dst_id)
         self.assertEqual(edge.src_id, src_id)
         self.assertEqual(edge.dst_id, dst_id)
@@ -502,14 +548,13 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         leaf_count = 10
         src_id = str(uuid.uuid4())
-        self.driver.node_merge(node_id=src_id)
+        self.driver.node_merge(node_id=src_id, label='test')
 
         dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
         for dst_id in dst_ids:
-            self.driver.node_merge(node_id=dst_id)
-            self.driver.edge_merge(src_id=src_id, dst_id=dst_id)
+            self.driver.node_merge(node_id=dst_id, label='test')
+            self.driver.edge_merge(src_id=src_id, dst_id=dst_id, label='test')
 
-        # edges = self.driver.edge_lookup(src_id=src_id)
         edge_ids = [e.dst_id for e in self.driver.edge_lookup(src_id=src_id)]
         self.assertEqual(len(set(edge_ids)), leaf_count)
 
@@ -525,18 +570,20 @@ class TestPsqlGraphDriver(unittest.TestCase):
         leaf_count = 10
         src_id = str(uuid.uuid4())
         dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
-        self.driver.node_merge(node_id=src_id)
+        self.driver.node_merge(node_id=src_id, label='test')
 
         with session_scope(self.driver.engine) as session:
             for dst_id in dst_ids:
-                self.driver.node_merge(node_id=dst_id, session=session)
+                self.driver.node_merge(
+                    node_id=dst_id, label='test', session=session
+                )
 
         with session_scope(self.driver.engine) as session:
             for dst_id in dst_ids:
                 node = self.driver.node_lookup_one(
                     node_id=dst_id, session=session)
                 self.driver.edge_merge(src_id=src_id, dst_id=node.node_id,
-                                       session=session)
+                                       session=session, label='test')
 
         edge_ids = [e.dst_id for e in self.driver.edge_lookup(
             src_id=src_id)]
@@ -553,12 +600,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
         leaf_count = 10
         src_id = str(uuid.uuid4())
         dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
-        self.driver.node_merge(node_id=src_id)
+        self.driver.node_merge(node_id=src_id, label='test')
 
         # Create nodes and link them to source
         for dst_id in dst_ids:
-            self.driver.node_merge(node_id=dst_id)
-            self.driver.edge_merge(src_id=src_id, dst_id=dst_id)
+            self.driver.node_merge(node_id=dst_id, label='test')
+            self.driver.edge_merge(src_id=src_id, dst_id=dst_id, label='test')
 
         # Verify that the edges there are correct
         for dst_id in dst_ids:
@@ -587,7 +634,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         try:
             self.assertRaises(
                 ValidationError,
-                self.driver.node_merge, node_id
+                self.driver.node_merge, node_id, label='test',
             )
         except:
             self.driver.node_validator.validate = temp
@@ -598,18 +645,68 @@ class TestPsqlGraphDriver(unittest.TestCase):
         dst_id = str(uuid.uuid4())
         temp = self.driver.edge_validator.validate
         self.driver.edge_validator.validate = lambda x: False
-        self.driver.node_merge(src_id)
-        self.driver.node_merge(dst_id)
+        self.driver.node_merge(src_id, label='test')
+        self.driver.node_merge(dst_id, label='test')
 
         try:
             self.assertRaises(
                 ValidationError,
-                self.driver.edge_merge, src_id, dst_id
+                self.driver.edge_merge, src_id, dst_id, label='test',
             )
         except:
             self.driver.edge_validator.validate = temp
             raise
 
+    def test_get_nodes(self):
+        self._clear_tables()
+
+        ret_node_ids = []
+        node_ids = [str(uuid.uuid4()) for i in range(self.REPEAT_COUNT*10)]
+
+        for node_id in node_ids:
+            print node_id
+            self.driver.node_merge(node_id, label='test')
+
+        nodes = self.driver.get_nodes()
+
+        for node in nodes:
+            self.assertTrue(node.node_id in node_ids)
+            ret_node_ids.append(node.node_id)
+        for node_id in node_ids:
+            self.assertTrue(node_id in ret_node_ids)
+        self.assertEqual(len(node_ids), len(ret_node_ids))
+
+    def test_get_edges(self):
+        self._clear_tables()
+
+        # count = self.REPEAT_COUNT*10
+        count = 10
+        src_ids = [str(uuid.uuid4()) for i in range(count)]
+        dst_ids = [str(uuid.uuid4()) for i in range(count)]
+
+        for src_id, dst_id in zip(src_ids, dst_ids):
+            self.driver.node_merge(src_id, label='test_src')
+            self.driver.node_merge(dst_id, label='test_dst')
+            self.driver.edge_merge(
+                src_id=src_id,
+                dst_id=dst_id,
+                label='test_edge',
+            )
+
+        edges = self.driver.get_edges()
+        ret_src_ids = []
+        ret_dst_ids = []
+        for edge in edges:
+            self.assertTrue(edge.src_id in src_ids)
+            self.assertTrue(edge.dst_id in dst_ids)
+            ret_src_ids.append(edge.src_id)
+            ret_dst_ids.append(edge.dst_id)
+        for src_id in src_ids:
+            self.assertTrue(src_id in ret_src_ids)
+        for dst_id in dst_ids:
+            self.assertTrue(dst_id in ret_dst_ids)
+        self.assertEqual(len(ret_src_ids), len(src_ids))
+        self.assertEqual(len(ret_dst_ids), len(dst_ids))
 
 if __name__ == '__main__':
 

@@ -39,14 +39,14 @@ def session_scope(engine, session=None):
         Session = sessionmaker(expire_on_commit=False)
         Session.configure(bind=engine)
         local = Session()
-        logging.info('Created session {session}'.format(session=local))
+        logging.debug('Created session {session}'.format(session=local))
     else:
         local = session
 
     try:
         yield local
         if not session:
-            logging.info('Committing session {session}'.format(session=local))
+            logging.debug('Committing session {session}'.format(session=local))
             local.commit()
 
     except Exception, msg:
@@ -57,10 +57,10 @@ def session_scope(engine, session=None):
 
     finally:
         if not session:
-            logging.info('Expunging objects from {session}'.format(
+            logging.debug('Expunging objects from {session}'.format(
                 session=local))
             local.expunge_all()
-            logging.info('Closing session {session}'.format(session=local))
+            logging.debug('Closing session {session}'.format(session=local))
             local.close()
 
 
@@ -78,7 +78,7 @@ class PsqlNode(Base):
     created = Column(TIMESTAMP, nullable=False, default=datetime.now())
     acl = Column(ARRAY(Text))
     system_annotations = Column(JSONB, default={})
-    label = Column(Text)
+    label = Column(Text, nullable=False)
     properties = Column(JSONB, default={})
 
     def __repr__(self):
@@ -143,7 +143,7 @@ class PsqlEdge(Base):
     voided = Column(TIMESTAMP)
     created = Column(TIMESTAMP, nullable=False, default=datetime.now())
     system_annotations = Column(JSONB, default={})
-    label = Column(Text)
+    label = Column(Text, nullable=False)
     properties = Column(JSONB, default={})
 
     def __repr__(self):
@@ -158,12 +158,10 @@ class PsqlEdge(Base):
         should contain the 'new' values with the following effects. In
         general, updates are additive. New properties will be added to
         old properties.  New system annotations will be added system
-        annotations. New acl will will be added to old acl.  For
-        removal of a property, system_annotation, or acl entry is
-        required, see :func:
+        annotations. For removal of a property or system_annotation
+        entry is required, see :func:
         PsqlGraphDriver.edge_delete_property_keys, :func:
-        PsqlGraphDriver.edge_delete_system_annotation_keys, :func:
-        PsqlGraphDriver.edge_remove_acl_item
+        PsqlGraphDriver.edge_delete_system_annotation_keys
 
         .. note::
             If the new edge contains an acl list, it be appended
@@ -286,6 +284,16 @@ class PsqlGraphDriver(object):
     def set_edge_validator(self, edge_validator):
         """Override the edge validation callback."""
         self.edge_validator = edge_validator
+
+    def get_nodes(self, batch_size=1000, session=None):
+        with session_scope(self.engine, session) as local:
+            query = local.query(PsqlNode).filter(PsqlNode.voided.is_(None))
+        return query.yield_per(batch_size)
+
+    def get_edges(self, batch_size=1000, session=None):
+        with session_scope(self.engine, session) as local:
+            query = local.query(PsqlEdge).filter(PsqlEdge.voided.is_(None))
+        return query.yield_per(batch_size)
 
     @retryable
     def node_merge(self, node_id=None, node=None, acl=[],
@@ -951,7 +959,7 @@ class PsqlGraphDriver(object):
             self._node_void(node, session=local)
 
     @retryable
-    def edge_merge(self, src_id=None, dst_id=None, edge=None, acl=[],
+    def edge_merge(self, src_id=None, dst_id=None, edge=None, label=None,
                    system_annotations={}, properties={}, session=None,
                    max_retries=DEFAULT_RETRIES,
                    backoff=default_backoff):
@@ -1006,6 +1014,9 @@ class PsqlGraphDriver(object):
                 )
 
             if edge:
+                if label is not None:
+                    raise EdgeCreationError('Edge labels are immutable')
+
                 """ there is a pre-existing edge """
                 new_edge = edge.merge(PsqlEdge(
                     system_annotations=system_annotations,
@@ -1026,6 +1037,7 @@ class PsqlGraphDriver(object):
                 new_edge = PsqlEdge(
                     src_id=src_id,
                     dst_id=dst_id,
+                    label=label,
                     system_annotations=system_annotations,
                     properties=properties
                 )
@@ -1042,8 +1054,10 @@ class PsqlGraphDriver(object):
         existing edge!  This function will take an edge, void it and
         create a new edge entry in its place
 
-        :param PsqlEdge new_edge: The new edge with which to replace the old one
-        :param PsqlEdge old_edge: The edge to be voided
+        :param PsqlEdge new_edge:
+            The new edge with which to replace the old one
+        :param PsqlEdge old_edge:
+            The edge to be voided
         :param session: |session|
 
         """

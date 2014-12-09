@@ -961,7 +961,7 @@ class PsqlGraphDriver(object):
             self._node_void(node, session=local)
 
     @retryable
-    def edge_merge(self, src_id=None, dst_id=None, edge=None, acl=[],
+    def edge_merge(self, src_id=None, dst_id=None, edge=None, label=None,
                    system_annotations={}, properties={}, session=None,
                    max_retries=DEFAULT_RETRIES,
                    backoff=default_backoff):
@@ -1016,6 +1016,9 @@ class PsqlGraphDriver(object):
                 )
 
             if edge:
+                if label is not None:
+                    raise EdgeCreationError('Edge labels are immutable')
+
                 """ there is a pre-existing edge """
                 new_edge = edge.merge(PsqlEdge(
                     system_annotations=system_annotations,
@@ -1036,6 +1039,7 @@ class PsqlGraphDriver(object):
                 new_edge = PsqlEdge(
                     src_id=src_id,
                     dst_id=dst_id,
+                    label=label,
                     system_annotations=system_annotations,
                     properties=properties
                 )
@@ -1052,8 +1056,10 @@ class PsqlGraphDriver(object):
         existing edge!  This function will take an edge, void it and
         create a new edge entry in its place
 
-        :param PsqlEdge new_edge: The new edge with which to replace the old one
-        :param PsqlEdge old_edge: The edge to be voided
+        :param PsqlEdge new_edge:
+            The new edge with which to replace the old one
+        :param PsqlEdge old_edge:
+            The edge to be voided
         :param session: |session|
 
         """

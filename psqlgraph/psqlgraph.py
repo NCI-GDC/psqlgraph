@@ -2,7 +2,7 @@
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, Column, Integer, Text, String
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.dialects.postgres import TIMESTAMP, ARRAY, JSONB
+from sqlalchemy.dialects.postgres import ARRAY, JSONB, TIMESTAMP
 from sqlalchemy.exc import IntegrityError
 from contextlib import contextmanager
 from datetime import datetime
@@ -76,7 +76,9 @@ class PsqlNode(Base):
     node_id = Column(String(36), nullable=False)
     label = Column(Text, nullable=False)
     voided = Column(TIMESTAMP)
-    created = Column(TIMESTAMP, nullable=False, default=datetime.now())
+    created = Column(
+        TIMESTAMP, nullable=False, default=sanitizer.sanitize(datetime.now())
+    )
     acl = Column(ARRAY(Text))
     system_annotations = Column(JSONB, default={})
     properties = Column(JSONB, default={})
@@ -153,7 +155,9 @@ class PsqlEdge(Base):
     src_id = Column(String(36), nullable=False)
     dst_id = Column(String(36), nullable=False)
     voided = Column(TIMESTAMP)
-    created = Column(TIMESTAMP, nullable=False, default=datetime.now())
+    created = Column(
+        TIMESTAMP, nullable=False, default=sanitizer.sanitize(datetime.now())
+    )
     system_annotations = Column(JSONB, default={})
     label = Column(Text, nullable=False)
     properties = Column(JSONB, default={})

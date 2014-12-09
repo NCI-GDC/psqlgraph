@@ -1,7 +1,7 @@
 from datetime import datetime
 import unittest
 import logging
-from psqlgraph import psqlgraph2neo4j
+from psqlgraph import psqlgraph2neo4j, PsqlNode
 import uuid
 
 host = 'localhost'
@@ -38,21 +38,39 @@ class Test_psql2neo(unittest.TestCase):
     def test_neo_single_node(self):
         self._clear_tables()
         node_id = str(uuid.uuid4())
-        props = {'time': datetime.now()}
+        timestamp = datetime.now()
+        props = {'time': timestamp}
+        test_props = {
+            'id': node_id, 'time': self.driver.datetime2ms_epoch(timestamp)
+        }
         self.psqlDriver.node_merge(node_id, label='test', properties=props)
         self.driver.export()
         nodes = self.neo4jDriver.cypher.execute('match (n:test) return n')
-        for node in nodes:
-            print node
-        # self.assertTrue(False)
+        self.assertEqual(len(nodes), 1)
+        self.assertEqual(nodes[0].n.properties, test_props)
 
-    # def test_neo_many_node(self):
-    #     self._clear_tables()
-    #     node_ids = [str(uuid.uuid4()) for i in range(200)]
-    #     for node_id in node_ids:
-    #         self.psqlDriver.node_merge(node_id, label='test2')
-    #     self.driver.export()
-    #     self.assertTrue(False)
+    def test_neo_many_node(self):
+        self._clear_tables()
+        count = 200
+        test_props = []
+        for i in range(count):
+            node_id = str(uuid.uuid4())
+            timestamp = datetime.now()
+            props = {'time': timestamp}
+            test_props.append({
+                'id': node_id, 'time': self.driver.datetime2ms_epoch(timestamp)
+            })
+            self.psqlDriver.node_merge(node_id, label='test', properties=props)
+
+        self.driver.export()
+        nodes = self.neo4jDriver.cypher.execute('match (n:test) return n')
+        self.assertEqual(len(nodes), count)
+
+        node_props = [n.n.properties for n in nodes]
+        for prop in test_props:
+            self.assertTrue(prop in node_props)
+        for node_prop in node_props:
+            self.assertTrue(node_prop in test_props)
 
 if __name__ == '__main__':
 

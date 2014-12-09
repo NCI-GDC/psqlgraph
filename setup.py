@@ -6,6 +6,7 @@ setup(
     install_requires=[
         'psycopg2',
         'sqlalchemy',
+        'py2neo',
         # 'cdisutils',
         ],
     # dependency_links=[

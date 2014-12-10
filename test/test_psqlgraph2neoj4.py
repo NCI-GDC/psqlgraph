@@ -1,7 +1,7 @@
 from datetime import datetime
 import unittest
 import logging
-from psqlgraph import psqlgraph2neo4j, PsqlNode
+from psqlgraph import psqlgraph2neo4j
 import uuid
 
 host = 'localhost'
@@ -143,7 +143,7 @@ class Test_psql2neo(unittest.TestCase):
 
     def test_neo_tree_topology(self):
         """
-        Create a star topology, verify lookup by src_id and that all nodes
+        Create a tree topology, verify lookup by src_id and that all nodes
         are attached
         """
 

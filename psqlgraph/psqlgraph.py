@@ -1,6 +1,6 @@
 # ======== External modules ========
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, Column, Integer, Text, String
+from sqlalchemy import create_engine, Column, Integer, Text, String, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgres import ARRAY, JSONB, TIMESTAMP
 from sqlalchemy.exc import IntegrityError
@@ -322,6 +322,18 @@ class PsqlGraphDriver(object):
         with session_scope(self.engine, session) as local:
             query = local.query(PsqlEdge).filter(PsqlEdge.voided.is_(None))
         return query.yield_per(batch_size)
+
+    def get_node_count(self, session=None):
+        with session_scope(self.engine, session) as local:
+            query = local.query(func.count(PsqlNode.key)).filter(
+                PsqlNode.voided.is_(None))
+        return query.one()[0]
+
+    def get_edge_count(self, session=None):
+        with session_scope(self.engine, session) as local:
+            query = local.query(func.count(PsqlEdge.key)).filter(
+                PsqlEdge.voided.is_(None))
+        return query.one()[0]
 
     @retryable
     def node_merge(self, node_id=None, node=None, acl=[],

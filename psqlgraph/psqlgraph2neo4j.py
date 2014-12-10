@@ -68,6 +68,9 @@ class PsqlGraph2Neo4j(object):
                 'No neo4j driver.  Please call .connect_to_neo4j()'
             )
 
+        print self.psqlgraphDriver.get_node_count()
+        return
+
         try:
             self.create_indexes()
         except Exception, msg:

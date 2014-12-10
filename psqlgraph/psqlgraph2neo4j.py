@@ -1,6 +1,7 @@
 import py2neo
 import psqlgraph
 from datetime import datetime
+import progressbar
 
 
 class ExportError(Exception):
@@ -56,30 +57,22 @@ class PsqlGraph2Neo4j(object):
             for key in self.indexed_keys:
                 self.neo4jDriver.schema.create_index(label, key)
 
-    def export(self):
-
-        if not self.psqlgraphDriver:
-            raise ExportError(
-                'No psqlgraph driver.  Please call .connect_to_psql()'
-            )
-
-        if not self.neo4jDriver:
-            raise ExportError(
-                'No neo4j driver.  Please call .connect_to_neo4j()'
-            )
-
-        print self.psqlgraphDriver.get_node_count()
-        return
-
-        try:
-            self.create_indexes()
-        except Exception, msg:
-            print "unable to create indexes", str(msg)
-
+    def export_nodes(self):
+        i = 0
+        node_count = self.psqlgraphDriver.get_node_count()
+        print("Exporting {n} nodes".format(n=node_count))
+        pbar = progressbar.ProgressBar(maxval=node_count).start()
         for node in self.psqlgraphDriver.get_nodes():
             self.convert_node(node)
             self.neo4jDriver.create(py2neo.Node(node.label, **node.properties))
+            i += 1
+            pbar.update(i)
 
+    def export_edges(self):
+        i = 0
+        node_count = self.psqlgraphDriver.get_node_count()
+        print("Exporting {n} nodes".format(n=node_count))
+        pbar = progressbar.ProgressBar(maxval=node_count).start()
         transaction = self.neo4jDriver.cypher.begin()
         for edge in self.psqlgraphDriver.get_edges():
             transaction.append(
@@ -92,4 +85,26 @@ class PsqlGraph2Neo4j(object):
                     'dst_id': edge.dst_id,
                 }
             )
+            i += 1
+            pbar.update(i)
         transaction.commit()
+
+    def export(self):
+
+        if not self.psqlgraphDriver:
+            raise ExportError(
+                'No psqlgraph driver.  Please call .connect_to_psql()'
+            )
+
+        if not self.neo4jDriver:
+            raise ExportError(
+                'No neo4j driver.  Please call .connect_to_neo4j()'
+            )
+
+        try:
+            self.create_indexes()
+        except Exception, msg:
+            print "unable to create indexes", str(msg)
+
+        self.export_nodes()
+        self.export_edges()

@@ -349,39 +349,36 @@ class TestPsqlGraphDriver(unittest.TestCase):
             node = self.driver.node_lookup_one(node_id)
             self.assertEqual(sanitize(annotations), node.system_annotations)
 
-    def test_sessioned_node_update(self, tempid=None):
+    def test_sessioned_node_update(self):
         """
-        Repeate test_repeated_node_update but passing a single session for
-        all interactions to use
+        Create nodes on a single session
         """
 
-        if not tempid:
-            tempid = str(uuid.uuid4())
-
+        node_ids = [str(uuid.uuid4()) for i in range(self.REPEAT_COUNT)]
+        properties = {}
         with session_scope(self.driver.engine) as session:
-            for tally in range(self.REPEAT_COUNT):
-                properties = {'key1': None,
-                              'key2': 2,
-                              'key3': datetime.now(),
-                              'rand':  random.random()}
+            for node_id in node_ids:
+
+                properties[node_id] = {
+                    'key1': node_id,
+                    'key2': 2,
+                    'key3': str(datetime.now()),
+                    'rand':  random.random()
+                }
 
                 self.driver.node_merge(
-                    node_id=tempid,
+                    node_id=node_id,
                     label='test',
-                    properties=properties,
+                    properties=properties[node_id],
                     session=session,
-                    max_retries=int(1e6),
-                    backoff=lambda x, y: time.sleep(random.randint(5, 30))
                 )
 
-            properties = sanitizer.sanitize(properties)
-            node = self.driver.node_lookup_one(node_id=tempid, session=session)
-            self.assertEqual(properties, node.properties, 'Node properties'
-                             'do not match expected properties')
-
-        if not tempid:
-            """if this is not part of another test, check the count"""
-            self.verify_node_count(self.REPEAT_COUNT, tempid, voided=True)
+        for node_id in node_ids:
+            node = self.driver.node_lookup_one(node_id=node_id)
+            self.assertEqual(
+                sanitize(properties[node_id]), node.properties,
+                'Node properties' 'do not match expected properties'
+            )
 
     def test_concurrent_node_update_by_id(self):
         """

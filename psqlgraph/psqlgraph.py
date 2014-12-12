@@ -477,7 +477,7 @@ class PsqlGraphDriver(object):
                     raise NodeCreationError(
                         'Cannot create a node with no node_id.')
 
-                self.node_insert(
+                node = self.node_insert(
                     node_id=node_id,
                     label=label,
                     system_annotations=system_annotations,
@@ -485,6 +485,8 @@ class PsqlGraphDriver(object):
                     properties=properties,
                     session=local
                 )
+
+            return node
 
     def node_insert(self, node_id, label, system_annotations={},
                     acl=[], properties={}, session=None):
@@ -512,6 +514,8 @@ class PsqlGraphDriver(object):
 
         with session_scope(self.engine, session) as local:
             local.add(node)
+
+        return node
 
     def node_update(self, node, system_annotations={},
                     acl=[], properties={}, session=None):

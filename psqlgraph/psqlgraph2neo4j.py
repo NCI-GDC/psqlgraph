@@ -66,51 +66,61 @@ class PsqlGraph2Neo4j(object):
             i = 0
             node_count = self.psqlgraphDriver.get_node_count()
             print("Exporting {n} nodes:".format(n=node_count))
-            pbar = progressbar.ProgressBar(maxval=node_count).start()
+            pbar = self.start_pbar(node_count)
 
         for node in self.psqlgraphDriver.get_nodes():
             self.convert_node(node)
             self.neo4jDriver.create(py2neo.Node(node.label, **node.properties))
-
             if not silent:
-                i += 1
-                try:
-                    pbar.update(i)
-                except:
-                    pass
+                i = self.update_pbar(pbar, i)
 
-    def export_edges(self, silent=False, batch_size=50000):
+    def start_pbar(self, maxval):
+        pbar = progressbar.ProgressBar(
+            widgets=[
+                progressbar.Percentage(), ' ',
+                progressbar.Bar(marker='#'), ' ',
+                progressbar.ETA(), ' ',
+            ], maxval=maxval).start()
+        return pbar
+
+    def update_pbar(self, pbar, i):
+        try:
+            pbar.update(i)
+        except:
+            pass
+        return i+1
+
+    def export_edges(self, silent=False, batch_size=1000):
 
         i = 0
         edge_count = self.psqlgraphDriver.get_edge_count()
 
-        missing_nodes = []
-        if not silent:
-            print("Exporting {n} edges:".format(n=edge_count))
-            pbar = progressbar.ProgressBar(maxval=edge_count).start()
-            transaction = self.neo4jDriver.cypher.begin()
+        if not edge_count:
+            return
 
+        batch_size = min(edge_count, batch_size)
+        if not silent:
+            print("\nExporting {n} edges:".format(n=edge_count))
+            pbar = self.start_pbar(edge_count)
+
+        transaction = self.neo4jDriver.cypher.begin()
         batch_count = 0
         for edge in self.psqlgraphDriver.get_edges():
             batch_count += 1
+
             src = self.psqlgraphDriver.node_lookup_one(node_id=edge.src_id)
             dst = self.psqlgraphDriver.node_lookup_one(node_id=edge.dst_id)
-
-            if not dst:
-                missing_nodes.append(edge.dst_id)
-            if not src:
-                missing_nodes.append(edge.src_id)
-
             if not (src and dst):
+                i += self.update_pbar(pbar, i)
                 continue
 
             cypher = """
-            MATCH (s:src_label), (d:dst_label)
+            MATCH (s:{src_label}), (d:{dst_label})
             WHERE s.id = {{src_id}} and d.id = {{dst_id}}
             CREATE (s)-[:{edge_label}]->(d)
             """.format(
-                src_type=src.label,
-                dst_type=dst.label,
+                src_label=src.label,
+                dst_label=dst.label,
                 edge_label=edge.label
             )
 
@@ -125,21 +135,14 @@ class PsqlGraph2Neo4j(object):
             )
 
             if batch_count >= batch_size:
-                # print("Submitting batch of {n} edges...".format(
-                #     n=batch_count))
                 transaction.commit()
                 batch_count = 0
                 transaction = self.neo4jDriver.cypher.begin()
 
             if not silent:
-                i += 1
-                try:
-                    pbar.update(i)
-                except:
-                    pass
+                i = self.update_pbar(pbar, i)
 
-        for node in missing_nodes:
-            print("ERROR: Node does not exist: {}".format(node))
+        transaction.commit()
 
     def export(self, silent=False):
 

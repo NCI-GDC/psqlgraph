@@ -146,15 +146,16 @@ class TestPsqlGraphDriver(unittest.TestCase):
         if not label:
             label = 'test'
 
+        retries = 0 if not given_id else int(1e6)
         # Add first node
         propertiesA = {'key1': None, 'key2': 1, 'key3': datetime.now()}
         self.driver.node_merge(node_id=node_id, properties=propertiesA,
-                               label=label, max_retries=int(1e6))
+                               label=label, max_retries=retries)
 
         # Add second node
         propertiesB = {'key1': 2, 'new_key': 'n', 'timestamp': datetime.now()}
         self.driver.node_merge(node_id=node_id, properties=propertiesB,
-                               max_retries=int(1e6))
+                               max_retries=retries)
 
         # Merge properties
         for key, val in propertiesB.iteritems():
@@ -452,10 +453,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
         properties.pop('key2')
         properties.pop('key3')
 
-        nodes = self.driver.node_lookup(node_id=tempid)
-        self.assertEqual(len(nodes), 1, 'Expected a single node to be found, '
-                         'instead found {count}'.format(count=len(nodes)))
-        self.assertEqual(properties, nodes[0].properties)
+        nodes = self.driver.node_lookup_one(node_id=tempid)
+        self.assertEqual(properties, nodes.properties)
 
     def test_node_delete_system_annotation_keys(self):
         """Test the ability to remove system annotation keys from nodes"""
@@ -517,19 +516,28 @@ class TestPsqlGraphDriver(unittest.TestCase):
         dst_id = str(uuid.uuid4())
         self.driver.node_merge(node_id=src_id, label='test')
         self.driver.node_merge(node_id=dst_id, label='test')
-        self.driver.edge_merge(src_id=src_id, dst_id=dst_id, label='test')
 
+        self.driver.edge_merge(src_id=src_id, dst_id=dst_id, label='test')
+        self.driver.edge_merge(src_id=src_id, dst_id=dst_id,
+                               properties={'test': None})
+        self.driver.edge_merge(src_id=src_id, dst_id=dst_id,
+                               properties={'test': 2})
+
+        props = {'test': 2}
         edge = self.driver.edge_lookup_one(dst_id=dst_id)
         self.assertEqual(edge.src_id, src_id)
         self.assertEqual(edge.dst_id, dst_id)
+        self.assertEqual(edge.properties, props)
 
         edge = self.driver.edge_lookup_one(src_id=src_id)
         self.assertEqual(edge.src_id, src_id)
         self.assertEqual(edge.dst_id, dst_id)
+        self.assertEqual(edge.properties, props)
 
         edge = self.driver.edge_lookup_one(src_id=src_id, dst_id=dst_id)
         self.assertEqual(edge.src_id, src_id)
         self.assertEqual(edge.dst_id, dst_id)
+        self.assertEqual(edge.properties, props)
 
     def test_edge_merge_and_lookup_properties(self):
         """Test edge property merging"""

@@ -71,16 +71,6 @@ def create_tables(host, user, password, database):
     driver = PsqlGraphDriver(host, user, password, database)
     Base.metadata.create_all(driver.engine)
 
-    # conn = driver.engine.connect()
-
-    # null_stmt = """
-    # CREATE UNIQUE INDEX constraint_voided_null
-    # ON nodes (node_id)
-    # WHERE voided IS NULL;
-    # """
-    # conn.execute(null_stmt)
-    # conn.close()
-
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()

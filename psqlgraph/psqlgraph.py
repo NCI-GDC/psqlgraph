@@ -1042,8 +1042,14 @@ class PsqlGraphDriver(object):
                 )
 
             if edge:
-                if label is not None:
-                    raise EdgeCreationError('Edge labels are immutable')
+                if label is not None and edge.label != label:
+                    raise EdgeCreationError(
+                        'Edge labels are immutable: '
+                        '{old} != {new} for edge ({s})->({d})'.format(
+                            old=edge.label, new=label,
+                            s=edge.src_id, d=edge.dst_id
+                        )
+                    )
 
                 """ there is a pre-existing edge """
                 new_edge = edge.merge(PsqlEdge(
@@ -1072,7 +1078,7 @@ class PsqlGraphDriver(object):
 
             if edge is not None:
                 self.logger.debug('merging edge: ({src})->({dst})'.format(
-                    src=edge.src_id, dst_id=edge.dst_id))
+                    src=edge.src_id, dst=edge.dst_id))
 
             self.edge_void_and_create(new_edge, edge, session=local)
 

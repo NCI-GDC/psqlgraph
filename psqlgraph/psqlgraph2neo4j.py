@@ -141,8 +141,6 @@ class PsqlGraph2Neo4j(object):
         for node in missing_nodes:
             print("ERROR: Node does not exist: {}".format(node))
 
-
-
     def export(self, silent=False):
 
         if not self.psqlgraphDriver:

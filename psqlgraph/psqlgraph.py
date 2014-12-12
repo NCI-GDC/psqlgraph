@@ -1045,7 +1045,7 @@ class PsqlGraphDriver(object):
                 if label is not None and edge.label != label:
                     raise EdgeCreationError(
                         'Edge labels are immutable: '
-                        '{old} != {new} for edge ({s})->({d})'.format(
+                        'new {new} != {old} for edge ({s})->({d})'.format(
                             old=edge.label, new=label,
                             s=edge.src_id, d=edge.dst_id
                         )
@@ -1063,10 +1063,10 @@ class PsqlGraphDriver(object):
 
                 if src_id is None:
                     raise EdgeCreationError(
-                        'Cannot create a edge with no src_id.')
+                        'Cannot create a edge without src_id.')
                 if dst_id is None:
                     raise EdgeCreationError(
-                        'Cannot create a edge with no dst_id.')
+                        'Cannot create a edge without dst_id.')
 
                 new_edge = PsqlEdge(
                     src_id=src_id,
@@ -1176,11 +1176,11 @@ class PsqlGraphDriver(object):
             raise QueryError('Cannot lookup edge, no src_id or dst_id')
 
         with session_scope(self.engine, session) as local:
+            query = local.query(PsqlEdge)
             if src_id:
-                query = local.query(PsqlEdge).filter(PsqlEdge.src_id == src_id)
+                query = query.filter(PsqlEdge.src_id == src_id)
             if dst_id:
-                query = local.query(PsqlEdge).filter(PsqlEdge.dst_id == dst_id)
-
+                query = query.filter(PsqlEdge.dst_id == dst_id)
             if not include_voided:
                 query = query.filter(PsqlEdge.voided.is_(None))
 

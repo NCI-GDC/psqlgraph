@@ -6,9 +6,6 @@ setup(
     install_requires=[
         'psycopg2',
         'sqlalchemy',
-        # 'cdisutils',
+        'py2neo',
         ],
-    # dependency_links=[
-    # 'git+ssh://git@github.com/NCI-GDC/cdisutils.git#egg=cdisutils',
-    # ]
     )

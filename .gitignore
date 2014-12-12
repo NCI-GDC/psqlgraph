@@ -5,6 +5,10 @@ __pycache__/
 # C extensions
 *.so
 
+# Neo4j artifacts
+bin/artifact*
+bin/neo4j*
+
 # Distribution / packaging
 .Python
 env/

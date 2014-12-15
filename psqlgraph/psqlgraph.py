@@ -1,7 +1,11 @@
-# ======== External modules ========
-from sqlalchemy.orm import sessionmaker
+#
+# Driver to implement the graph model in postgres
+#
+
+# External modules
+from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy import create_engine, Column, Integer, Text, String, func, \
-    UniqueConstraint
+    UniqueConstraint, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.dialects.postgres import ARRAY, JSONB, TIMESTAMP
 from sqlalchemy.exc import IntegrityError
@@ -11,22 +15,17 @@ from functools import wraps
 import time
 import random
 import logging
-import copy
 
-# ======== PsqlNode modules ========
+#  PsqlNode modules
 from validate import PsqlNodeValidator, PsqlEdgeValidator
 from exc import QueryError, ProgrammingError, NodeCreationError, \
     EdgeCreationError, ValidationError
 import sanitizer
 
-# ======== ORM object base ========
+#  ORM object base
 Base = declarative_base()
 
-"""
-Driver to implement the graph model in postgres
-"""
-
-# ======== Default constants ========
+#  Default constants
 """Used for retrying a write to postgres on exception catch
 .. |DEFAULT_RETRIES| replace:: 2"""
 DEFAULT_RETRIES = 2
@@ -58,10 +57,7 @@ def session_scope(engine, session=None):
 
     finally:
         if not session:
-            logging.debug('Expunging objects from {session}'.format(
-                session=local))
             local.expunge_all()
-            logging.debug('Closing session {session}'.format(session=local))
             local.close()
 
 
@@ -72,6 +68,7 @@ class PsqlNode(Base):
     """
 
     __tablename__ = 'nodes'
+    __table_args__ = (UniqueConstraint('node_id', name='_node_id_uc'),)
 
     key = Column(Integer, primary_key=True)
     node_id = Column(String(36), nullable=False)
@@ -81,7 +78,6 @@ class PsqlNode(Base):
     acl = Column(ARRAY(Text))
     system_annotations = Column(JSONB, default={})
     properties = Column(JSONB, default={})
-    __table_args__ = (UniqueConstraint('node_id', name='_node_id_uc'),)
 
     def __repr__(self):
         return '<PsqlNode({node_id}>'.format(node_id=self.node_id)
@@ -97,6 +93,15 @@ class PsqlNode(Base):
         self.system_annotations = system_annotations
         self.label = label
         self.properties = properties
+
+    def copy(self):
+        return PsqlNode(
+            node_id=self.node_id,
+            acl=self.acl,
+            system_annotations=self.system_annotations,
+            label=self.label,
+            properties=self.properties,
+        )
 
     def merge(self, acl=[], system_annotations={}, properties={}):
         """Merges a new node onto this instance.  The parameter ``node``
@@ -153,16 +158,12 @@ class PsqlVoidedNode(Base):
     def __repr__(self):
         return '<PsqlVoidedNode({node_id})>'.format(node_id=self.node_id)
 
-    def __init__(self, node_id, label, acl, system_annotations,
-                 properties, created, voided=None):
-
-        system_annotations = sanitizer.sanitize(system_annotations)
-        properties = sanitizer.sanitize(properties)
-        self.node_id = node_id
-        self.acl = acl
-        self.system_annotations = system_annotations
-        self.label = label
-        self.properties = properties
+    def __init__(self, node, voided=datetime.now()):
+        self.node_id = node.node_id
+        self.acl = node.acl
+        self.system_annotations = sanitizer.sanitize(node.system_annotations)
+        self.label = node.label
+        self.properties = sanitizer.sanitize(node.properties)
         self.voided = datetime.now()
 
 
@@ -175,17 +176,20 @@ class PsqlEdge(Base):
     """
 
     __tablename__ = 'edges'
+    __table_args__ = (UniqueConstraint('src_id', 'dst_id', name='_edge_uc'),)
 
     key = Column(Integer, primary_key=True)
-    src_id = Column(String(36), nullable=False)
-    dst_id = Column(String(36), nullable=False)
-    voided = Column(TIMESTAMP)
+    src_id = Column(Text, ForeignKey('nodes.node_id'), nullable=False)
+    dst_id = Column(Text, ForeignKey('nodes.node_id'), nullable=False)
     created = Column(
         TIMESTAMP, nullable=False, default=sanitizer.sanitize(datetime.now())
     )
     system_annotations = Column(JSONB, default={})
     label = Column(Text, nullable=False)
     properties = Column(JSONB, default={})
+
+    src = relationship("PsqlNode", foreign_keys=[src_id])
+    dst = relationship("PsqlNode", foreign_keys=[dst_id])
 
     def __init__(self, src_id=src_id, dst_id=dst_id, label=label,
                  system_annotations=system_annotations,
@@ -200,13 +204,10 @@ class PsqlEdge(Base):
         self.properties = properties
 
     def __repr__(self):
-        return '<PsqlEdge(({src_id})->({dst_id}), voided={voided})>'.format(
-            src_id=self.src_id,
-            dst_id=self.dst_id,
-            voided=(self.voided is not None)
-        )
+        return '<PsqlEdge(({src_id})->({dst_id}))>'.format(
+            src_id=self.src_id, dst_id=self.dst_id)
 
-    def merge(self, edge):
+    def merge(self, system_annotations={}, properties={}):
         """Merges a new edge onto this instance.  The parameter ``edge``
         should contain the 'new' values with the following effects. In
         general, updates are additive. New properties will be added to
@@ -227,21 +228,46 @@ class PsqlEdge(Base):
 
         """
 
-        new_system_annotations = copy.copy(self.system_annotations)
-        new_properties = copy.copy(self.properties)
+        if system_annotations:
+            self.syste_annotations = self.system_annotations.update(
+                sanitizer.sanitize(system_annotations))
 
-        new_system_annotations.update(sanitizer.sanitize(
-            edge.system_annotations) or {})
-        new_properties.update(sanitizer.sanitize(
-            edge.properties) or {})
+        if properties:
+            properties = sanitizer.sanitize(properties)
+            self.properties.update(properties)
 
-        return PsqlEdge(
-            src_id=self.src_id,
-            dst_id=self.dst_id,
-            system_annotations=new_system_annotations,
-            label=self.label,
-            properties=new_properties,
-        )
+
+class PsqlVoidedEdge(Base):
+
+    """Edge class to represent a edge entry in the postgresql table
+    'edges' inherits the SQLAlchemy Base class.
+
+    See tools/setup_psqlgraph script for details on table setup.
+    """
+
+    __tablename__ = 'voided_edges'
+
+    key = Column(Integer, primary_key=True)
+    src_id = Column(Text, nullable=False)
+    dst_id = Column(Text, nullable=False)
+    voided = Column(TIMESTAMP, nullable=False)
+    created = Column(TIMESTAMP, nullable=False,
+                     default=sanitizer.sanitize(datetime.now()))
+    system_annotations = Column(JSONB, default={})
+    label = Column(Text, nullable=False)
+    properties = Column(JSONB, default={})
+
+    def __init__(self, edge, voided=datetime.now()):
+        self.src_id = edge.src_id
+        self.dst_id = edge.dst_id
+        self.system_annotations = sanitizer.sanitize(edge.system_annotations)
+        self.label = edge.label
+        self.properties = sanitizer.sanitize(edge.properties)
+        self.voided = voided
+
+    def __repr__(self):
+        return '<PsqlEdge(({src_id})->({dst_id}))>'.format(
+            src_id=self.src_id, dst_id=self.dst_id)
 
 
 def default_backoff(retries, max_retries):
@@ -345,7 +371,7 @@ class PsqlGraphDriver(object):
 
     def get_edges(self, batch_size=1000, session=None):
         with session_scope(self.engine, session) as local:
-            query = local.query(PsqlEdge).filter(PsqlEdge.voided.is_(None))
+            query = local.query(PsqlEdge)
         return query.yield_per(batch_size)
 
     def get_node_count(self, session=None):
@@ -355,8 +381,7 @@ class PsqlGraphDriver(object):
 
     def get_edge_count(self, session=None):
         with session_scope(self.engine, session) as local:
-            query = local.query(func.count(PsqlEdge.key)).filter(
-                PsqlEdge.voided.is_(None))
+            query = local.query(func.count(PsqlEdge.key))
         return query.one()[0]
 
     @retryable
@@ -466,49 +491,35 @@ class PsqlGraphDriver(object):
                     node,
                     system_annotations=system_annotations,
                     acl=acl,
-                    properties=properties
+                    properties=properties,
                 )
 
             else:
                 """ we need to create a new node """
-                self.logger.debug('Creating a new node')
 
                 if not node_id:
                     raise NodeCreationError(
                         'Cannot create a node with no node_id.')
 
-                node = self.node_insert(
+                node = self.node_insert(PsqlNode(
                     node_id=node_id,
                     label=label,
                     system_annotations=system_annotations,
                     acl=acl,
                     properties=properties,
-                    session=local
-                )
+                ), session=local)
 
             return node
 
-    def node_insert(self, node_id, label, system_annotations={},
-                    acl=[], properties={}, session=None):
-        """
-        This function assumes that you have already done a query for an
-        existing node!  This function will take an node, void it and
-        create a new node entry in its place
+    def node_insert(self, node, session=None):
+        """Takes a PsqlNode and inserts it into the graph.
 
-        :param PsqlNode new_node: The node with which to overwrite ``old_node``
-        :param PsqlNode old_node:
-            The existing node in the table to be overwritten
-
+        :param PsqlNode node: The node to be insterted into table ``nodes``
         :param session: |session|
 
         """
 
-        self.logger.debug('Voiding to update: {0}'.format(node_id))
-
-        node = PsqlNode(node_id=node_id, label=label,
-                        system_annotations=system_annotations,
-                        acl=acl, properties=properties)
-
+        self.logger.debug('Creating a new node: {}'.format(node))
         if not self.node_validator(node):
             raise ValidationError('Node failed schema constraints')
 
@@ -524,15 +535,17 @@ class PsqlGraphDriver(object):
         existing node!  This function will take an node, void it and
         create a new node entry in its place
 
-        :param PsqlNode new_node: The node with which to overwrite ``old_node``
-        :param PsqlNode old_node:
-            The existing node in the table to be overwritten
-
+        :param PsqlNode node: The node to override
         :param session: |session|
 
         """
 
-        self.logger.debug('Updating: {0}'.format(node.node_id))
+        self.logger.debug('Updating: {}'.format(node))
+        if ((properties == node.properties) and (
+                system_annotations == node.system_annotations) and (
+                    acl == node.acl)):
+            logging.debug('Node left unchanged: {}'.format(node))
+            return node
 
         node.merge(system_annotations=system_annotations, acl=acl,
                    properties=properties)
@@ -569,15 +582,7 @@ class PsqlGraphDriver(object):
             raise ProgrammingError('node_void was passed a NoneType PsqlNode')
 
         with session_scope(self.engine, session) as local:
-            voided = PsqlVoidedNode(
-                node_id=node.node_id,
-                label=node.label,
-                properties=node.properties,
-                system_annotations=node.system_annotations,
-                acl=node.acl,
-                created=node.created,
-                voided=datetime.now(),
-            )
+            voided = PsqlVoidedNode(node)
             local.add(voided)
 
     def node_lookup_one(self, node_id=None, property_matches=None,
@@ -923,11 +928,13 @@ class PsqlGraphDriver(object):
             if not node:
                 raise QueryError('Node not found')
 
+            self._node_void(node, session=local)
             properties = node.properties
             for key in property_keys:
                 properties.pop(key)
-
-            self.node_update(node, properties=properties)
+            node.properties = {}
+            local.flush()
+            node.properties = properties
 
     @retryable
     def node_delete_system_annotation_keys(self,
@@ -980,13 +987,13 @@ class PsqlGraphDriver(object):
             if not node:
                 raise QueryError('Node not found')
 
+            self._node_void(node, session=local)
             system_annotations = node.system_annotations
             for key in system_annotation_keys:
                 system_annotations.pop(key)
-
-            self.logger.debug('updating node properties: {0}'.format(
-                node.node_id))
-            self.node_update(node, system_annotations=system_annotations)
+            node.system_annotations = {}
+            local.flush()
+            node.system_annotations = system_annotations
 
     @retryable
     def node_delete(self, node_id=None, node=None,
@@ -1016,11 +1023,6 @@ class PsqlGraphDriver(object):
         :param PsqlNode node:
             The ORM instance of a node. This
             parameter is mutually exlucsive with ``node``
-
-        :param list(str) system_annotation_keys:
-            A list of string values designating which key value pairs
-            to remove from the system_annotations JSONB document of
-            the node entry
 
         :param session: |session|
         :param int max_retries: |max_retries|
@@ -1091,32 +1093,22 @@ class PsqlGraphDriver(object):
         with session_scope(self.engine, session) as local:
             if not edge:
                 """ try and lookup the edge """
-                edge = self.edge_lookup_one(
-                    src_id=src_id,
-                    dst_id=dst_id,
-                    session=local,
-                )
+                edge = self.edge_lookup_one(src_id, dst_id, session=local)
 
             if edge:
                 if label is not None and edge.label != label:
                     raise EdgeCreationError(
                         'Edge labels are immutable: '
-                        'new {new} != {old} for edge ({s})->({d})'.format(
-                            old=edge.label, new=label,
-                            s=edge.src_id, d=edge.dst_id
-                        )
+                        'new {new} != {old} for edge {edge}'.format(
+                            old=edge.label, new=label, edge=edge)
                     )
 
                 """ there is a pre-existing edge """
-                new_edge = edge.merge(PsqlEdge(
-                    system_annotations=system_annotations,
-                    properties=properties
-                ))
+                self.edge_update(edge, system_annotations, properties,
+                                 session=local)
 
             else:
                 """ we need to create a new edge """
-                self.logger.debug('Creating a new edge')
-
                 if src_id is None:
                     raise EdgeCreationError(
                         'Cannot create a edge without src_id.')
@@ -1124,45 +1116,71 @@ class PsqlGraphDriver(object):
                     raise EdgeCreationError(
                         'Cannot create a edge without dst_id.')
 
-                new_edge = PsqlEdge(
+                edge = self.edge_insert(PsqlEdge(
                     src_id=src_id,
                     dst_id=dst_id,
                     label=label,
                     system_annotations=system_annotations,
                     properties=properties
-                )
+                ))
 
-            if edge is not None:
-                self.logger.debug('merging edge: ({src})->({dst})'.format(
-                    src=edge.src_id, dst=edge.dst_id))
+        return edge
 
-            self.edge_void_and_create(new_edge, edge, session=local)
-
-    def edge_void_and_create(self, new_edge, old_edge, session=None):
+    def edge_insert(self, edge, session=None):
         """
         This function assumes that you have already done a query for an
-        existing edge!  This function will take an edge, void it and
-        create a new edge entry in its place
+        existing node!  This function will take an node, void it and
+        create a new node entry in its place
 
-        :param PsqlEdge new_edge:
-            The new edge with which to replace the old one
-        :param PsqlEdge old_edge:
-            The edge to be voided
+        :param PsqlNode new_node: The node with which to overwrite ``old_node``
+        :param PsqlNode old_node:
+            The existing node in the table to be overwritten
+
         :param session: |session|
 
         """
 
-        self.logger.debug('voiding to update edge: ({src})->({dst})'.format(
-            src=new_edge.src_id, dst=new_edge.dst_id))
+        self.logger.debug('Inserting: {0}'.format(edge))
+        if not self.edge_validator(edge):
+            raise ValidationError('Node failed schema constraints')
 
         with session_scope(self.engine, session) as local:
-            if old_edge:
-                self.edge_void(old_edge, session)
+            local.add(edge)
 
-            if not self.edge_validator(new_edge):
-                raise ValidationError('Edge failed schema constraints')
+        return edge
 
-            local.add(new_edge)
+    def edge_update(self, edge, system_annotations={}, properties={},
+                    session=None):
+        """
+        This function assumes that you have already done a query for an
+        existing node!  This function will take an node, void it and
+        create a new node entry in its place
+
+        :param PsqlNode new_node: The node with which to overwrite ``old_node``
+        :param dict properties: |properties|
+        :param dict system_annotations: |system_annotations|
+        :param session: |session|
+
+        """
+
+        self.logger.debug('Updating: {}'.format(edge))
+        if ((properties == edge.properties) and (
+                system_annotations == edge.system_annotations)):
+            logging.debug('Edge left unchanged: {}'.format(edge))
+            return edge
+
+        edge.merge(system_annotations=system_annotations,
+                   properties=properties)
+        properties = edge.properties
+
+        if not self.edge_validator(edge):
+            raise ValidationError('Edge failed schema constraints')
+
+        with session_scope(self.engine, session) as local:
+            self._edge_void(edge, local)
+            edge.properties = {}
+            local.flush()
+            edge.properties = properties
 
     def edge_lookup_one(self, src_id=None, dst_id=None,
                         include_voided=False, session=None):
@@ -1207,14 +1225,6 @@ class PsqlGraphDriver(object):
         include_voided is true, then the returned list will include
         edges that have been voided.
 
-        .. note::
-            If one is true then the return will be constrained to a
-            single result
-
-        .. note::
-            If more than a single result is found, then an exception
-            will be raised.
-
         :param str src_id:
             The node_id of the source node
         :param str dst_id: The edge to be voided
@@ -1237,13 +1247,44 @@ class PsqlGraphDriver(object):
                 query = query.filter(PsqlEdge.src_id == src_id)
             if dst_id:
                 query = query.filter(PsqlEdge.dst_id == dst_id)
-            if not include_voided:
-                query = query.filter(PsqlEdge.voided.is_(None))
-
             result = query.all()
+            if include_voided:
+                result += self.edge_lookup_voided(src_id, dst_id, local)
+
         return result
 
-    def edge_void(self, edge, session=None):
+    def edge_lookup_voided(self, src_id=None, dst_id=None, session=None):
+        """This function looks up a edge by a given src_id and dst_id.  If
+        include_voided is true, then the returned list will include
+        edges that have been voided.
+
+        :param str src_id:
+            The node_id of the source node
+        :param str dst_id: The edge to be voided
+            The node_id of the destination node
+        :param bool include_voided:
+           Specifies whether results include voided nodes (deleted and
+           transactional records).  This parameter defaults to
+           ``False`` in order to only return active nodes.
+        :param session: |session|
+        :returns: A list of PsqlEdge instances ([] if none found)
+
+        """
+
+        if src_id is None and dst_id is None:
+            raise QueryError('Cannot lookup edge, no src_id or dst_id')
+
+        with session_scope(self.engine, session) as local:
+            query = local.query(PsqlVoidedEdge)
+            if src_id:
+                query = query.filter(PsqlVoidedEdge.src_id == src_id)
+            if dst_id:
+                query = query.filter(PsqlVoidedEdge.dst_id == dst_id)
+            result = query.all()
+
+        return result
+
+    def _edge_void(self, edge, session=None):
         """Voids an edge.
 
         :param PsqlEdge edge:
@@ -1256,11 +1297,10 @@ class PsqlGraphDriver(object):
         if not edge:
             raise ProgrammingError('edge_void was passed a NoneType PsqlEdge')
 
-        self.logger.debug('voiding edge: ({src})->({dst})'.format(
-            src=edge.src_id, dst=edge.dst_id))
+        self.logger.debug('Voiding edge: {}'.format(edge))
         with session_scope(self.engine, session) as local:
-            edge.voided = datetime.now()
-            local.merge(edge)
+            voided = PsqlVoidedEdge(edge)
+            local.add(voided)
 
     def edge_delete(self, edge, session=None):
         """Voids an edge.
@@ -1273,7 +1313,14 @@ class PsqlGraphDriver(object):
         :returns: None
 
         """
-        return self.edge_void(edge, session)
+
+        if not edge:
+            raise ProgrammingError('edge_delete was passed a NoneType edge')
+
+        self.logger.debug('Deleting edge: {}'.format(edge))
+        with session_scope(self.engine, session) as local:
+            self._edge_void(edge, session=local)
+            local.delete(edge)
 
     def edge_delete_by_node_id(self, node_id, session=None):
         """Looks up all edges that reference ``node_id`` and voids them.
@@ -1299,4 +1346,4 @@ class PsqlGraphDriver(object):
             src_nodes = self.edge_lookup(src_id=node_id, session=local)
             dst_nodes = self.edge_lookup(dst_id=node_id, session=local)
             for edge in src_nodes + dst_nodes:
-                self.edge_void(edge)
+                self.edge_delete(edge, local)

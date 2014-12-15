@@ -541,6 +541,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_edge_merge_and_lookup_properties(self):
         """Test edge property merging"""
+
         src_id = str(uuid.uuid4())
         dst_id = str(uuid.uuid4())
         props = {'key1': str(random.random()), 'key2': random.random()}

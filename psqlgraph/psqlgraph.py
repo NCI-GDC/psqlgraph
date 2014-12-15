@@ -2,8 +2,8 @@
 # Driver to implement the graph model in postgres
 #
 
-# ======== External modules ========
-from sqlalchemy.orm import sessionmaker
+# External modules
+from sqlalchemy.orm import sessionmaker, relationship
 from sqlalchemy import create_engine, Column, Integer, Text, String, func, \
     UniqueConstraint, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
@@ -16,16 +16,16 @@ import time
 import random
 import logging
 
-# ======== PsqlNode modules ========
+#  PsqlNode modules
 from validate import PsqlNodeValidator, PsqlEdgeValidator
 from exc import QueryError, ProgrammingError, NodeCreationError, \
     EdgeCreationError, ValidationError
 import sanitizer
 
-# ======== ORM object base ========
+#  ORM object base
 Base = declarative_base()
 
-# ======== Default constants ========
+#  Default constants
 """Used for retrying a write to postgres on exception catch
 .. |DEFAULT_RETRIES| replace:: 2"""
 DEFAULT_RETRIES = 2
@@ -68,6 +68,7 @@ class PsqlNode(Base):
     """
 
     __tablename__ = 'nodes'
+    __table_args__ = (UniqueConstraint('node_id', name='_node_id_uc'),)
 
     key = Column(Integer, primary_key=True)
     node_id = Column(String(36), nullable=False)
@@ -77,7 +78,6 @@ class PsqlNode(Base):
     acl = Column(ARRAY(Text))
     system_annotations = Column(JSONB, default={})
     properties = Column(JSONB, default={})
-    __table_args__ = (UniqueConstraint('node_id', name='_node_id_uc'),)
 
     def __repr__(self):
         return '<PsqlNode({node_id}>'.format(node_id=self.node_id)
@@ -187,6 +187,9 @@ class PsqlEdge(Base):
     system_annotations = Column(JSONB, default={})
     label = Column(Text, nullable=False)
     properties = Column(JSONB, default={})
+
+    src = relationship("PsqlNode", foreign_keys=[src_id])
+    dst = relationship("PsqlNode", foreign_keys=[dst_id])
 
     def __init__(self, src_id=src_id, dst_id=dst_id, label=label,
                  system_annotations=system_annotations,

@@ -756,8 +756,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
         node_id = str(uuid.uuid4())
         self.driver.node_merge(node_id=node_id, label='test')
         self._create_subtree(node_id)
-        node = self.driver.node_lookup_one(node_id)
-        self._walk_tree(node)
+        with session_scope(self.driver.engine) as session:
+            node = self.driver.node_lookup_one(node_id, session=session)
+            self._walk_tree(node)
 
 if __name__ == '__main__':
 

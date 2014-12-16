@@ -97,8 +97,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
         Verify the case where a user queries for any non-existent nodes
         """
 
-        node = self.driver.node_lookup(str(uuid.uuid4()))
+        node = list(self.driver.node_lookup(str(uuid.uuid4())))
         self.assertEqual(node, [])
+        node = self.driver.node_lookup_one(str(uuid.uuid4()))
+        self.assertTrue(node is None)
 
     def verify_node_count(self, count, node_id=None, matches=None,
                           voided=False):
@@ -106,14 +108,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         Verify the case where a user queries a count for non-existent nodes
         """
-        nodes = self.driver.node_lookup(
+        nodes = list(self.driver.node_lookup(
             node_id=node_id,
             property_matches=matches,
             include_voided=voided
-        )
-        self.assertEqual(len(nodes), count, 'Expected a {n} nodes to '
+        ))
+        length = len(nodes)
+        self.assertEqual(length, count, 'Expected a {n} nodes to '
                          'be found, instead found {count}'.format(
-                             n=count, count=len(nodes)))
+                             n=count, count=length))
         return nodes
 
     def test_node_merge_and_lookup(self):
@@ -178,8 +181,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         label = 'test_' + str(random.random())
         for i in range(self.REPEAT_COUNT):
-            self.test_node_update_properties_by_id(label=label)
-        nodes = self.driver.node_lookup(label=label)
+            self.driver.node_merge(
+                node_id=str(uuid.uuid4()), label=label)
+        nodes = list(self.driver.node_lookup(label=label))
         self.assertEqual(len(nodes), self.REPEAT_COUNT)
 
     def test_node_update_properties_by_matches(self):
@@ -263,7 +267,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertEqual(sanitize(system_annotationsA),
                              node.system_annotations)
 
-            nodes = self.verify_node_count(2, node_id=node_id, voided=True)
+            nodes = list(self.verify_node_count(
+                2, node_id=node_id, voided=True))
             self.assertEqual(sanitize(system_annotationsA),
                              nodes[0].system_annotations)
 
@@ -367,11 +372,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
 
+        label = str(uuid.uuid4())
         node_ids = [str(uuid.uuid4()) for i in range(self.REPEAT_COUNT)]
         properties = {}
         with session_scope(self.driver.engine) as session:
             for node_id in node_ids:
-
                 properties[node_id] = {
                     'key1': node_id,
                     'key2': 2,
@@ -386,11 +391,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
                     session=session,
                 )
 
-        for node_id in node_ids:
-            node = self.driver.node_lookup_one(node_id=node_id)
+        nodes = list(self.driver.node_lookup(label=label))
+        for node in nodes:
             self.assertEqual(
-                sanitize(properties[node_id]), node.properties,
-                'Node properties' 'do not match expected properties'
+                sanitize(properties[node.node_id]), node.properties,
+                'Node properties do not match expected properties'
             )
 
     def test_concurrent_node_update_by_id(self):
@@ -435,11 +440,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
                                  label='test')
 
         propertiesB = sanitizer.sanitize(propertiesB)
-        nodes = self.driver.node_lookup(node_id=tempid)
-        self.assertEqual(len(nodes), 1, 'Expected a single node to be found, '
-                         'instead found {count}'.format(count=len(nodes)))
-        self.assertEqual(propertiesB, nodes[0].properties, 'Node properties do'
-                         ' not match expected properties')
+        nodes = list(self.driver.node_lookup(node_id=tempid))
+        self.assertEqual(len(nodes), 1,
+                         'Expected a single node to be found, instead found '
+                         '{count}'.format(count=len(nodes)))
+        self.assertEqual(propertiesB, nodes[0].properties,
+                         'Node properties do not match expected properties')
 
     def test_node_delete_property_keys(self):
         """Test the ability to remove property keys from nodes"""
@@ -470,7 +476,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         annotations.pop('key2')
         annotations.pop('key3')
 
-        nodes = self.driver.node_lookup(node_id=tempid)
+        nodes = list(self.driver.node_lookup(node_id=tempid))
         self.assertEqual(len(nodes), 1, 'Expected a single node to be found, '
                          'instead found {count}'.format(count=len(nodes)))
         self.assertEqual(annotations, nodes[0].system_annotations)
@@ -482,7 +488,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.driver.node_merge(node_id=tempid, label='test')
         self.driver.node_delete(node_id=tempid)
 
-        nodes = self.driver.node_lookup(tempid)
+        nodes = list(self.driver.node_lookup(tempid))
         self.assertEqual(len(nodes), 0, 'Expected a no non-voided nodes '
                          'to be found, instead found {count}'.format(
                              count=len(nodes)))

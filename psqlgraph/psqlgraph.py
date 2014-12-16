@@ -343,8 +343,7 @@ class PsqlGraphDriver(object):
                     label=None, system_annotation_matches=None,
                     include_voided=False,
                     batch_size=DEFAULT_BATCH_SIZE, session=None):
-        """
-        This function wraps both ``node_lookup_by_id`` and
+        """This function wraps both ``node_lookup_by_id`` and
         ``node_lookup_by_matches``. If matches are provided then the
         nodes will be queried by id. If id is provided, then the nodes
         will be queried by id.  Providing both id and matches will be
@@ -352,6 +351,13 @@ class PsqlGraphDriver(object):
 
         .. note::
             A query with no resulting nodes will return an empty list ``[]``.
+
+        .. |batch_size| replace::
+            This function is iterable.  To reduce the number calls to
+            postgres, the results are returned from the database in
+            batches, and yielded to the user individually.  Increase
+            or decrease batch_size for optimization.  Default is
+            batch_size=1000, per SQLAlchemy recommendation.
 
         :param str node_id:
             The unique id that specifies a node in the table.
@@ -376,6 +382,7 @@ class PsqlGraphDriver(object):
            ``False`` in order to only return active nodes.
 
         :param session: |session|
+        :param session: |batch_size|
 
         :returns: iterator of PsqlNode
 
@@ -432,6 +439,7 @@ class PsqlGraphDriver(object):
            ``False`` in order to only return active nodes.
 
         :param session: |session|
+        :param session: |batch_size|
 
         :returns: iterator of PsqlNode
 
@@ -484,6 +492,7 @@ class PsqlGraphDriver(object):
            ``False`` in order to only return active nodes.
 
         :param session: |session|
+        :param session: |batch_size|
 
         :returns: iterator of PsqlNode
         """
@@ -952,6 +961,7 @@ class PsqlGraphDriver(object):
            Specifies whether results include voided nodes (deleted and
            transactional records).  This parameter defaults to
            ``False`` in order to only return active nodes.
+        :param session: |batch_size|
         :param session: |session|
         :returns: A list of PsqlEdge instances ([] if none found)
 
@@ -990,6 +1000,7 @@ class PsqlGraphDriver(object):
            Specifies whether results include voided nodes (deleted and
            transactional records).  This parameter defaults to
            ``False`` in order to only return active nodes.
+        :param session: |batch_size|
         :param session: |session|
         :returns: A list of PsqlEdge instances ([] if none found)
 

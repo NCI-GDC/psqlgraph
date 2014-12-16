@@ -16,7 +16,7 @@ from validate import PsqlNodeValidator, PsqlEdgeValidator
 from exc import QueryError, ProgrammingError, NodeCreationError, \
     EdgeCreationError, ValidationError
 import sanitizer
-from constants import DEFAULT_RETRIES
+from constants import DEFAULT_RETRIES, DEFAULT_BATCH_SIZE
 from node import PsqlNode, PsqlVoidedNode
 from edge import PsqlEdge, PsqlVoidedEdge
 from util import session_scope, retryable, default_backoff
@@ -59,15 +59,19 @@ class PsqlGraphDriver(object):
         """Override the edge validation callback."""
         self.edge_validator = edge_validator
 
-    def get_nodes(self, batch_size=1000, session=None):
+    def get_nodes(self, batch_size=DEFAULT_BATCH_SIZE,
+                  session=None):
         with session_scope(self.engine, session) as local:
             query = local.query(PsqlNode)
-        return query.yield_per(batch_size)
+            for node in query.yield_per(batch_size):
+                yield node
 
-    def get_edges(self, batch_size=1000, session=None):
+    def get_edges(self, batch_size=DEFAULT_BATCH_SIZE,
+                  session=None):
         with session_scope(self.engine, session) as local:
             query = local.query(PsqlEdge)
-        return query.yield_per(batch_size)
+            for edge in query.yield_per(batch_size):
+                yield edge
 
     def get_node_count(self, session=None):
         with session_scope(self.engine, session) as local:
@@ -337,8 +341,8 @@ class PsqlGraphDriver(object):
 
     def node_lookup(self, node_id=None, property_matches=None,
                     label=None, system_annotation_matches=None,
-                    include_voided=False, batch_size=1000,
-                    session=None):
+                    include_voided=False,
+                    batch_size=DEFAULT_BATCH_SIZE, session=None):
         """
         This function wraps both ``node_lookup_by_id`` and
         ``node_lookup_by_matches``. If matches are provided then the
@@ -410,7 +414,8 @@ class PsqlGraphDriver(object):
             yield result
 
     def node_lookup_by_id(self, node_id, include_voided=False,
-                          batch_size=1000, session=None):
+                          batch_size=DEFAULT_BATCH_SIZE,
+                          session=None):
         """This function looks up a node by a given id.  If include_voided is
         true, then the returned list will include nodes that have been
         voided (deleted or replaced in a transaction).
@@ -444,13 +449,14 @@ class PsqlGraphDriver(object):
                 voided = query.yield_per(batch_size)
                 results = itertools.chain(results, voided)
 
-        for result in results:
-            yield result
+            for result in results:
+                yield result
 
     def node_lookup_by_matches(self, property_matches=None,
                                system_annotation_matches=None,
                                label=None, include_voided=False,
-                               batch_size=1000, session=None):
+                               batch_size=DEFAULT_BATCH_SIZE,
+                               session=None):
         """Query the node table for nodes whose properties or
         system_annotation are supersets of ``properties_matches`` and
         ``system_annotation_matches`` respectively
@@ -518,8 +524,9 @@ class PsqlGraphDriver(object):
                 query = query.filter(PsqlNode.label == label)
 
             results = query.yield_per(batch_size)
-        for result in results:
-            yield result
+
+            for result in results:
+                yield result
 
     @retryable
     def node_clobber(self, node_id=None, node=None, acl=[],
@@ -911,24 +918,28 @@ class PsqlGraphDriver(object):
 
         """
 
-        edges = self.edge_lookup(
-            src_id=src_id,
-            dst_id=dst_id,
-            include_voided=include_voided,
-            session=session,
-        )
+        edges = []
+        for edge in self.edge_lookup(
+                src_id=src_id,
+                dst_id=dst_id,
+                include_voided=include_voided,
+                batch_size=1,
+                session=session):
 
-        if len(edges) > 1:
-            raise QueryError(
-                'Expected a single result for query, got {n}'.format(
-                    n=len(edges)))
+            edges.append(edge)
+            if len(edges) > 1:
+                raise QueryError(
+                    'Expected a single result for query, got {n}'.format(
+                        n=len(edges)))
+
         if len(edges) < 1:
             return None
 
         return edges[0]
 
     def edge_lookup(self, src_id=None, dst_id=None,
-                    include_voided=False, session=None):
+                    include_voided=False,
+                    batch_size=DEFAULT_BATCH_SIZE, session=None):
         """This function looks up a edge by a given src_id and dst_id.  If
         include_voided is true, then the returned list will include
         edges that have been voided.
@@ -955,13 +966,18 @@ class PsqlGraphDriver(object):
                 query = query.filter(PsqlEdge.src_id == src_id)
             if dst_id:
                 query = query.filter(PsqlEdge.dst_id == dst_id)
-            result = query.all()
+
+            results = query.yield_per(batch_size)
             if include_voided:
-                result += self.edge_lookup_voided(src_id, dst_id, local)
+                voided = self.edge_lookup_voided(src_id, dst_id, local)
+                results = itertools.chain(results, voided)
 
-        return result
+            for result in results:
+                yield result
 
-    def edge_lookup_voided(self, src_id=None, dst_id=None, session=None):
+    def edge_lookup_voided(self, src_id=None, dst_id=None,
+                           batch_size=DEFAULT_BATCH_SIZE,
+                           session=None):
         """This function looks up a edge by a given src_id and dst_id.  If
         include_voided is true, then the returned list will include
         edges that have been voided.
@@ -988,9 +1004,10 @@ class PsqlGraphDriver(object):
                 query = query.filter(PsqlVoidedEdge.src_id == src_id)
             if dst_id:
                 query = query.filter(PsqlVoidedEdge.dst_id == dst_id)
-            result = query.all()
+            results = query.yield_per(batch_size)
 
-        return result
+            for result in results:
+                yield result
 
     def _edge_void(self, edge, session=None):
         """Voids an edge.
@@ -1053,5 +1070,5 @@ class PsqlGraphDriver(object):
         with session_scope(self.engine, session) as local:
             src_nodes = self.edge_lookup(src_id=node_id, session=local)
             dst_nodes = self.edge_lookup(dst_id=node_id, session=local)
-            for edge in src_nodes + dst_nodes:
+            for edge in itertools.chain(src_nodes, dst_nodes):
                 self.edge_delete(edge, local)

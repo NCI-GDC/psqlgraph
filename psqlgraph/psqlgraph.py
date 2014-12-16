@@ -4,6 +4,7 @@
 
 # External modules
 import logging
+import itertools
 from sqlalchemy import create_engine, func
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -314,25 +315,31 @@ class PsqlGraphDriver(object):
         :returns: PsqlNode or None
 
         """
-        nodes = self.node_lookup(
+        nodes = []
+        results = self.node_lookup(
             node_id=node_id,
             property_matches=property_matches,
             system_annotation_matches=system_annotation_matches,
             label=label,
-            session=session,
-        )
+            batch_size=1,
+            session=session)
 
-        if len(nodes) > 1:
-            raise QueryError(
-                'Expected a single result for query, got {n}'.format(
-                    n=len(nodes)))
+        for node in results:
+            nodes.append(node)
+
+            if len(nodes) > 1:
+                raise QueryError(
+                    'Expected a single result for query, got {n}'.format(
+                        n=len(nodes)))
+
         if len(nodes) < 1:
             return None
 
         return nodes[0]
 
-    def node_lookup(self, node_id=None, property_matches=None, label=None,
-                    system_annotation_matches=None, include_voided=False,
+    def node_lookup(self, node_id=None, property_matches=None,
+                    label=None, system_annotation_matches=None,
+                    include_voided=False, batch_size=1000,
                     session=None):
         """
         This function wraps both ``node_lookup_by_id`` and
@@ -368,7 +375,7 @@ class PsqlGraphDriver(object):
 
         :param session: |session|
 
-        :returns: list of PsqlNode
+        :returns: iterator of PsqlNode
 
         """
 
@@ -385,21 +392,26 @@ class PsqlGraphDriver(object):
             raise QueryError('No node_id or matches specified')
 
         if node_id is not None:
-            return self.node_lookup_by_id(
+            nodes = self.node_lookup_by_id(
                 node_id=node_id,
                 include_voided=include_voided,
+                batch_size=batch_size,
                 session=session,
             )
 
         else:
-            return self.node_lookup_by_matches(
+            nodes = self.node_lookup_by_matches(
                 property_matches=property_matches,
                 system_annotation_matches=system_annotation_matches,
                 include_voided=include_voided,
+                batch_size=batch_size,
                 label=label,
             )
 
-    def node_lookup_by_id(self, node_id, include_voided=False, session=None):
+        return nodes
+
+    def node_lookup_by_id(self, node_id, include_voided=False,
+                          batch_size=1000, session=None):
         """This function looks up a node by a given id.  If include_voided is
         true, then the returned list will include nodes that have been
         voided (deleted or replaced in a transaction).
@@ -417,7 +429,7 @@ class PsqlGraphDriver(object):
 
         :param session: |session|
 
-        :returns: list of PsqlNode
+        :returns: iterator of PsqlNode
 
         """
 
@@ -425,19 +437,20 @@ class PsqlGraphDriver(object):
 
         with session_scope(self.engine, session) as local:
             query = local.query(PsqlNode).filter(PsqlNode.node_id == node_id)
-            result = query.all()
+            result = query.yield_per(batch_size)
 
             if include_voided:
                 query = local.query(PsqlVoidedNode).filter(
                     PsqlVoidedNode.node_id == node_id)
-                result += query.all()
+                voided = query.yield_per(batch_size)
+                result = itertools.chain(result, voided)
 
         return result
 
     def node_lookup_by_matches(self, property_matches=None,
                                system_annotation_matches=None,
                                label=None, include_voided=False,
-                               session=None):
+                               batch_size=1000, session=None):
         """Query the node table for nodes whose properties or
         system_annotation are supersets of ``properties_matches`` and
         ``system_annotation_matches`` respectively
@@ -466,7 +479,7 @@ class PsqlGraphDriver(object):
 
         :param session: |session|
 
-        :returns: list of PsqlNode
+        :returns: iterator of PsqlNode
         """
 
         if include_voided:
@@ -504,7 +517,7 @@ class PsqlGraphDriver(object):
             if label is not None:
                 query = query.filter(PsqlNode.label == label)
 
-            result = query.all()
+            result = query.yield_per(batch_size)
         return result
 
     @retryable

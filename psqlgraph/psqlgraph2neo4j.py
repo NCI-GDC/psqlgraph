@@ -68,7 +68,8 @@ class PsqlGraph2Neo4j(object):
             print("Exporting {n} nodes:".format(n=node_count))
             pbar = self.start_pbar(node_count)
 
-        for node in self.psqlgraphDriver.get_nodes():
+        nodes = self.psqlgraphDriver.get_nodes()
+        for node in nodes:
             self.convert_node(node)
             self.neo4jDriver.create(py2neo.Node(node.label, **node.properties))
             if not silent:
@@ -105,12 +106,11 @@ class PsqlGraph2Neo4j(object):
 
         transaction = self.neo4jDriver.cypher.begin()
         batch_count = 0
-        for edge in self.psqlgraphDriver.get_edges():
+        edges = self.psqlgraphDriver.get_edges()
+        for edge in edges:
             batch_count += 1
 
-            src = self.psqlgraphDriver.node_lookup_one(node_id=edge.src_id)
-            dst = self.psqlgraphDriver.node_lookup_one(node_id=edge.dst_id)
-            if not (src and dst):
+            if not (edge.src and edge.dst):
                 i += self.update_pbar(pbar, i)
                 continue
 
@@ -119,8 +119,8 @@ class PsqlGraph2Neo4j(object):
             WHERE s.id = {{src_id}} and d.id = {{dst_id}}
             CREATE (s)-[:{edge_label}]->(d)
             """.format(
-                src_label=src.label,
-                dst_label=dst.label,
+                src_label=edge.src.label,
+                dst_label=edge.dst.label,
                 edge_label=edge.label
             )
 

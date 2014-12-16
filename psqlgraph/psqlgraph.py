@@ -316,17 +316,15 @@ class PsqlGraphDriver(object):
 
         """
         nodes = []
-        results = self.node_lookup(
-            node_id=node_id,
-            property_matches=property_matches,
-            system_annotation_matches=system_annotation_matches,
-            label=label,
-            batch_size=1,
-            session=session)
+        for node in self.node_lookup(
+                node_id=node_id,
+                property_matches=property_matches,
+                system_annotation_matches=system_annotation_matches,
+                label=label,
+                batch_size=1,
+                session=session):
 
-        for node in results:
             nodes.append(node)
-
             if len(nodes) > 1:
                 raise QueryError(
                     'Expected a single result for query, got {n}'.format(
@@ -392,7 +390,7 @@ class PsqlGraphDriver(object):
             raise QueryError('No node_id or matches specified')
 
         if node_id is not None:
-            nodes = self.node_lookup_by_id(
+            results = self.node_lookup_by_id(
                 node_id=node_id,
                 include_voided=include_voided,
                 batch_size=batch_size,
@@ -400,7 +398,7 @@ class PsqlGraphDriver(object):
             )
 
         else:
-            nodes = self.node_lookup_by_matches(
+            results = self.node_lookup_by_matches(
                 property_matches=property_matches,
                 system_annotation_matches=system_annotation_matches,
                 include_voided=include_voided,
@@ -408,7 +406,8 @@ class PsqlGraphDriver(object):
                 label=label,
             )
 
-        return nodes
+        for result in results:
+            yield result
 
     def node_lookup_by_id(self, node_id, include_voided=False,
                           batch_size=1000, session=None):
@@ -437,15 +436,16 @@ class PsqlGraphDriver(object):
 
         with session_scope(self.engine, session) as local:
             query = local.query(PsqlNode).filter(PsqlNode.node_id == node_id)
-            result = query.yield_per(batch_size)
+            results = query.yield_per(batch_size)
 
             if include_voided:
                 query = local.query(PsqlVoidedNode).filter(
                     PsqlVoidedNode.node_id == node_id)
                 voided = query.yield_per(batch_size)
-                result = itertools.chain(result, voided)
+                results = itertools.chain(results, voided)
 
-        return result
+        for result in results:
+            yield result
 
     def node_lookup_by_matches(self, property_matches=None,
                                system_annotation_matches=None,
@@ -517,8 +517,9 @@ class PsqlGraphDriver(object):
             if label is not None:
                 query = query.filter(PsqlNode.label == label)
 
-            result = query.yield_per(batch_size)
-        return result
+            results = query.yield_per(batch_size)
+        for result in results:
+            yield result
 
     @retryable
     def node_clobber(self, node_id=None, node=None, acl=[],

@@ -736,6 +736,29 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(len(ret_src_ids), len(src_ids))
         self.assertEqual(len(ret_dst_ids), len(dst_ids))
 
+    def _create_subtree(self, parent_id, level=0):
+        for i in range(5):
+            node_id = str(uuid.uuid4())
+            self.driver.node_merge(
+                node_id=node_id, label='test_{}'.format(level))
+            self.driver.edge_merge(
+                src_id=parent_id, dst_id=node_id, label='test'
+            )
+            if level < 2:
+                self._create_subtree(node_id, level+1)
+
+    def _walk_tree(self, node, level=0):
+        for edge in node.edges_out:
+            print '+--'*level + '>', edge.dst
+            self._walk_tree(edge.dst, level+1)
+
+    def test_tree_walk(self):
+        node_id = str(uuid.uuid4())
+        self.driver.node_merge(node_id=node_id, label='test')
+        self._create_subtree(node_id)
+        node = self.driver.node_lookup_one(node_id)
+        self._walk_tree(node)
+
 if __name__ == '__main__':
 
     def run_test(test):

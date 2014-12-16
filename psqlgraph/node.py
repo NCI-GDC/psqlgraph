@@ -1,10 +1,12 @@
 from sqlalchemy import UniqueConstraint, String
 from sqlalchemy.dialects.postgres import ARRAY, JSONB, TIMESTAMP
 from sqlalchemy import Column, Integer, Text
+from sqlalchemy.orm import relationship
 from datetime import datetime
 
 from sanitizer import sanitize
 from psqlgraph import Base
+from edge import PsqlEdge
 
 
 class PsqlNode(Base):
@@ -24,9 +26,12 @@ class PsqlNode(Base):
     acl = Column(ARRAY(Text))
     system_annotations = Column(JSONB, default={})
     properties = Column(JSONB, default={})
+    edges_out = relationship("PsqlEdge", foreign_keys=[PsqlEdge.src_id])
+    edges_in = relationship("PsqlEdge", foreign_keys=[PsqlEdge.dst_id])
 
     def __repr__(self):
-        return '<PsqlNode({node_id}>'.format(node_id=self.node_id)
+        return '<PsqlNode({node_id}, {label})>'.format(
+            node_id=self.node_id, label=self.label)
 
     def __init__(self, node_id=node_id, label=label, acl=[],
                  system_annotations={},
@@ -48,6 +53,30 @@ class PsqlNode(Base):
             label=self.label,
             properties=self.properties,
         )
+
+    def get_edges(self):
+        for edge_in in self.edges_in:
+            yield edge_in
+        for edge_out in self.edges_iout:
+            yield edge_out
+
+    def get_neighbors(self):
+        for edge_in in self.edges_in:
+            yield edge_in.src
+        for edge_out in self.edges_iout:
+            yield edge_out.dst
+
+    def walk_forward(self):
+        for edge_out in self.edges_out:
+            yield edge_out.dst
+            for subdst in edge_out.dst.walk_forward():
+                yield subdst
+
+    def walk_backward(self):
+        for edge_in in self.edges_in:
+            yield edge_in.src
+            for subsrc in edge_in.src.walk_backward():
+                yield subsrc
 
     def merge(self, acl=[], system_annotations={}, properties={}):
         """Merges a new node onto this instance.  The parameter ``node``

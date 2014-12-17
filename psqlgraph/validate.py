@@ -25,8 +25,6 @@ class PsqlNodeValidator(object):
 
 class AvroNodeValidator(PsqlNodeValidator):
     def __init__(self, schema):
-        # TODO sanity checks on schema here, it needs to have three fields:
-        # id, label, and properties
         self.schema = schema
 
     def munge_node_into_dict(self, node):

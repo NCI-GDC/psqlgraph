@@ -2,14 +2,17 @@ import uuid
 import unittest
 import logging
 import psqlgraph
-from psqlgraph import PsqlGraphDriver, session_scope, sanitizer
+from psqlgraph import PsqlGraphDriver, PsqlNode, session_scope, sanitizer
 from psqlgraph.sanitizer import sanitize as sanitize
 from multiprocessing import Process
 import random
 from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError
+from psqlgraph.validate import AvroNodeValidator
 
 from datetime import datetime
+
+from avro.schema import make_avsc_object
 
 
 host = 'localhost'
@@ -676,6 +679,60 @@ class TestPsqlGraphDriver(unittest.TestCase):
         except:
             self.driver.edge_validator.validate = temp
             raise
+
+    def make_avro_schema(self, label, props):
+        schema_dict = {
+            "name": label,
+            "type": "record",
+            "fields": [
+                {"name": "id", "type": "string"},
+                {
+                    "name": "type",
+                    "type": [{"symbols": [label],
+                              "type": "enum",
+                              "name": label + "_enum"}],
+                },
+                {
+                    "name": "properties",
+                    "type": [{"type": "record", "name": "properties",
+                              "fields": [{"name": k, "type": v}
+                                         for k, v in props.iteritems()]}],
+                },
+            ]
+        }
+        return make_avsc_object(schema_dict)
+
+    def test_basic_avro_node_validation_succeeds(self):
+        self.driver.node_validator = AvroNodeValidator(
+            self.make_avro_schema("file", {"file_name": "string"}))
+        node = PsqlNode(str(uuid.uuid4()), "file",
+                        properties={"file_name": "foobar.txt"})
+        self.driver.node_insert(node)
+
+    def test_nonstring_id_causes_avro_validtion_failure(self):
+        self.driver.node_validator = AvroNodeValidator(
+            self.make_avro_schema("file", {"file_name": "string"}))
+        node = PsqlNode(345, "file",
+                        properties={"file_name": "foobar.txt"})
+        with self.assertRaises(ValidationError):
+            self.driver.node_insert(node)
+
+    def test_prop_type_mismatch_causes_avro_validation_failure(self):
+        self.driver.node_validator = AvroNodeValidator(
+            self.make_avro_schema("file", {"file_name": "string"}))
+        node = PsqlNode(str(uuid.uuid4()), "file",
+                        properties={"file_name": 3})
+        with self.assertRaises(ValidationError):
+            self.driver.node_insert(node)
+
+    def test_missing_prop_types_causes_avro_validation_failure(self):
+        self.driver.node_validator = AvroNodeValidator(
+            self.make_avro_schema("file", {"file_name": "string",
+                                           "md5": "string"}))
+        node = PsqlNode(str(uuid.uuid4()), "file",
+                        properties={"file_name": "foobar.txt"})
+        with self.assertRaises(ValidationError):
+            self.driver.node_insert(node)
 
     def test_get_nodes(self):
         """Test node get"""

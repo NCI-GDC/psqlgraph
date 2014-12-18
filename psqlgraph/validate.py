@@ -54,5 +54,26 @@ class AvroNodeValidator(PsqlNodeValidator):
 
     def validate(self, node, *args, **kwargs):
         node_as_dict = self.munge_node_into_dict(node)
-        return (avro_validate(self.schema, node_as_dict)
-                and validate_no_unexpected_props(self.schema, node_as_dict))
+        return (avro_validate(self.schema, node_as_dict) and
+                validate_no_unexpected_props(self.schema, node_as_dict))
+
+
+class AvroEdgeValidator(PsqlEdgeValidator):
+    def __init__(self, schema):
+        self.schema = schema
+
+    def munge_edge_into_dict(self, edge):
+        res = {}
+        res["id"] = str(edge.key)
+        res["label"] = edge.label
+        res["node_labels"] = {"src_node_label": edge.src.label,
+                              "dest_node_label": edge.dst.label}
+        res["node_ids"] = {"src_node_id": edge.src_id,
+                           "dest_node_id": edge.dst_id}
+        res["properties"] = edge.properties
+        return res
+
+    def validate(self, edge, *args, **kwargs):
+        edge_as_dict = self.munge_edge_into_dict(edge)
+        return (avro_validate(self.schema, edge_as_dict) and
+                validate_no_unexpected_props(self.schema, edge_as_dict))

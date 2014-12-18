@@ -23,11 +23,16 @@ def try_drop_test_data(user, database, root_user='postgres', host=''):
         create_stmt = 'DROP DATABASE "{database}"'.format(database=database)
         conn.execute(create_stmt)
 
+    except Exception, msg:
+        logging.warn("Unable to drop test data:" + str(msg))
+
+    try:
         user_stmt = "DROP USER {user}".format(user=user)
         conn.execute(user_stmt)
 
     except Exception, msg:
-        logging.warn("Unable to drop test data:" + str(msg))
+        logging.warn("Unable to drop test user:" + str(msg))
+
 
     else:
         conn.close()
@@ -46,13 +51,15 @@ def setup_database(user, password, database, root_user='postgres', host=''):
     conn = engine.connect()
     conn.execute("commit")
 
-    create_stmt = 'CREATE DATABASE "{database}"'.format(database=database)
-    conn.execute(create_stmt)
-
     user_stmt = "CREATE USER {user} WITH PASSWORD '{password}'".format(
         user=user, password=password)
     conn.execute(user_stmt)
+    conn.execute("commit")
 
+    create_stmt = 'CREATE DATABASE "{database}"'.format(database=database)
+    conn.execute(create_stmt)
+    conn.execute("commit")
+    
     perm_stmt = 'GRANT ALL PRIVILEGES ON DATABASE {database} to {password}'\
                 ''.format(database=database, password=password)
     conn.execute(perm_stmt)
@@ -66,7 +73,7 @@ def create_tables(host, user, password, database):
     """
     create a table
     """
-    print('Creating tables in test database')
+    print('Creating tables in test database: host = %s, user = %s, password = %s, database = %s' % (host, user, password, database))
 
     driver = PsqlGraphDriver(host, user, password, database)
     Base.metadata.create_all(driver.engine)

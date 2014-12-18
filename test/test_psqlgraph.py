@@ -722,34 +722,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(len(ret_src_ids), len(src_ids))
         self.assertEqual(len(ret_dst_ids), len(dst_ids))
 
-    def test_joe_1(self):
-        """Test stuff Joe is playing with"""
-        
-        node_id = str(uuid.uuid4())
-
-        
-
-        # create the node
-        self.driver.node_merge(node_id=node_id, label='Heizölrückstoßabdämpfung')
-
-        check_node = self.driver.node_lookup(str(node_id)
-
-        #~ # link it to itself
-        #~ for x in range(0, 200):
-            #~ self.driver.edge_merge(src_id=node_id, dst_id=node_id, label='test_edge_%03d' % x)
-
-        #~ # make sure the edge is there
-#~ #        edge = self.driver.edge_lookup_one(dst_id=node_id)
-        #~ edges = [e.dst_id for e in self.driver.edge_lookup(src_id=src_id)]
-        #~ print edges
-
-        #~ # delete the node
-        #~ self.driver.node_delete(node_id=node_id)
-        
-        #~ # make sure the edge is gone
-        #~ self.assertIs(self.driver.edge_lookup_one(dst_id=node_id), None)
-
-
 if __name__ == '__main__':
 
     def run_test(test):

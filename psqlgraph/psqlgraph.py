@@ -835,11 +835,12 @@ class PsqlGraphDriver(object):
         """
 
         self.logger.debug('Inserting: {0}'.format(edge))
-        if not self.edge_validator(edge):
-            raise ValidationError('Node failed schema constraints')
 
         with session_scope(self.engine, session) as local:
             local.add(edge)
+            local.flush()
+            if not self.edge_validator(edge):
+                raise ValidationError('Edge {} failed validation.'.format(edge))
 
         return edge
 

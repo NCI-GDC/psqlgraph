@@ -47,7 +47,7 @@ class AvroNodeValidator(PsqlNodeValidator):
 
     def munge_node_into_dict(self, node):
         res = {}
-        res["type"] = node.label
+        res["label"] = node.label
         res["properties"] = node.properties
         res["id"] = node.node_id
         return res

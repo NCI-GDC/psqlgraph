@@ -12,6 +12,7 @@ from datetime import datetime
 import time
 import yaml
 import string
+import os, sys
 
 host = 'localhost'
 user = 'test'
@@ -28,7 +29,7 @@ class TestPsqlGraphDriverGB(unittest.TestCase):
         self.logger = logging.getLogger(__name__)
         self.driver = PsqlGraphDriver(host, user, password, database)
         self.REPEAT_COUNT = 200
-        with open("quickbrown.yaml", 'r') as unicode_file:
+        with open(os.path.join(os.path.dirname(__file__), "quickbrown.yaml"), 'r') as unicode_file:
             self.yaml_conf = yaml.load(unicode_file)
 
     def _clear_tables(self):

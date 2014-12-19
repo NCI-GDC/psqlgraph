@@ -7,5 +7,6 @@ setup(
         'psycopg2',
         'sqlalchemy',
         'py2neo',
+        'pyyaml', 
         ],
     )

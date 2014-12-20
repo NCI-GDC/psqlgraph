@@ -57,6 +57,15 @@ class TestAvroValidation(unittest.TestCase):
                         properties={"file_name": "foobar.txt"})
         self.driver.node_insert(node)
 
+    def test_avro_validation_catches_errors_on_update(self):
+        self.driver.node_validator = AvroNodeValidator(
+            self.make_avro_node_schema({"file": {"file_name": "string"}}))
+        node = PsqlNode(str(uuid.uuid4()), "file",
+                        properties={"file_name": "foobar.txt"})
+        self.driver.node_insert(node)
+        with self.assertRaises(ValidationError):
+            self.driver.node_merge(node=node, properties={"file_name": 3})
+
     def test_nonstring_id_causes_avro_validtion_failure(self):
         self.driver.node_validator = AvroNodeValidator(
             self.make_avro_node_schema({"file": {"file_name": "string"}}))
@@ -115,6 +124,16 @@ class TestAvroValidation(unittest.TestCase):
                                     "someting_else": "bazquux"})
         with self.assertRaises(ValidationError):
             self.driver.node_insert(node)
+
+    def test_avro_node_validation_checks_on_update(self):
+        self.driver.node_validator = AvroNodeValidator(
+            self.make_avro_node_schema({"file": {"file_name": "string"}}))
+        node = PsqlNode(str(uuid.uuid4()), "file",
+                        properties={"file_name": "foobar.txt",
+                                    "someting_else": "bazquux"})
+        with self.assertRaises(ValidationError):
+            self.driver.node_insert(node)
+
 
     def avro_edge_node_labels_dict(self, label_pairs):
         return [
@@ -183,7 +202,7 @@ class TestAvroValidation(unittest.TestCase):
                         dst_id=node2.node_id,
                         label=label,
                         properties=props)
-        self.driver.edge_insert(edge)
+        return self.driver.edge_insert(edge)
 
     def avsc_from_dict(self, *args, **kwargs):
         return make_avsc_object(self.make_avro_edge_schema(*args, **kwargs))
@@ -194,6 +213,15 @@ class TestAvroValidation(unittest.TestCase):
                                      props={"count": "int"})
         self.driver.edge_validator = AvroEdgeValidator(schema)
         self.insert_edge("derived_from", "file", "aliquot", props={"count": 1})
+
+    def test_edge_validation_happens_on_updates(self):
+        schema = self.avsc_from_dict("derived_from",
+                                     {"file": "aliquot"},
+                                     props={"count": "int"})
+        self.driver.edge_validator = AvroEdgeValidator(schema)
+        edge = self.insert_edge("derived_from", "file", "aliquot", props={"count": 1})
+        with self.assertRaises(ValidationError):
+            self.driver.edge_update(edge, properties={"count": "foo"})
 
     def test_edge_validation_fails_on_missing_properites(self):
         schema = self.avsc_from_dict("derived_from",

@@ -868,14 +868,15 @@ class PsqlGraphDriver(object):
                    properties=properties)
         properties = edge.properties
 
-        if not self.edge_validator(edge):
-            raise ValidationError('Edge failed schema constraints')
-
         with session_scope(self.engine, session) as local:
             self._edge_void(edge, local)
             edge.properties = {}
             local.flush()
             edge.properties = properties
+            local.flush()
+            if not self.edge_validator(edge):
+                raise ValidationError('Edge failed schema constraints')
+
 
     def edge_lookup_one(self, src_id=None, dst_id=None,
                         include_voided=False, session=None):

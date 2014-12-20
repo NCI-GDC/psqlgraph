@@ -214,12 +214,11 @@ class PsqlGraphDriver(object):
         """
 
         self.logger.debug('Creating a new node: {}'.format(node))
-        if not self.node_validator(node):
-            raise ValidationError('Node failed schema constraints')
 
         with session_scope(self.engine, session) as local:
             local.add(node)
-
+            if not self.node_validator(node):
+                raise ValidationError('Node failed schema constraints')
         return node
 
     def node_update(self, node, system_annotations={},
@@ -244,12 +243,13 @@ class PsqlGraphDriver(object):
         node.merge(system_annotations=system_annotations, acl=acl,
                    properties=properties)
 
-        if not self.node_validator(node):
-            raise ValidationError('Node failed schema constraints')
-
         with session_scope(self.engine, session) as local:
             self._node_void(node, local)
             local.merge(node)
+            if not self.node_validator(node):
+                raise ValidationError('Node failed schema constraints')
+
+
 
     def _node_void(self, node, session=None):
         """if passed a non-null node, then ``node_void`` will set the

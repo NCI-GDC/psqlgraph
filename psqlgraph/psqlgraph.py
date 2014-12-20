@@ -848,10 +848,10 @@ class PsqlGraphDriver(object):
                     session=None):
         """
         This function assumes that you have already done a query for an
-        existing node!  This function will take an node, void it and
-        create a new node entry in its place
+        existing edge!  This function will take an edge, void it and
+        create a new edge entry in its place
 
-        :param PsqlNode new_node: The node with which to overwrite ``old_node``
+        :param PsqlEdge edge: The edge to update with the provided values
         :param dict properties: |properties|
         :param dict system_annotations: |system_annotations|
         :param session: |session|

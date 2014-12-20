@@ -70,7 +70,7 @@ class PsqlEdge(Base):
         """
 
         if system_annotations:
-            self.syste_annotations = self.system_annotations.update(
+            self.system_annotations.update(
                 sanitize(system_annotations))
 
         if properties:

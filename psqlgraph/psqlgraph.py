@@ -66,16 +66,12 @@ class PsqlGraphDriver(object):
     def get_nodes(self, batch_size=DEFAULT_BATCH_SIZE,
                   session=None):
         with session_scope(self.engine, session) as local:
-            query = local.query(PsqlNode)
-            for node in query.yield_per(batch_size):
-                yield node
+            return local.query(PsqlNode)
 
     def get_edges(self, batch_size=DEFAULT_BATCH_SIZE,
                   session=None):
         with session_scope(self.engine, session) as local:
-            query = local.query(PsqlEdge)
-            for edge in query.yield_per(batch_size):
-                yield edge
+            return local.query(PsqlEdge)
 
     def get_node_count(self, session=None):
         with session_scope(self.engine, session) as local:

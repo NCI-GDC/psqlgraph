@@ -2,7 +2,7 @@ import uuid
 import unittest
 import logging
 import psqlgraph
-from psqlgraph import PsqlGraphDriver, session_scope, sanitizer
+from psqlgraph import PsqlGraphDriver, sanitizer
 from psqlgraph.sanitizer import sanitize as sanitize
 from multiprocessing import Process
 import random
@@ -276,7 +276,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def _insert_node(self, node):
         """Test inserting a node"""
-        with psqlgraph.session_scope(self.driver.engine) as session:
+        with self.driver.session_scope() as session:
             session.add(node)
 
     def test_node_unique_id_constraint(self):
@@ -375,7 +375,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         label = str(uuid.uuid4())
         node_ids = [str(uuid.uuid4()) for i in range(self.REPEAT_COUNT)]
         properties = {}
-        with session_scope(self.driver.engine) as session:
+        with self.driver.session_scope() as session:
             for node_id in node_ids:
                 properties[node_id] = {
                     'key1': node_id,
@@ -595,13 +595,13 @@ class TestPsqlGraphDriver(unittest.TestCase):
         dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
         self.driver.node_merge(node_id=src_id, label='test')
 
-        with session_scope(self.driver.engine) as session:
+        with self.driver.session_scope() as session:
             for dst_id in dst_ids:
                 self.driver.node_merge(
                     node_id=dst_id, label='test', session=session
                 )
 
-        with session_scope(self.driver.engine) as session:
+        with self.driver.session_scope() as session:
             for dst_id in dst_ids:
                 node = self.driver.node_lookup_one(
                     node_id=dst_id, session=session)
@@ -756,7 +756,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         node_id = str(uuid.uuid4())
         self.driver.node_merge(node_id=node_id, label='test')
         self._create_subtree(node_id)
-        with session_scope(self.driver.engine) as session:
+        with self.driver.session_scope() as session:
             node = self.driver.node_lookup_one(node_id, session=session)
             self._walk_tree(node)
 

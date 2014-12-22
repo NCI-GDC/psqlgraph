@@ -51,6 +51,9 @@ class PsqlGraphDriver(object):
 
         self.engine = create_engine(conn_str)
 
+    def session_scope(self):
+        return session_scope(self.engine)
+
     def set_node_validator(self, node_validator):
         """Override the node validation callback."""
         self.node_validator = node_validator

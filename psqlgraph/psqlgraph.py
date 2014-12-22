@@ -7,6 +7,7 @@ import logging
 import itertools
 from sqlalchemy import create_engine, func
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm.exc import NoResultFound
 
 #  ORM object base
 Base = declarative_base()
@@ -322,25 +323,16 @@ class PsqlGraphDriver(object):
         :returns: PsqlNode or None
 
         """
-        nodes = []
-        for node in self.node_lookup(
+        try:
+            return self.node_lookup(
                 node_id=node_id,
                 property_matches=property_matches,
                 system_annotation_matches=system_annotation_matches,
                 label=label,
                 batch_size=1,
-                session=session):
-
-            nodes.append(node)
-            if len(nodes) > 1:
-                raise QueryError(
-                    'Expected a single result for query, got {n}'.format(
-                        n=len(nodes)))
-
-        if len(nodes) < 1:
+                session=session).one()
+        except NoResultFound:
             return None
-
-        return nodes[0]
 
     def node_lookup(self, node_id=None, property_matches=None,
                     label=None, system_annotation_matches=None,
@@ -387,7 +379,7 @@ class PsqlGraphDriver(object):
         :param session: |session|
         :param session: |batch_size|
 
-        :returns: iterator of PsqlNode
+        :returns: SqlAlchemy query object
 
         """
 
@@ -404,7 +396,7 @@ class PsqlGraphDriver(object):
             raise QueryError('No node_id or matches specified')
 
         if node_id is not None:
-            results = self.node_lookup_by_id(
+            return self.node_lookup_by_id(
                 node_id=node_id,
                 include_voided=include_voided,
                 batch_size=batch_size,
@@ -412,16 +404,13 @@ class PsqlGraphDriver(object):
             )
 
         else:
-            results = self.node_lookup_by_matches(
+            return self.node_lookup_by_matches(
                 property_matches=property_matches,
                 system_annotation_matches=system_annotation_matches,
                 include_voided=include_voided,
                 batch_size=batch_size,
                 label=label,
             )
-
-        for result in results:
-            yield result
 
     def node_lookup_by_id(self, node_id, include_voided=False,
                           batch_size=DEFAULT_BATCH_SIZE,
@@ -444,7 +433,8 @@ class PsqlGraphDriver(object):
         :param session: |session|
         :param session: |batch_size|
 
-        :returns: iterator of PsqlNode
+        :returns: SqlAlchemy query object (or iterator of results if
+        `included_voided` is True)
 
         """
 
@@ -452,16 +442,15 @@ class PsqlGraphDriver(object):
 
         with session_scope(self.engine, session) as local:
             query = local.query(PsqlNode).filter(PsqlNode.node_id == node_id)
-            results = query.yield_per(batch_size)
+            query = query.yield_per(batch_size)
 
             if include_voided:
-                query = local.query(PsqlVoidedNode).filter(
+                voided_query = local.query(PsqlVoidedNode).filter(
                     PsqlVoidedNode.node_id == node_id)
-                voided = query.yield_per(batch_size)
-                results = itertools.chain(results, voided)
-
-            for result in results:
-                yield result
+                voided_query = voided_query.yield_per(batch_size)
+                return itertools.chain(query, voided_query)
+            else:
+                return query
 
     def node_lookup_by_matches(self, property_matches=None,
                                system_annotation_matches=None,
@@ -497,7 +486,7 @@ class PsqlGraphDriver(object):
         :param session: |session|
         :param session: |batch_size|
 
-        :returns: iterator of PsqlNode
+        :returns: SqlAlchemy query object
         """
 
         if include_voided:
@@ -535,10 +524,7 @@ class PsqlGraphDriver(object):
             if label is not None:
                 query = query.filter(PsqlNode.label == label)
 
-            results = query.yield_per(batch_size)
-
-            for result in results:
-                yield result
+            return query.yield_per(batch_size)
 
     @retryable
     def node_clobber(self, node_id=None, node=None, acl=[],
@@ -930,24 +916,15 @@ class PsqlGraphDriver(object):
 
         """
 
-        edges = []
-        for edge in self.edge_lookup(
+        try:
+            return self.edge_lookup(
                 src_id=src_id,
                 dst_id=dst_id,
                 include_voided=include_voided,
                 batch_size=1,
-                session=session):
-
-            edges.append(edge)
-            if len(edges) > 1:
-                raise QueryError(
-                    'Expected a single result for query, got {n}'.format(
-                        n=len(edges)))
-
-        if len(edges) < 1:
+                session=session).one()
+        except NoResultFound:
             return None
-
-        return edges[0]
 
     def edge_lookup(self, src_id=None, dst_id=None,
                     include_voided=False,
@@ -966,7 +943,7 @@ class PsqlGraphDriver(object):
            ``False`` in order to only return active nodes.
         :param session: |batch_size|
         :param session: |session|
-        :returns: A list of PsqlEdge instances ([] if none found)
+        :returns: SqlAlchemy query object (or iterator of edges if `include_voided` is true)
 
         """
 
@@ -980,13 +957,13 @@ class PsqlGraphDriver(object):
             if dst_id:
                 query = query.filter(PsqlEdge.dst_id == dst_id)
 
-            results = query.yield_per(batch_size)
+            query = query.yield_per(batch_size)
             if include_voided:
-                voided = self.edge_lookup_voided(src_id, dst_id, local)
-                results = itertools.chain(results, voided)
-
-            for result in results:
-                yield result
+                voided_query = self.edge_lookup_voided(src_id, dst_id, local,
+                                                       batch_size=batch_size)
+                return itertools.chain(query, voided_query)
+            else:
+                return query
 
     def edge_lookup_voided(self, src_id=None, dst_id=None,
                            batch_size=DEFAULT_BATCH_SIZE,
@@ -1018,10 +995,7 @@ class PsqlGraphDriver(object):
                 query = query.filter(PsqlVoidedEdge.src_id == src_id)
             if dst_id:
                 query = query.filter(PsqlVoidedEdge.dst_id == dst_id)
-            results = query.yield_per(batch_size)
-
-            for result in results:
-                yield result
+            return query.yield_per(batch_size)
 
     def _edge_void(self, edge, session=None):
         """Voids an edge.

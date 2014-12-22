@@ -2,17 +2,14 @@ import uuid
 import unittest
 import logging
 import psqlgraph
-from psqlgraph import PsqlGraphDriver, PsqlNode, session_scope, sanitizer
+from psqlgraph import PsqlGraphDriver, session_scope, sanitizer
 from psqlgraph.sanitizer import sanitize as sanitize
 from multiprocessing import Process
 import random
 from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError
-from psqlgraph.validate import AvroNodeValidator
 
 from datetime import datetime
-
-from avro.schema import make_avsc_object
 
 
 host = 'localhost'

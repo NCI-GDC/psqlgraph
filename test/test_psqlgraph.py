@@ -111,8 +111,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
         nodes = list(self.driver.node_lookup(
             node_id=node_id,
             property_matches=matches,
-            include_voided=voided
+            voided=False
         ))
+        if voided:
+            voided_nodes = list(self.driver.node_lookup(
+                node_id=node_id,
+                property_matches=matches,
+                voided=True
+            ))
+            nodes = list(nodes) + list(voided_nodes)
         length = len(nodes)
         self.assertEqual(length, count, 'Expected a {n} nodes to '
                          'be found, instead found {count}'.format(

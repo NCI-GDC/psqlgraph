@@ -17,7 +17,7 @@ from validate import PsqlNodeValidator, PsqlEdgeValidator
 from exc import QueryError, ProgrammingError, NodeCreationError, \
     EdgeCreationError, ValidationError
 import sanitizer
-from constants import DEFAULT_RETRIES, DEFAULT_BATCH_SIZE
+from constants import DEFAULT_RETRIES
 from node import PsqlNode, PsqlVoidedNode
 from edge import PsqlEdge, PsqlVoidedEdge
 from util import session_scope, retryable, default_backoff
@@ -63,13 +63,11 @@ class PsqlGraphDriver(object):
         """Override the edge validation callback."""
         self.edge_validator = edge_validator
 
-    def get_nodes(self, batch_size=DEFAULT_BATCH_SIZE,
-                  session=None):
+    def get_nodes(self, session=None):
         with session_scope(self.engine, session) as local:
             return local.query(PsqlNode)
 
-    def get_edges(self, batch_size=DEFAULT_BATCH_SIZE,
-                  session=None):
+    def get_edges(self, session=None):
         with session_scope(self.engine, session) as local:
             return local.query(PsqlEdge)
 
@@ -109,7 +107,6 @@ class PsqlGraphDriver(object):
             on existing entries are immutable. In order to modify a
             label, you must manually delete the entry and recreate it
             with a new label.
-
 
         .. |system_annotations| replace::
             The dictionary representing arbitrary system annotation on
@@ -325,15 +322,13 @@ class PsqlGraphDriver(object):
                 property_matches=property_matches,
                 system_annotation_matches=system_annotation_matches,
                 label=label,
-                batch_size=1,
                 session=session).one()
         except NoResultFound:
             return None
 
     def node_lookup(self, node_id=None, property_matches=None,
                     label=None, system_annotation_matches=None,
-                    include_voided=False,
-                    batch_size=DEFAULT_BATCH_SIZE, session=None):
+                    voided=False, session=None):
         """This function wraps both ``node_lookup_by_id`` and
         ``node_lookup_by_matches``. If matches are provided then the
         nodes will be queried by id. If id is provided, then the nodes
@@ -343,12 +338,11 @@ class PsqlGraphDriver(object):
         .. note::
             A query with no resulting nodes will return an empty list ``[]``.
 
-        .. |batch_size| replace::
-            This function is iterable.  To reduce the number calls to
-            postgres, the results are returned from the database in
-            batches, and yielded to the user individually.  Increase
-            or decrease batch_size for optimization.  Default is
-            batch_size=1000, per SQLAlchemy recommendation.
+        .. |voided| replace::
+               Specifies whether the resulting query should represent
+               voided nodes (deleted and transactional records) in the
+               voided table.  This parameter defaults to ``False`` in
+               order to only return active nodes.
 
         :param str node_id:
             The unique id that specifies a node in the table.
@@ -367,13 +361,10 @@ class PsqlGraphDriver(object):
         :param str label:
             Adds filter to query such that results must have label ``label``
 
-        :param bool include_voided:
-           Specifies whether results include voided nodes (deleted and
-           transactional records).  This parameter defaults to
-           ``False`` in order to only return active nodes.
+        :param bool voided:
 
+        :param session: |voided|
         :param session: |session|
-        :param session: |batch_size|
 
         :returns: SqlAlchemy query object
 
@@ -394,8 +385,7 @@ class PsqlGraphDriver(object):
         if node_id is not None:
             return self.node_lookup_by_id(
                 node_id=node_id,
-                include_voided=include_voided,
-                batch_size=batch_size,
+                voided=voided,
                 session=session,
             )
 
@@ -403,16 +393,13 @@ class PsqlGraphDriver(object):
             return self.node_lookup_by_matches(
                 property_matches=property_matches,
                 system_annotation_matches=system_annotation_matches,
-                include_voided=include_voided,
-                batch_size=batch_size,
+                voided=voided,
                 label=label,
             )
 
-    def node_lookup_by_id(self, node_id, include_voided=False,
-                          batch_size=DEFAULT_BATCH_SIZE,
-                          session=None):
-        """This function looks up a node by a given id.  If include_voided is
-        true, then the returned list will include nodes that have been
+    def node_lookup_by_id(self, node_id, voided=False, session=None):
+        """This function looks up a node by a given id.  If voided is True,
+        then the returned query will consist of nodes that have been
         voided (deleted or replaced in a transaction).
 
         .. note::
@@ -421,38 +408,28 @@ class PsqlGraphDriver(object):
         :param str node_id:
             The unique id that specifies a node in the table.
 
-        :param bool include_voided:
-           Specifies whether results include voided nodes (deleted and
-           transactional records).  This parameter defaults to
-           ``False`` in order to only return active nodes.
-
+        :param session: |voided|
         :param session: |session|
-        :param session: |batch_size|
 
-        :returns: SqlAlchemy query object (or iterator of results if
-        `included_voided` is True)
+        :returns:
+            SqlAlchemy query object (or iterator of results if
+            `included_voided` is True)
 
         """
 
         self.logger.debug('Looking up node by id: {id}'.format(id=node_id))
 
         with session_scope(self.engine, session) as local:
-            query = local.query(PsqlNode).filter(PsqlNode.node_id == node_id)
-            query = query.yield_per(batch_size)
-
-            if include_voided:
-                voided_query = local.query(PsqlVoidedNode).filter(
+            if voided:
+                return local.query(PsqlVoidedNode).filter(
                     PsqlVoidedNode.node_id == node_id)
-                voided_query = voided_query.yield_per(batch_size)
-                return itertools.chain(query, voided_query)
             else:
-                return query
+                return local.query(PsqlNode).filter(
+                    PsqlNode.node_id == node_id)
 
     def node_lookup_by_matches(self, property_matches=None,
                                system_annotation_matches=None,
-                               label=None, include_voided=False,
-                               batch_size=DEFAULT_BATCH_SIZE,
-                               session=None):
+                               label=None, voided=False, session=None):
         """Query the node table for nodes whose properties or
         system_annotation are supersets of ``properties_matches`` and
         ``system_annotation_matches`` respectively
@@ -474,18 +451,13 @@ class PsqlGraphDriver(object):
         :param str label:
             Adds filter to query such that results must have label ``label``
 
-        :param bool include_voided:
-           Specifies whether results include voided nodes (deleted and
-           transactional records).  This parameter defaults to
-           ``False`` in order to only return active nodes.
-
+        :param session: |voided|
         :param session: |session|
-        :param session: |batch_size|
 
         :returns: SqlAlchemy query object
         """
 
-        if include_voided:
+        if voided:
             raise NotImplementedError(
                 'Library does not currently support query for '
                 'voided nodes by matches'
@@ -520,7 +492,7 @@ class PsqlGraphDriver(object):
             if label is not None:
                 query = query.filter(PsqlNode.label == label)
 
-            return query.yield_per(batch_size)
+            return query
 
     @retryable
     def node_clobber(self, node_id=None, node=None, acl=[],
@@ -892,7 +864,7 @@ class PsqlGraphDriver(object):
             edge.properties = properties
 
     def edge_lookup_one(self, src_id=None, dst_id=None,
-                        include_voided=False, session=None):
+                        voided=False, session=None):
         """This function is a simple wrapper for ``edge_lookup`` that
         constrains the query to return a single edge.  If multiple
         edges are found matchin the query, an exception will be raised
@@ -903,10 +875,7 @@ class PsqlGraphDriver(object):
             The node_id of the source node
         :param str dst_id: The edge to be voided
             The node_id of the destination node
-        :param bool include_voided:
-           Specifies whether results include voided nodes (deleted and
-           transactional records).  This parameter defaults to
-           ``False`` in order to only return active nodes.
+        :param session: |voided|
         :param session: |session|
         :returns: A single PsqlEdge instances or None
 
@@ -916,30 +885,26 @@ class PsqlGraphDriver(object):
             return self.edge_lookup(
                 src_id=src_id,
                 dst_id=dst_id,
-                include_voided=include_voided,
-                batch_size=1,
+                voided=voided,
                 session=session).one()
         except NoResultFound:
             return None
 
-    def edge_lookup(self, src_id=None, dst_id=None,
-                    include_voided=False,
-                    batch_size=DEFAULT_BATCH_SIZE, session=None):
+    def edge_lookup(self, src_id=None, dst_id=None, voided=False,
+                    session=None):
         """This function looks up a edge by a given src_id and dst_id.  If
-        include_voided is true, then the returned list will include
+        voided is true, then the returned query will consist only of
         edges that have been voided.
 
         :param str src_id:
             The node_id of the source node
         :param str dst_id: The edge to be voided
             The node_id of the destination node
-        :param bool include_voided:
-           Specifies whether results include voided nodes (deleted and
-           transactional records).  This parameter defaults to
-           ``False`` in order to only return active nodes.
-        :param session: |batch_size|
+        :param session: |voided|
         :param session: |session|
-        :returns: SqlAlchemy query object (or iterator of edges if `include_voided` is true)
+        :returns:
+            SqlAlchemy query object (or iterator of edges if
+            `include_voided` is true)
 
         """
 
@@ -947,36 +912,27 @@ class PsqlGraphDriver(object):
             raise QueryError('Cannot lookup edge, no src_id or dst_id')
 
         with session_scope(self.engine, session) as local:
+            if voided:
+                return self.edge_lookup_voided(src_id, dst_id, local)
+
             query = local.query(PsqlEdge)
             if src_id:
                 query = query.filter(PsqlEdge.src_id == src_id)
             if dst_id:
                 query = query.filter(PsqlEdge.dst_id == dst_id)
-
-            query = query.yield_per(batch_size)
-            if include_voided:
-                voided_query = self.edge_lookup_voided(src_id, dst_id, local,
-                                                       batch_size=batch_size)
-                return itertools.chain(query, voided_query)
-            else:
-                return query
+            return query
 
     def edge_lookup_voided(self, src_id=None, dst_id=None,
-                           batch_size=DEFAULT_BATCH_SIZE,
                            session=None):
         """This function looks up a edge by a given src_id and dst_id.  If
-        include_voided is true, then the returned list will include
+        voided is true, then the returned query will consist only of
         edges that have been voided.
 
         :param str src_id:
             The node_id of the source node
         :param str dst_id: The edge to be voided
             The node_id of the destination node
-        :param bool include_voided:
-           Specifies whether results include voided nodes (deleted and
-           transactional records).  This parameter defaults to
-           ``False`` in order to only return active nodes.
-        :param session: |batch_size|
+        :param session: |voided|
         :param session: |session|
         :returns: A list of PsqlEdge instances ([] if none found)
 
@@ -991,7 +947,7 @@ class PsqlGraphDriver(object):
                 query = query.filter(PsqlVoidedEdge.src_id == src_id)
             if dst_id:
                 query = query.filter(PsqlVoidedEdge.dst_id == dst_id)
-            return query.yield_per(batch_size)
+            return query
 
     def _edge_void(self, edge, session=None):
         """Voids an edge.

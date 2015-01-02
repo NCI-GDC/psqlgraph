@@ -33,8 +33,8 @@ class PsqlEdge(Base):
     dst = relationship("PsqlNode", foreign_keys=[dst_id])
 
     def __init__(self, src_id=src_id, dst_id=dst_id, label=label,
-                 system_annotations=system_annotations,
-                 properties=properties):
+                 system_annotations={},
+                 properties={}):
 
         system_annotations = sanitize(system_annotations)
         properties = sanitize(properties)
@@ -70,7 +70,7 @@ class PsqlEdge(Base):
         """
 
         if system_annotations:
-            self.syste_annotations = self.system_annotations.update(
+            self.system_annotations.update(
                 sanitize(system_annotations))
 
         if properties:

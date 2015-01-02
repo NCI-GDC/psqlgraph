@@ -219,12 +219,11 @@ class PsqlGraphDriver(object):
         """
 
         self.logger.debug('Creating a new node: {}'.format(node))
-        if not self.node_validator(node):
-            raise ValidationError('Node failed schema constraints')
 
         with session_scope(self.engine, session) as local:
             local.add(node)
-
+            if not self.node_validator(node):
+                raise ValidationError('Node failed schema constraints')
         return node
 
     def node_update(self, node, system_annotations={},
@@ -249,12 +248,13 @@ class PsqlGraphDriver(object):
         node.merge(system_annotations=system_annotations, acl=acl,
                    properties=properties)
 
-        if not self.node_validator(node):
-            raise ValidationError('Node failed schema constraints')
-
         with session_scope(self.engine, session) as local:
             self._node_void(node, local)
             local.merge(node)
+            if not self.node_validator(node):
+                raise ValidationError('Node failed schema constraints')
+
+
 
     def _node_void(self, node, session=None):
         """if passed a non-null node, then ``node_void`` will set the
@@ -865,11 +865,12 @@ class PsqlGraphDriver(object):
         """
 
         self.logger.debug('Inserting: {0}'.format(edge))
-        if not self.edge_validator(edge):
-            raise ValidationError('Node failed schema constraints')
 
         with session_scope(self.engine, session) as local:
             local.add(edge)
+            local.flush()
+            if not self.edge_validator(edge):
+                raise ValidationError('Edge {} failed validation.'.format(edge))
 
         return edge
 
@@ -877,10 +878,10 @@ class PsqlGraphDriver(object):
                     session=None):
         """
         This function assumes that you have already done a query for an
-        existing node!  This function will take an node, void it and
-        create a new node entry in its place
+        existing edge!  This function will take an edge, void it and
+        create a new edge entry in its place
 
-        :param PsqlNode new_node: The node with which to overwrite ``old_node``
+        :param PsqlEdge edge: The edge to update with the provided values
         :param dict properties: |properties|
         :param dict system_annotations: |system_annotations|
         :param session: |session|
@@ -897,14 +898,15 @@ class PsqlGraphDriver(object):
                    properties=properties)
         properties = edge.properties
 
-        if not self.edge_validator(edge):
-            raise ValidationError('Edge failed schema constraints')
-
         with session_scope(self.engine, session) as local:
             self._edge_void(edge, local)
             edge.properties = {}
             local.flush()
             edge.properties = properties
+            local.flush()
+            if not self.edge_validator(edge):
+                raise ValidationError('Edge failed schema constraints')
+
 
     def edge_lookup_one(self, src_id=None, dst_id=None,
                         include_voided=False, session=None):

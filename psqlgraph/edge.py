@@ -27,7 +27,7 @@ class PsqlEdge(Base):
     See tools/setup_psqlgraph script for details on table setup.
 
     In order to add a constraint set the attribute
-    ``__psqlgraph_edges_table_args__`` in python's ``__builtin``
+    ``__psqlgraph_edges_table_args__`` in python's ``__builtin__``
     before loading the psqlgraph module as such:
     ```
     import __builtin__

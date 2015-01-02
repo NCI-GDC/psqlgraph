@@ -105,7 +105,11 @@ class Test_psql2neo(unittest.TestCase):
         return n
         """.format(src_id=src_id, dst_id=dst_id))
         self.assertEqual(len(nodes), 1)
-        edges = self.neo4jDriver.cypher.execute('match (n)-[r]->(m) return r')
+        edges = self.neo4jDriver.cypher.execute("""
+        match (n)-[r]-(m)
+        where n.id = "{dst_id}" and m.id = "{src_id}"
+        return r
+        """.format(src_id=src_id, dst_id=dst_id))
         self.assertEqual(len(edges), 1)
 
     def test_neo_star_topology(self):

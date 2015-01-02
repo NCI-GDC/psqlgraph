@@ -8,5 +8,9 @@ setup(
         'sqlalchemy',
         'py2neo',
         'pyyaml', 
+        'progressbar',
+        'avro==1.7.7'
         ],
     )
+    ],
+)

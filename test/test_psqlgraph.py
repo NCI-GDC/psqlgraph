@@ -2,14 +2,14 @@ import uuid
 import unittest
 import logging
 import psqlgraph
-from psqlgraph import PsqlGraphDriver, session_scope, sanitizer
+from psqlgraph import PsqlGraphDriver, sanitizer
+from psqlgraph.sanitizer import sanitize as sanitize
 from multiprocessing import Process
 import random
 from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError
 
 from datetime import datetime
-import time
 
 
 host = 'localhost'
@@ -63,8 +63,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
                           sanitizer.cast, B)
 
     def test_sanitize(self):
-        """Test sanitization of select non-standard types"""
-        self.assertEqual(sanitizer.sanitize({
+        """ Test sanitization of select non-standard types"""
+        self.assertEqual(sanitize({
             'key1': 'First', 'key2': 25, 'key3': 1.2, 'key4': None
         }), {
             'key1': 'First', 'key2': 25, 'key3': 1.2, 'key4': None
@@ -72,7 +72,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_node_null_label_merge(self):
         """Test merging of a non-existent node
-        
+
         Verify the case where a user merges a single non-existent node
         """
 
@@ -84,7 +84,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_node_null_query_one(self):
         """Test querying of a single non-existent node
-        
+
         Verify the case where a user queries for a single non-existent node
         """
 
@@ -93,32 +93,42 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_node_null_query(self):
         """Test querying for any non-existent nodes
-        
+
         Verify the case where a user queries for any non-existent nodes
         """
 
-        node = self.driver.node_lookup(str(uuid.uuid4()))
+        node = list(self.driver.node_lookup(str(uuid.uuid4())))
         self.assertEqual(node, [])
+        node = self.driver.node_lookup_one(str(uuid.uuid4()))
+        self.assertTrue(node is None)
 
     def verify_node_count(self, count, node_id=None, matches=None,
                           voided=False):
         """Test querying for the count on a non-existent node
-        
+
         Verify the case where a user queries a count for non-existent nodes
         """
-        nodes = self.driver.node_lookup(
+        nodes = list(self.driver.node_lookup(
             node_id=node_id,
             property_matches=matches,
-            include_voided=voided
-        )
-        self.assertEqual(len(nodes), count, 'Expected a {n} nodes to '
+            voided=False
+        ))
+        if voided:
+            voided_nodes = list(self.driver.node_lookup(
+                node_id=node_id,
+                property_matches=matches,
+                voided=True
+            ))
+            nodes = list(nodes) + list(voided_nodes)
+        length = len(nodes)
+        self.assertEqual(length, count, 'Expected a {n} nodes to '
                          'be found, instead found {count}'.format(
-                             n=count, count=len(nodes)))
+                             n=count, count=length))
         return nodes
 
     def test_node_merge_and_lookup(self):
         """Test node merge and lookup
-        
+
         Insert a single node and query, compare that the result of the
         query is correct
         """
@@ -128,11 +138,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
                                properties=properties)
 
         node = self.driver.node_lookup_one(tempid)
-        self.assertEqual(sanitizer.sanitize(properties), node.properties)
+        self.assertEqual(sanitize(properties), node.properties)
 
-    def test_node_update_properties_by_id(self, node_id=None, label=None):
+    def test_node_update_properties_by_id(self, given_id=None, label=None):
         """Test updating node properties by ID
-        
+
         Insert a single node, update it, verify that
 
         (1) The first insertion is successful
@@ -141,52 +151,51 @@ class TestPsqlGraphDriver(unittest.TestCase):
         (4) There is only a single version of the node
         """
 
-        if not node_id:
-            node_id = str(uuid.uuid4())
+        node_id = str(uuid.uuid4()) if not given_id else given_id
 
         if not label:
             label = 'test'
 
+        retries = 0 if not given_id else int(1e6)
         # Add first node
-        propertiesA = {'key1': None, 'key2': 2, 'key3': datetime.now()}
+        propertiesA = {'key1': None, 'key2': 1, 'key3': datetime.now()}
         self.driver.node_merge(node_id=node_id, properties=propertiesA,
-                               label=label, max_retries=int(1e6))
+                               label=label, max_retries=retries)
 
         # Add second node
-        propertiesB = {'key1': None, 'new_key': 2, 'timestamp': datetime.now()}
+        propertiesB = {'key1': 2, 'new_key': 'n', 'timestamp': datetime.now()}
         self.driver.node_merge(node_id=node_id, properties=propertiesB,
-                               label=label, max_retries=int(1e6))
+                               max_retries=retries)
 
         # Merge properties
-        for key, val in propertiesA.iteritems():
-            propertiesB[key] = val
+        for key, val in propertiesB.iteritems():
+            propertiesA[key] = val
 
-        # Test that there is only 1 non-void node with node_id and property
-        # equality
-        # if this is not part of another test, check the count
-        if not node_id:
+        if not given_id:
+            # Test that there is only 1 non-void node with node_id and property
+            # equality
+            # if this is not part of another test, check the count
             node = self.driver.node_lookup_one(node_id)
-            self.assertEqual(sanitizer.sanitize(propertiesB),
+            self.assertEqual(sanitize(propertiesA),
                              node.properties)
 
-            nodes = self.verify_node_count(2, node_id=node_id, voided=True)
-            self.assertEqual(sanitizer.sanitize(propertiesB),
-                             nodes[1].properties)
+            self.verify_node_count(2, node_id=node_id, voided=True)
 
-        return propertiesB
+        return propertiesA
 
     def test_query_by_label(self, node_id=None):
         """Test ability to query for nodes by label"""
 
         label = 'test_' + str(random.random())
         for i in range(self.REPEAT_COUNT):
-            self.test_node_update_properties_by_id(label=label)
-        nodes = self.driver.node_lookup(label=label)
+            self.driver.node_merge(
+                node_id=str(uuid.uuid4()), label=label)
+        nodes = list(self.driver.node_lookup(label=label))
         self.assertEqual(len(nodes), self.REPEAT_COUNT)
 
     def test_node_update_properties_by_matches(self):
         """Test updating node properties by matching properties
-        
+
         Insert a single node, update it, verify that
 
         (1) The first insertion is successful
@@ -224,11 +233,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
         nodes = self.verify_node_count(2, node_id=node_id, voided=True)
         self.assertEqual(propertiesA, nodes[1].properties)
 
-        return propertiesB
+        return propertiesA
 
-    def test_node_update_system_annotations_id(self, node_id=None):
+    def test_node_update_system_annotations_id(self, given_id=None):
         """Test updating node system annotations ID
-        
+
         Insert a single node, update it, verify that
 
         (1) The first insertion is successful
@@ -237,8 +246,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         (4) There is only a single version of the node
         """
 
-        if not node_id:
-            node_id = str(uuid.uuid4())
+        node_id = str(uuid.uuid4()) if not given_id else given_id
 
         # Add first node
         system_annotationsA = {
@@ -255,29 +263,32 @@ class TestPsqlGraphDriver(unittest.TestCase):
                                system_annotations=system_annotationsB)
 
         # Merge system_annotations
-        for key, val in system_annotationsA.iteritems():
-            system_annotationsB[key] = val
+        for key, val in system_annotationsB.iteritems():
+            system_annotationsA[key] = val
 
         # if this is not part of another test, check the count
-        if not node_id:
+        if not given_id:
             # Test that there is only 1 non-void node with node_id and property
             # equality
             node = self.driver.node_lookup_one(node_id)
-            self.assertEqual(system_annotationsB, node.system_annotations)
+            self.assertEqual(sanitize(system_annotationsA),
+                             node.system_annotations)
 
-            nodes = self.verify_node_count(2, node_id=node_id, voided=True)
-            self.assertEqual(system_annotationsB, nodes[1].system_annotations)
+            nodes = list(self.verify_node_count(
+                2, node_id=node_id, voided=True))
+            self.assertEqual(sanitize(system_annotationsA),
+                             nodes[0].system_annotations)
 
-        return system_annotationsB
+        return system_annotationsA
 
     def _insert_node(self, node):
-#        """Test inserting a node"""
-        with psqlgraph.session_scope(self.driver.engine) as session:
+        """Test inserting a node"""
+        with self.driver.session_scope() as session:
             session.add(node)
 
     def test_node_unique_id_constraint(self):
         """Test node constraints on unique ID
-        
+
         Verify that the table constraints prevent the existance two
         non-voided nodes with the same id
         """
@@ -302,7 +313,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_null_node_void(self):
         """Test voiding of a null node
-        
+
         Verify that the library handles null nodes properly on voiding
         """
 
@@ -314,88 +325,89 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_null_node_merge(self):
         """Test merging of a null node
-        
+
         Verify that the library handles null nodes properly on merging
         """
         self.assertRaises(psqlgraph.QueryError, self.driver.node_merge)
 
-    def test_repeated_node_update_properties_by_id(self, node_id=None):
+    def test_repeated_node_update_properties_by_id(self, given_id=None):
         """Test repeated node updating to properties by ID
-        
+
         Verify that repeated updates to a single node create
         the correct number of voided transactions and a single valid
         node with the correct properties
         """
 
-        if not node_id:
-            node_id = str(uuid.uuid4())
+        node_id = str(uuid.uuid4()) if not given_id else given_id
+
         for tally in range(self.REPEAT_COUNT):
             props = self.test_node_update_properties_by_id(node_id)
 
-        if not node_id:
+        if not given_id:
             self.verify_node_count(self.REPEAT_COUNT*2, node_id=node_id,
                                    voided=True)
             node = self.driver.node_lookup_one(node_id)
-            self.assertEqual(props, node.properties)
+            self.assertEqual(sanitize(props), node.properties)
 
-    def test_repeated_node_update_system_annotations_by_id(self, node_id=None):
+    def test_repeated_node_update_system_annotations_by_id(self,
+                                                           given_id=None):
         """Test repeated node updates to system annotations by ID
-        
+
         Verify that repeated updates to a single node create
+
         the correct number of voided transactions and a single valid
         node with the correct properties
         """
 
         REPEAT_COUNT = 200
-        if not node_id:
-            node_id = str(uuid.uuid4())
+        node_id = str(uuid.uuid4()) if not given_id else given_id
+
         for tally in range(REPEAT_COUNT):
             annotations = self.test_node_update_system_annotations_id(node_id)
 
-        if not node_id:
+        if not given_id:
             self.verify_node_count(REPEAT_COUNT*2, node_id=node_id,
                                    voided=True)
             node = self.driver.node_lookup_one(node_id)
-            self.assertEqual(annotations, node.system_annotations)
+            self.assertEqual(sanitize(annotations), node.system_annotations)
 
-    def test_sessioned_node_update(self, tempid=None):
+    def test_sessioned_node_update(self):
         """Test repeated update of a sessioned node
-        
+
         Repeate test_repeated_node_update but passing a single session for
         all interactions to use
+
         """
 
-        if not tempid:
-            tempid = str(uuid.uuid4())
-
-        with session_scope(self.driver.engine) as session:
-            for tally in range(self.REPEAT_COUNT):
-                properties = {'key1': None,
-                              'key2': 2,
-                              'key3': datetime.now(),
-                              'rand':  random.random()}
+        label = str(uuid.uuid4())
+        node_ids = [str(uuid.uuid4()) for i in range(self.REPEAT_COUNT)]
+        properties = {}
+        with self.driver.session_scope() as session:
+            for node_id in node_ids:
+                properties[node_id] = {
+                    'key1': node_id,
+                    'key2': 2,
+                    'key3': str(datetime.now()),
+                    'rand':  random.random()
+                }
 
                 self.driver.node_merge(
-                    node_id=tempid,
+                    node_id=node_id,
                     label='test',
-                    properties=properties,
+                    properties=properties[node_id],
                     session=session,
-                    max_retries=int(1e6),
-                    backoff=lambda x, y: time.sleep(random.randint(5, 30))
                 )
 
-            properties = sanitizer.sanitize(properties)
-            node = self.driver.node_lookup_one(node_id=tempid, session=session)
-            self.assertEqual(properties, node.properties, 'Node properties'
-                             'do not match expected properties')
-
-        if not tempid:
-            """if this is not part of another test, check the count"""
-            self.verify_node_count(self.REPEAT_COUNT, tempid, voided=True)
+        nodes = list(self.driver.node_lookup(label=label))
+        for node in nodes:
+            self.assertEqual(
+                sanitize(properties[node.node_id]), node.properties,
+                'Node properties do not match expected properties'
+            )
 
     def test_concurrent_node_update_by_id(self):
         """Test concurrent node updating by ID
-        
+
         Test that insertion of nodes is thread-safe and that retries succeed
         eventually
         """
@@ -407,7 +419,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         for tally in range(process_count):
             processes.append(Process(
                 target=self.test_repeated_node_update_properties_by_id,
-                kwargs={'node_id': tempid})
+                kwargs={'given_id': tempid})
             )
 
         for p in processes:
@@ -435,11 +447,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
                                  label='test')
 
         propertiesB = sanitizer.sanitize(propertiesB)
-        nodes = self.driver.node_lookup(node_id=tempid)
-        self.assertEqual(len(nodes), 1, 'Expected a single node to be found, '
-                         'instead found {count}'.format(count=len(nodes)))
-        self.assertEqual(propertiesB, nodes[0].properties, 'Node properties do'
-                         ' not match expected properties')
+        nodes = list(self.driver.node_lookup(node_id=tempid))
+        self.assertEqual(len(nodes), 1,
+                         'Expected a single node to be found, instead found '
+                         '{count}'.format(count=len(nodes)))
+        self.assertEqual(propertiesB, nodes[0].properties,
+                         'Node properties do not match expected properties')
 
     def test_node_delete_property_keys(self):
         """Test the ability to remove property keys from nodes"""
@@ -453,10 +466,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
         properties.pop('key2')
         properties.pop('key3')
 
-        nodes = self.driver.node_lookup(node_id=tempid)
-        self.assertEqual(len(nodes), 1, 'Expected a single node to be found, '
-                         'instead found {count}'.format(count=len(nodes)))
-        self.assertEqual(properties, nodes[0].properties)
+        nodes = self.driver.node_lookup_one(node_id=tempid)
+        self.assertEqual(properties, nodes.properties)
 
     def test_node_delete_system_annotation_keys(self):
         """Test the ability to remove system annotation keys from nodes"""
@@ -472,7 +483,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         annotations.pop('key2')
         annotations.pop('key3')
 
-        nodes = self.driver.node_lookup(node_id=tempid)
+        nodes = list(self.driver.node_lookup(node_id=tempid))
         self.assertEqual(len(nodes), 1, 'Expected a single node to be found, '
                          'instead found {count}'.format(count=len(nodes)))
         self.assertEqual(annotations, nodes[0].system_annotations)
@@ -484,8 +495,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.driver.node_merge(node_id=tempid, label='test')
         self.driver.node_delete(node_id=tempid)
 
-        nodes = self.driver.node_lookup(tempid)
-        self.assertEqual(len(nodes), 0, 'Expected a single no non-voided nodes'
+        nodes = list(self.driver.node_lookup(tempid))
+        self.assertEqual(len(nodes), 0, 'Expected a no non-voided nodes '
                          'to be found, instead found {count}'.format(
                              count=len(nodes)))
 
@@ -494,13 +505,13 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         node_id = str(uuid.uuid4())
         for i in range(self.REPEAT_COUNT):
-            self.test_node_update_properties_by_id(node_id=node_id)
+            self.test_node_update_properties_by_id(node_id)
             self.driver.node_delete(node_id=node_id)
             self.assertIs(self.driver.node_lookup_one(node_id=node_id), None)
 
     def test_edge_null_label_merge(self):
         """Test merging of a null edge
-        
+
         Verify the case where a user merges a single non-existent node
         """
 
@@ -518,22 +529,32 @@ class TestPsqlGraphDriver(unittest.TestCase):
         dst_id = str(uuid.uuid4())
         self.driver.node_merge(node_id=src_id, label='test')
         self.driver.node_merge(node_id=dst_id, label='test')
-        self.driver.edge_merge(src_id=src_id, dst_id=dst_id, label='test')
 
+        self.driver.edge_merge(src_id=src_id, dst_id=dst_id, label='test')
+        self.driver.edge_merge(src_id=src_id, dst_id=dst_id,
+                               properties={'test': None})
+        self.driver.edge_merge(src_id=src_id, dst_id=dst_id,
+                               properties={'test': 2})
+
+        props = {'test': 2}
         edge = self.driver.edge_lookup_one(dst_id=dst_id)
         self.assertEqual(edge.src_id, src_id)
         self.assertEqual(edge.dst_id, dst_id)
+        self.assertEqual(edge.properties, props)
 
         edge = self.driver.edge_lookup_one(src_id=src_id)
         self.assertEqual(edge.src_id, src_id)
         self.assertEqual(edge.dst_id, dst_id)
+        self.assertEqual(edge.properties, props)
 
         edge = self.driver.edge_lookup_one(src_id=src_id, dst_id=dst_id)
         self.assertEqual(edge.src_id, src_id)
         self.assertEqual(edge.dst_id, dst_id)
+        self.assertEqual(edge.properties, props)
 
     def test_edge_merge_and_lookup_properties(self):
         """Test edge property merging"""
+
         src_id = str(uuid.uuid4())
         dst_id = str(uuid.uuid4())
         props = {'key1': str(random.random()), 'key2': random.random()}
@@ -549,8 +570,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_edge_lookup_leaves(self):
         """Test looking up the leaves on an edge
-        
-        Create a star topology, verify lookup by src_id 
+
+        Create a star topology, verify lookup by src_id
         and that all nodes are attached
         """
 
@@ -571,8 +592,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_sessioned_path_insertion(self):
         """Test creation of a sessioned node path
-        
-        Test creation of a sample graph with pre-existing nodes 
+
+        Test creation of a sample graph with pre-existing nodes
         in a single session
         """
 
@@ -581,13 +602,13 @@ class TestPsqlGraphDriver(unittest.TestCase):
         dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
         self.driver.node_merge(node_id=src_id, label='test')
 
-        with session_scope(self.driver.engine) as session:
+        with self.driver.session_scope() as session:
             for dst_id in dst_ids:
                 self.driver.node_merge(
                     node_id=dst_id, label='test', session=session
                 )
 
-        with session_scope(self.driver.engine) as session:
+        with self.driver.session_scope() as session:
             for dst_id in dst_ids:
                 node = self.driver.node_lookup_one(
                     node_id=dst_id, session=session)
@@ -603,7 +624,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_path_deletion(self):
         """Test path deletion
-        
+
         Test path deletion and verify deletion is cascaded to edges
         """
 
@@ -721,6 +742,30 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertTrue(dst_id in ret_dst_ids)
         self.assertEqual(len(ret_src_ids), len(src_ids))
         self.assertEqual(len(ret_dst_ids), len(dst_ids))
+
+    def _create_subtree(self, parent_id, level=0):
+        for i in range(5):
+            node_id = str(uuid.uuid4())
+            self.driver.node_merge(
+                node_id=node_id, label='test_{}'.format(level))
+            self.driver.edge_merge(
+                src_id=parent_id, dst_id=node_id, label='test'
+            )
+            if level < 2:
+                self._create_subtree(node_id, level+1)
+
+    def _walk_tree(self, node, level=0):
+        for edge in node.edges_out:
+            print '+--'*level + '>', edge.dst
+            self._walk_tree(edge.dst, level+1)
+
+    def test_tree_walk(self):
+        node_id = str(uuid.uuid4())
+        self.driver.node_merge(node_id=node_id, label='test')
+        self._create_subtree(node_id)
+        with self.driver.session_scope() as session:
+            node = self.driver.node_lookup_one(node_id, session=session)
+            self._walk_tree(node)
 
 if __name__ == '__main__':
 

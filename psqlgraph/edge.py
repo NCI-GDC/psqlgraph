@@ -1,11 +1,22 @@
 from sqlalchemy.orm import relationship
-from sqlalchemy import UniqueConstraint, ForeignKey
+from sqlalchemy import ForeignKey
 from sqlalchemy.dialects.postgres import JSONB, TIMESTAMP
+from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy import Column, Integer, Text
 from datetime import datetime
-
 from sanitizer import sanitize
 from psqlgraph import Base
+from exc import EdgeCreationError
+
+# Attempt to load the __table_args__ variable set by an external
+# module before loading the declaring PsqlEdge.
+#
+# TODO: Come up with a better way than using __builtin__
+import __builtin__
+try:
+    __builtin__.__psqlgraph_edges_table_args__
+except AttributeError:
+    __builtin__.__psqlgraph_edges_table_args__ = None
 
 
 class PsqlEdge(Base):
@@ -14,10 +25,25 @@ class PsqlEdge(Base):
     'edges' inherits the SQLAlchemy Base class.
 
     See tools/setup_psqlgraph script for details on table setup.
+
+    In order to add a constraint set the attribute
+    ``__psqlgraph_edges_table_args__`` in python's ``__builtin``
+    before loading the psqlgraph module as such:
+    ```
+    import __builtin__
+    from sqlalchemy import UniqueConstraint
+    __builtin__.__psqlgraph_edges_table_args__ = (
+        UniqueConstraint('src_id', 'dst_id', 'label', name='_edge_uc'),
+    )
+    ````
+
     """
 
     __tablename__ = 'edges'
-    __table_args__ = (UniqueConstraint('src_id', 'dst_id', name='_edge_uc'),)
+
+    @declared_attr
+    def __table_args__(cls):
+        return __builtin__.__psqlgraph_edges_table_args__
 
     key = Column(Integer, primary_key=True)
     src_id = Column(Text, ForeignKey('nodes.node_id'), nullable=False)
@@ -32,9 +58,13 @@ class PsqlEdge(Base):
     src = relationship("PsqlNode", foreign_keys=[src_id])
     dst = relationship("PsqlNode", foreign_keys=[dst_id])
 
-    def __init__(self, src_id=src_id, dst_id=dst_id, label=label,
+    def __init__(self, src_id, dst_id, label,
                  system_annotations={},
                  properties={}):
+
+        if label is None:
+            raise EdgeCreationError(
+                'Illegal edge creation without label')
 
         system_annotations = sanitize(system_annotations)
         properties = sanitize(properties)

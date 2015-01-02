@@ -251,8 +251,6 @@ class PsqlGraphDriver(object):
             if not self.node_validator(node):
                 raise ValidationError('Node failed schema constraints')
 
-
-
     def _node_void(self, node, session=None):
         """if passed a non-null node, then ``node_void`` will set the
         timestamp on the voided column of the entry.
@@ -807,16 +805,17 @@ class PsqlGraphDriver(object):
 
         return edge
 
-    def edge_insert(self, edge, session=None):
+    @retryable
+    def edge_insert(self, edge, max_retries=DEFAULT_RETRIES,
+                    backoff=default_backoff, session=None):
         """
         This function assumes that you have already done a query for an
         existing node!  This function will take an node, void it and
         create a new node entry in its place
 
-        :param PsqlNode new_node: The node with which to overwrite ``old_node``
-        :param PsqlNode old_node:
-            The existing node in the table to be overwritten
-
+        :param PsqlEdge edge: The PsqlEdge object to add to database.
+        :param session: |max_retries|
+        :param session: |backoff|
         :param session: |session|
 
         """
@@ -827,7 +826,8 @@ class PsqlGraphDriver(object):
             local.add(edge)
             local.flush()
             if not self.edge_validator(edge):
-                raise ValidationError('Edge {} failed validation.'.format(edge))
+                raise ValidationError(
+                    'Edge {} failed validation.'.format(edge))
 
         return edge
 
@@ -856,14 +856,10 @@ class PsqlGraphDriver(object):
         properties = edge.properties
 
         with session_scope(self.engine, session) as local:
-            self._edge_void(edge, local)
-            edge.properties = {}
-            local.flush()
-            edge.properties = properties
-            local.flush()
             if not self.edge_validator(edge):
                 raise ValidationError('Edge failed schema constraints')
-
+            self._edge_void(edge, local)
+            return local.merge(edge)
 
     def edge_lookup_one(self, src_id=None, dst_id=None,
                         voided=False, session=None):
@@ -892,8 +888,8 @@ class PsqlGraphDriver(object):
         except NoResultFound:
             return None
 
-    def edge_lookup(self, src_id=None, dst_id=None, voided=False,
-                    session=None):
+    def edge_lookup(self, src_id=None, dst_id=None, label=None,
+                    voided=False, session=None):
         """This function looks up a edge by a given src_id and dst_id.  If
         voided is true, then the returned query will consist only of
         edges that have been voided.
@@ -922,9 +918,11 @@ class PsqlGraphDriver(object):
                 query = query.filter(PsqlEdge.src_id == src_id)
             if dst_id:
                 query = query.filter(PsqlEdge.dst_id == dst_id)
+            if label:
+                query = query.filter(PsqlEdge.label == label)
             return query
 
-    def edge_lookup_voided(self, src_id=None, dst_id=None,
+    def edge_lookup_voided(self, src_id=None, dst_id=None, label=None,
                            session=None):
         """This function looks up a edge by a given src_id and dst_id.  If
         voided is true, then the returned query will consist only of
@@ -949,6 +947,8 @@ class PsqlGraphDriver(object):
                 query = query.filter(PsqlVoidedEdge.src_id == src_id)
             if dst_id:
                 query = query.filter(PsqlVoidedEdge.dst_id == dst_id)
+            if label:
+                query = query.filter(PsqlVoidedEdge.label == label)
             return query
 
     def _edge_void(self, edge, session=None):

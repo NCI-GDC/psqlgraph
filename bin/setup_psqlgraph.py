@@ -1,12 +1,19 @@
-import argparse
-from psqlgraph import Base, PsqlGraphDriver
-from sqlalchemy import create_engine
-import logging
-
 """
 This is a one-time use script to set up a fresh install of Postgres 9.4
 Needs to be run as the postgres user.
 """
+
+import argparse
+from sqlalchemy import create_engine
+import logging
+
+import __builtin__
+from sqlalchemy import UniqueConstraint
+__builtin__.__psqlgraph_edges_table_args__ = (
+    UniqueConstraint('src_id', 'dst_id', 'label', name='_edge_uc'),
+)
+
+from psqlgraph import Base, PsqlGraphDriver
 
 
 def try_drop_test_data(user, database, root_user='postgres', host=''):

@@ -2,6 +2,7 @@ from datetime import datetime
 import unittest
 import logging
 from psqlgraph import psqlgraph2neo4j
+from psqlgraph.edge import PsqlEdge
 import uuid
 
 host = 'localhost'
@@ -88,7 +89,8 @@ class Test_psql2neo(unittest.TestCase):
         dst_id = str(uuid.uuid4())
         self.psqlDriver.node_merge(node_id=src_id, label='test')
         self.psqlDriver.node_merge(node_id=dst_id, label='test')
-        self.psqlDriver.edge_merge(src_id=src_id, dst_id=dst_id, label='test')
+        self.psqlDriver.edge_insert(
+            PsqlEdge(src_id=src_id, dst_id=dst_id, label='test'))
         self.driver.export()
 
         nodes = self.neo4jDriver.cypher.execute('match (n:test) return n')
@@ -126,8 +128,8 @@ class Test_psql2neo(unittest.TestCase):
         dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
         for dst_id in dst_ids:
             self.psqlDriver.node_merge(node_id=dst_id, label='test')
-            self.psqlDriver.edge_merge(src_id=src_id, dst_id=dst_id,
-                                       label='test')
+            self.psqlDriver.edge_insert(PsqlEdge(
+                src_id=src_id, dst_id=dst_id, label='test'))
         self.driver.export()
         nodes = self.neo4jDriver.cypher.execute(
             'match (n)-[r]-(m) where n.id = "{src_id}" return n'.format(
@@ -139,9 +141,9 @@ class Test_psql2neo(unittest.TestCase):
         for i in range(5):
             node_id = str(uuid.uuid4())
             self.psqlDriver.node_merge(node_id=node_id, label='test')
-            self.psqlDriver.edge_merge(
+            self.psqlDriver.edge_insert(PsqlEdge(
                 src_id=parent_id, dst_id=node_id, label='test'
-            )
+            ))
             if level < 2:
                 self._create_subtree(node_id, level+1)
 

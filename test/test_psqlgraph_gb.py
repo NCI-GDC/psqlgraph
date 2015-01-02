@@ -73,7 +73,7 @@ class TestPsqlGraphDriverGB(unittest.TestCase):
 
         temp_id = str(uuid.uuid4())
         self.driver.node_merge(node_id=temp_id, label='test_unicode_edge')
-        self.driver.edge_merge(src_id=temp_id, dst_id=temp_id, label=self.yaml_conf['Hebrew'])
+        self.driver.edge_merge(src_id=temp_id, dst_id=temp_id, label=self.yaml_conf['Japanese'])
 
         edge_by_id = self.driver.edge_lookup_one(dst_id=temp_id)
         self.assertEqual(edge_by_id.dst_id, temp_id)

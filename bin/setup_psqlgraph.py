@@ -7,13 +7,9 @@ import argparse
 from sqlalchemy import create_engine
 import logging
 
-import __builtin__
 from sqlalchemy import UniqueConstraint
-__builtin__.__psqlgraph_edges_table_args__ = (
-    UniqueConstraint('src_id', 'dst_id', 'label', name='_edge_uc'),
-)
-
 from psqlgraph import Base, PsqlGraphDriver
+from psqlgraph.edge import PsqlEdge, add_edge_constraint
 
 
 def try_drop_test_data(user, database, root_user='postgres', host=''):
@@ -76,7 +72,10 @@ def create_tables(host, user, password, database):
     print('Creating tables in test database')
 
     driver = PsqlGraphDriver(host, user, password, database)
+    add_edge_constraint(UniqueConstraint(
+        PsqlEdge.src_id, PsqlEdge.dst_id, PsqlEdge.label))
     Base.metadata.create_all(driver.engine)
+
 
 if __name__ == '__main__':
 

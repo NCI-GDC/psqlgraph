@@ -9,6 +9,17 @@ from psqlgraph import Base
 from edge import PsqlEdge
 
 
+def add_node_constraint(constraint):
+    """Adds a constraint to edges table.  This would need to be called
+    prior to creation of tables to have any effect
+
+    :param UniqueConstraint constraint:
+        The uniqueness constraint to add to the tables `nodes`
+
+    """
+    Base.metadata.tables.get('nodes').constraints.add(constraint)
+
+
 class PsqlNode(Base):
 
     """Node class to represent a node entry in the postgresql table

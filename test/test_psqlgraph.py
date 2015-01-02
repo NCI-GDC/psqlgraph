@@ -740,8 +740,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertTrue(src_id in ret_src_ids)
         for dst_id in dst_ids:
             self.assertTrue(dst_id in ret_dst_ids)
-        self.assertEqual(len(ret_src_ids), len(src_ids))
-        self.assertEqual(len(ret_dst_ids), len(dst_ids))
 
     def _create_subtree(self, parent_id, level=0):
         for i in range(5):
@@ -782,6 +780,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
             src_id=src_id, dst_id=dst_id, label='a'))), 1)
         self.assertEqual(len(list(self.driver.edge_lookup(
             src_id=src_id, dst_id=dst_id, label='b'))), 1)
+        self.assertRaises(
+            IntegrityError,
+            self.driver.edge_insert,
+            PsqlEdge(src_id=src_id, dst_id=dst_id, label='a')
+        )
+
 
 if __name__ == '__main__':
 

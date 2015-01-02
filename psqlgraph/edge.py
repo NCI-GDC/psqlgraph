@@ -1,22 +1,22 @@
 from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey
 from sqlalchemy.dialects.postgres import JSONB, TIMESTAMP
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy import Column, Integer, Text
 from datetime import datetime
 from sanitizer import sanitize
 from psqlgraph import Base
 from exc import EdgeCreationError
 
-# Attempt to load the __table_args__ variable set by an external
-# module before loading the declaring PsqlEdge.
-#
-# TODO: Come up with a better way than using __builtin__
-import __builtin__
-try:
-    __builtin__.__psqlgraph_edges_table_args__
-except AttributeError:
-    __builtin__.__psqlgraph_edges_table_args__ = None
+
+def add_edge_constraint(constraint):
+    """Adds a constraint to edges table.  This would need to be called
+    prior to creation of tables to have any effect
+
+    :param UniqueConstraint constraint:
+        The uniqueness constraint to add to the tables `edges`
+
+    """
+    Base.metadata.tables.get('edges').constraints.add(constraint)
 
 
 class PsqlEdge(Base):
@@ -26,24 +26,17 @@ class PsqlEdge(Base):
 
     See tools/setup_psqlgraph script for details on table setup.
 
-    In order to add a constraint set the attribute
-    ``__psqlgraph_edges_table_args__`` in python's ``__builtin__``
-    before loading the psqlgraph module as such:
+    To add constraints or override other __table_args__:
     ```
-    import __builtin__
     from sqlalchemy import UniqueConstraint
-    __builtin__.__psqlgraph_edges_table_args__ = (
-        UniqueConstraint('src_id', 'dst_id', 'label', name='_edge_uc'),
-    )
-    ````
-
+    from psqlgraph.edge import PsqlEdge, edges_add_table_arg
+    edges_add_table_arg(UniqueConstraint(
+        PsqlEdge.src_id, PsqlEdge.dst_id, PsqlEdge.label))
+    ```
     """
 
     __tablename__ = 'edges'
-
-    @declared_attr
-    def __table_args__(cls):
-        return __builtin__.__psqlgraph_edges_table_args__
+    __table_args__ = None
 
     key = Column(Integer, primary_key=True)
     src_id = Column(Text, ForeignKey('nodes.node_id'), nullable=False)

@@ -15,7 +15,7 @@ Base = declarative_base()
 #  PsqlNode modules
 from validate import PsqlNodeValidator, PsqlEdgeValidator
 from exc import QueryError, ProgrammingError, NodeCreationError, \
-    EdgeCreationError, ValidationError
+    ValidationError
 import sanitizer
 from constants import DEFAULT_RETRIES
 from node import PsqlNode, PsqlVoidedNode
@@ -779,7 +779,7 @@ class PsqlGraphDriver(object):
             self._edge_void(edge, local)
             return local.merge(edge)
 
-    def edge_lookup_one(self, src_id=None, dst_id=None,
+    def edge_lookup_one(self, src_id=None, dst_id=None, label=None,
                         voided=False, session=None):
         """This function is a simple wrapper for ``edge_lookup`` that
         constrains the query to return a single edge.  If multiple
@@ -801,6 +801,7 @@ class PsqlGraphDriver(object):
             return self.edge_lookup(
                 src_id=src_id,
                 dst_id=dst_id,
+                label=label,
                 voided=voided,
                 session=session).one()
         except NoResultFound:

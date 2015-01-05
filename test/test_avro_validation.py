@@ -4,7 +4,7 @@ from psqlgraph import PsqlGraphDriver, PsqlNode, PsqlEdge
 from psqlgraph.exc import ValidationError
 from psqlgraph.validate import AvroNodeValidator, AvroEdgeValidator
 
-from avro.schema import make_avsc_object, Names
+from avro.schema import make_avsc_object
 
 
 host = 'localhost'

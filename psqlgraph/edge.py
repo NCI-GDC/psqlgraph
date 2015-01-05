@@ -1,11 +1,22 @@
 from sqlalchemy.orm import relationship
-from sqlalchemy import UniqueConstraint, ForeignKey
+from sqlalchemy import ForeignKey
 from sqlalchemy.dialects.postgres import JSONB, TIMESTAMP
 from sqlalchemy import Column, Integer, Text
 from datetime import datetime
-
 from sanitizer import sanitize
 from psqlgraph import Base
+from exc import EdgeCreationError
+
+
+def add_edge_constraint(constraint):
+    """Adds a constraint to edges table.  This would need to be called
+    prior to creation of tables to have any effect
+
+    :param UniqueConstraint constraint:
+        The uniqueness constraint to add to the tables `edges`
+
+    """
+    Base.metadata.tables.get('edges').constraints.add(constraint)
 
 
 class PsqlEdge(Base):
@@ -14,10 +25,18 @@ class PsqlEdge(Base):
     'edges' inherits the SQLAlchemy Base class.
 
     See tools/setup_psqlgraph script for details on table setup.
+
+    To add constraints or override other __table_args__:
+    ```
+    from sqlalchemy import UniqueConstraint
+    from psqlgraph.edge import PsqlEdge, edges_add_table_arg
+    edges_add_table_arg(UniqueConstraint(
+        PsqlEdge.src_id, PsqlEdge.dst_id, PsqlEdge.label))
+    ```
     """
 
     __tablename__ = 'edges'
-    __table_args__ = (UniqueConstraint('src_id', 'dst_id', name='_edge_uc'),)
+    __table_args__ = None
 
     key = Column(Integer, primary_key=True)
     src_id = Column(Text, ForeignKey('nodes.node_id'), nullable=False)
@@ -32,9 +51,13 @@ class PsqlEdge(Base):
     src = relationship("PsqlNode", foreign_keys=[src_id])
     dst = relationship("PsqlNode", foreign_keys=[dst_id])
 
-    def __init__(self, src_id=src_id, dst_id=dst_id, label=label,
+    def __init__(self, src_id, dst_id, label,
                  system_annotations={},
                  properties={}):
+
+        if label is None:
+            raise EdgeCreationError(
+                'Illegal edge creation without label')
 
         system_annotations = sanitize(system_annotations)
         properties = sanitize(properties)

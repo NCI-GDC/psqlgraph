@@ -144,7 +144,7 @@ class PsqlGraph2Neo4j(object):
 
         transaction.commit()
 
-    def export(self, silent=False):
+    def export(self, silent=False, batch_size=1000):
 
         if not self.psqlgraphDriver:
             raise ExportError(
@@ -157,4 +157,4 @@ class PsqlGraph2Neo4j(object):
             )
 
         self.export_nodes(silent)
-        self.export_edges(silent)
+        self.export_edges(silent, batch_size)

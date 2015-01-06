@@ -134,7 +134,6 @@ class TestAvroValidation(unittest.TestCase):
         with self.assertRaises(ValidationError):
             self.driver.node_insert(node)
 
-
     def avro_edge_node_labels_dict(self, label_pairs):
         return [
             {"type": "record",
@@ -154,7 +153,7 @@ class TestAvroValidation(unittest.TestCase):
                          "type": "enum",
                          "name": str(uuid.uuid4()) + dst + "_enum"
                      },
-                     "name": "dest_node_label"
+                     "name": "dst_node_label"
                  }
                  ]
              } for src, dst in label_pairs.items()]
@@ -176,10 +175,10 @@ class TestAvroValidation(unittest.TestCase):
                 {
                     "type": {
                         "type": "record",
-                        "name": str(uuid.uuid4()) + "src_dest_nodes",
+                        "name": str(uuid.uuid4()) + "src_dst_nodes",
                         "fields": [
                             {"type": "string", "name": "src_node_id"},
-                            {"type": "string", "name": "dest_node_id"}
+                            {"type": "string", "name": "dst_node_id"}
                         ]
                     },
                     "name": "node_ids"

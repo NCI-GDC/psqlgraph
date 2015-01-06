@@ -67,9 +67,9 @@ class AvroEdgeValidator(PsqlEdgeValidator):
         res["id"] = str(edge.key)
         res["label"] = edge.label
         res["node_labels"] = {"src_node_label": edge.src.label,
-                              "dest_node_label": edge.dst.label}
+                              "dst_node_label": edge.dst.label}
         res["node_ids"] = {"src_node_id": edge.src_id,
-                           "dest_node_id": edge.dst_id}
+                           "dst_node_id": edge.dst_id}
         res["properties"] = edge.properties
         return res
 

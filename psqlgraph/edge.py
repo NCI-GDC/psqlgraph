@@ -39,9 +39,11 @@ class PsqlEdge(Base):
     __table_args__ = None
 
     key = Column(Integer, primary_key=True)
-    src_id = Column(Text, ForeignKey('nodes.node_id', deferrable=True),
+    src_id = Column(Text, ForeignKey('nodes.node_id', deferrable=True,
+                                     initially="DEFERRED"),
                     nullable=False)
-    dst_id = Column(Text, ForeignKey('nodes.node_id', deferrable=True),
+    dst_id = Column(Text, ForeignKey('nodes.node_id', deferrable=True,
+                                     initially="DEFERRED"),
                     nullable=False)
     created = Column(
         TIMESTAMP, nullable=False, default=sanitize(datetime.now())

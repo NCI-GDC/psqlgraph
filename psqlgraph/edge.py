@@ -21,7 +21,6 @@ def add_edge_constraint(constraint):
 
 
 class PsqlEdge(Base):
-
     """Edge class to represent a edge entry in the postgresql table
     'edges' inherits the SQLAlchemy Base class.
 
@@ -64,6 +63,7 @@ class PsqlEdge(Base):
     dst = relationship("PsqlNode", foreign_keys=[dst_id])
 
     def __init__(self, src_id, dst_id, label,
+                 edge_id=str(uuid.uuid4),
                  system_annotations={},
                  properties={}):
 
@@ -73,6 +73,7 @@ class PsqlEdge(Base):
 
         system_annotations = sanitize(system_annotations)
         properties = sanitize(properties)
+        self.edge_id = edge_id
         self.src_id = src_id
         self.dst_id = dst_id
         self.system_annotations = system_annotations

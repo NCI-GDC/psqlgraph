@@ -1,7 +1,7 @@
 from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey
-from sqlalchemy.dialects.postgres import JSONB, TIMESTAMP
-from sqlalchemy import Column, Integer, Text
+from sqlalchemy.dialects.postgres import JSONB
+from sqlalchemy import Column, Integer, Text, DateTime
 from datetime import datetime
 from sanitizer import sanitize
 from psqlgraph import Base
@@ -50,7 +50,9 @@ class PsqlEdge(Base):
         nullable=False
     )
     created = Column(
-        TIMESTAMP, nullable=False, default=sanitize(datetime.now())
+        DateTime(timezone=True),
+        nullable=False,
+        default=sanitize(datetime.now())
     )
     system_annotations = Column(JSONB, default={})
     label = Column(Text, nullable=False)
@@ -122,9 +124,16 @@ class PsqlVoidedEdge(Base):
     key = Column(Integer, primary_key=True)
     src_id = Column(Text, nullable=False)
     dst_id = Column(Text, nullable=False)
-    voided = Column(TIMESTAMP, nullable=False)
-    created = Column(TIMESTAMP, nullable=False,
-                     default=sanitize(datetime.now()))
+    voided = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=sanitize(datetime.now()),
+    )
+    created = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=sanitize(datetime.now())
+    )
     system_annotations = Column(JSONB, default={})
     label = Column(Text, nullable=False)
     properties = Column(JSONB, default={})

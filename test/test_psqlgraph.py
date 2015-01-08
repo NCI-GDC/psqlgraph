@@ -4,6 +4,7 @@ import logging
 import psqlgraph
 from psqlgraph import PsqlGraphDriver, sanitizer
 from psqlgraph.sanitizer import sanitize as sanitize
+from psqlgraph.node import PsqlNode
 from psqlgraph.edge import PsqlEdge
 from multiprocessing import Process
 import random
@@ -69,6 +70,22 @@ class TestPsqlGraphDriver(unittest.TestCase):
         }), {
             'key1': 'First', 'key2': 25, 'key3': 1.2, 'key4': None
         })
+
+    def test_getitem(self):
+        """Test that indexing nodes/edges accesses their properties"""
+        node = PsqlNode(node_id=str(uuid.uuid4()),label="foo", properties={"bar": 1})
+        self.assertEqual(node["bar"], 1)
+        edge = PsqlEdge(src_id=None, dst_id=None, label="foo", properties={"bar": 1})
+        self.assertEqual(edge["bar"], 1)
+
+    def test_setitem(self):
+        """Test that indexing nodes/edges accesses their properties"""
+        node = PsqlNode(node_id=str(uuid.uuid4()),label="foo", properties={"bar": 1})
+        node["bar"] = 2
+        self.assertEqual(node["bar"], 2)
+        edge = PsqlEdge(src_id=None, dst_id=None, label="foo", properties={"bar": 1})
+        edge["bar"] = 2
+        self.assertEqual(edge["bar"], 2)
 
     def test_node_null_label_merge(self):
         """Test merging of a non-existent node

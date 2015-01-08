@@ -56,6 +56,12 @@ class PsqlNode(Base):
         self.label = label
         self.properties = properties
 
+    def __getitem__(self, prop):
+        return self.properties[prop]
+
+    def __setitem__(self, prop, val):
+        self.properties[prop] = sanitize(val)
+
     def copy(self):
         return PsqlNode(
             node_id=self.node_id,

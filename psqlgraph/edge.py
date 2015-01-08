@@ -6,6 +6,7 @@ from datetime import datetime
 from sanitizer import sanitize
 from psqlgraph import Base
 from exc import EdgeCreationError
+import uuid
 
 
 def add_edge_constraint(constraint):
@@ -20,7 +21,6 @@ def add_edge_constraint(constraint):
 
 
 class PsqlEdge(Base):
-
     """Edge class to represent a edge entry in the postgresql table
     'edges' inherits the SQLAlchemy Base class.
 
@@ -39,6 +39,7 @@ class PsqlEdge(Base):
     __table_args__ = None
 
     key = Column(Integer, primary_key=True)
+    edge_id = Column(Text, nullable=False, default=str(uuid.uuid4()))
     src_id = Column(
         Text,
         ForeignKey('nodes.node_id', deferrable=True, initially="DEFERRED"),
@@ -62,6 +63,7 @@ class PsqlEdge(Base):
     dst = relationship("PsqlNode", foreign_keys=[dst_id])
 
     def __init__(self, src_id, dst_id, label,
+                 edge_id=str(uuid.uuid4),
                  system_annotations={},
                  properties={}):
 
@@ -71,6 +73,7 @@ class PsqlEdge(Base):
 
         system_annotations = sanitize(system_annotations)
         properties = sanitize(properties)
+        self.edge_id = edge_id
         self.src_id = src_id
         self.dst_id = dst_id
         self.system_annotations = system_annotations
@@ -128,6 +131,7 @@ class PsqlVoidedEdge(Base):
     __tablename__ = 'voided_edges'
 
     key = Column(Integer, primary_key=True)
+    edge_id = Column(Text, nullable=False)
     src_id = Column(Text, nullable=False)
     dst_id = Column(Text, nullable=False)
     voided = Column(
@@ -145,6 +149,7 @@ class PsqlVoidedEdge(Base):
     properties = Column(JSONB, default={})
 
     def __init__(self, edge, voided=datetime.now()):
+        self.edge_id = edge.edge_id
         self.src_id = edge.src_id
         self.dst_id = edge.dst_id
         self.system_annotations = sanitize(edge.system_annotations)

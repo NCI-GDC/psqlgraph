@@ -1,4 +1,4 @@
-from sqlalchemy import UniqueConstraint, String
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgres import ARRAY, JSONB, TIMESTAMP
 from sqlalchemy import Column, Integer, Text
 from sqlalchemy.orm import relationship
@@ -30,7 +30,7 @@ class PsqlNode(Base):
     __table_args__ = (UniqueConstraint('node_id', name='_node_id_uc'),)
 
     key = Column(Integer, primary_key=True)
-    node_id = Column(String(36), nullable=False)
+    node_id = Column(Text, nullable=False)
     label = Column(Text, nullable=False)
     created = Column(TIMESTAMP, nullable=False,
                      default=sanitize(datetime.now()))
@@ -132,7 +132,7 @@ class PsqlVoidedNode(Base):
     __tablename__ = 'voided_nodes'
 
     key = Column(Integer, primary_key=True)
-    node_id = Column(String(36), nullable=False)
+    node_id = Column(Text, nullable=False)
     label = Column(Text, nullable=False)
     voided = Column(TIMESTAMP, nullable=False)
     created = Column(

@@ -1,6 +1,6 @@
-from sqlalchemy import UniqueConstraint, String
-from sqlalchemy.dialects.postgres import ARRAY, JSONB, TIMESTAMP
-from sqlalchemy import Column, Integer, Text
+from sqlalchemy import UniqueConstraint
+from sqlalchemy.dialects.postgres import ARRAY, JSONB
+from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -30,10 +30,13 @@ class PsqlNode(Base):
     __table_args__ = (UniqueConstraint('node_id', name='_node_id_uc'),)
 
     key = Column(Integer, primary_key=True)
-    node_id = Column(String(36), nullable=False)
+    node_id = Column(Text, nullable=False)
     label = Column(Text, nullable=False)
-    created = Column(TIMESTAMP, nullable=False,
-                     default=sanitize(datetime.now()))
+    created = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=sanitize(datetime.now())
+    )
     acl = Column(ARRAY(Text))
     system_annotations = Column(JSONB, default={})
     properties = Column(JSONB, default={})
@@ -138,11 +141,18 @@ class PsqlVoidedNode(Base):
     __tablename__ = 'voided_nodes'
 
     key = Column(Integer, primary_key=True)
-    node_id = Column(String(36), nullable=False)
+    node_id = Column(Text, nullable=False)
     label = Column(Text, nullable=False)
-    voided = Column(TIMESTAMP, nullable=False)
+    voided = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=sanitize(datetime.now())
+    )
     created = Column(
-        TIMESTAMP, nullable=False, default=sanitize(datetime.now()))
+        DateTime(timezone=True),
+        nullable=False,
+        default=sanitize(datetime.now())
+    )
     acl = Column(ARRAY(Text))
     system_annotations = Column(JSONB, default={})
     properties = Column(JSONB, default={})

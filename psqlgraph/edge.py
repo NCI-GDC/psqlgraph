@@ -1,7 +1,7 @@
 from sqlalchemy.orm import relationship
 from sqlalchemy import ForeignKey
-from sqlalchemy.dialects.postgres import JSONB, TIMESTAMP
-from sqlalchemy import Column, Integer, Text
+from sqlalchemy.dialects.postgres import JSONB
+from sqlalchemy import Column, Integer, Text, DateTime
 from datetime import datetime
 from sanitizer import sanitize
 from psqlgraph import Base
@@ -39,14 +39,20 @@ class PsqlEdge(Base):
     __table_args__ = None
 
     key = Column(Integer, primary_key=True)
-    src_id = Column(Text, ForeignKey('nodes.node_id', deferrable=True,
-                                     initially="DEFERRED"),
-                    nullable=False)
-    dst_id = Column(Text, ForeignKey('nodes.node_id', deferrable=True,
-                                     initially="DEFERRED"),
-                    nullable=False)
+    src_id = Column(
+        Text,
+        ForeignKey('nodes.node_id', deferrable=True, initially="DEFERRED"),
+        nullable=False
+    )
+    dst_id = Column(
+        Text,
+        ForeignKey('nodes.node_id', deferrable=True, initially="DEFERRED"),
+        nullable=False
+    )
     created = Column(
-        TIMESTAMP, nullable=False, default=sanitize(datetime.now())
+        DateTime(timezone=True),
+        nullable=False,
+        default=sanitize(datetime.now())
     )
     system_annotations = Column(JSONB, default={})
     label = Column(Text, nullable=False)
@@ -72,8 +78,8 @@ class PsqlEdge(Base):
         self.properties = properties
 
     def __repr__(self):
-        return '<PsqlEdge(({src_id})->({dst_id}))>'.format(
-            src_id=self.src_id, dst_id=self.dst_id)
+        return '<PsqlEdge(({src_id})-[{label}]->({dst_id}))>'.format(
+            src_id=self.src_id, label=self.label, dst_id=self.dst_id)
 
     def __getitem__(self, prop):
         return self.properties[prop]
@@ -124,9 +130,16 @@ class PsqlVoidedEdge(Base):
     key = Column(Integer, primary_key=True)
     src_id = Column(Text, nullable=False)
     dst_id = Column(Text, nullable=False)
-    voided = Column(TIMESTAMP, nullable=False)
-    created = Column(TIMESTAMP, nullable=False,
-                     default=sanitize(datetime.now()))
+    voided = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=sanitize(datetime.now()),
+    )
+    created = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=sanitize(datetime.now())
+    )
     system_annotations = Column(JSONB, default={})
     label = Column(Text, nullable=False)
     properties = Column(JSONB, default={})
@@ -140,5 +153,5 @@ class PsqlVoidedEdge(Base):
         self.voided = voided
 
     def __repr__(self):
-        return '<PsqlEdge(({src_id})->({dst_id}))>'.format(
-            src_id=self.src_id, dst_id=self.dst_id)
+        return '<PsqlEdge(({src_id})-[{label}]->({dst_id}))>'.format(
+            src_id=self.src_id, label=self.label, dst_id=self.dst_id)

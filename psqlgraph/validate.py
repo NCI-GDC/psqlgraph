@@ -1,4 +1,7 @@
+import logging
 from avro.io import validate as avro_validate
+
+logger = logging.getLogger('psqlgraph.validate')
 
 
 class PsqlEdgeValidator(object):
@@ -27,7 +30,8 @@ def validate_no_unexpected_props(schema, datum):
     """The default avro validator does not validate the absence of
     unexpected props, so we do this as a separate step."""
     if schema.type in ['union', 'error_union']:
-        return any((validate_no_unexpected_props(s, datum) for s in schema.schemas))
+        return any((validate_no_unexpected_props(s, datum)
+                    for s in schema.schemas))
     if schema.type in ['record', 'error', 'request']:
         if not isinstance(datum, dict):
             return False
@@ -71,6 +75,8 @@ class AvroEdgeValidator(PsqlEdgeValidator):
         res["node_ids"] = {"src_node_id": edge.src_id,
                            "dst_node_id": edge.dst_id}
         res["properties"] = edge.properties
+        logger.debug('{}: ({})-[{}]->({})'.format(
+            edge, edge.src.label, edge.label, edge.dst.label))
         return res
 
     def validate(self, edge, *args, **kwargs):

@@ -75,6 +75,12 @@ class PsqlEdge(Base):
         return '<PsqlEdge(({src_id})->({dst_id}))>'.format(
             src_id=self.src_id, dst_id=self.dst_id)
 
+    def __getitem__(self, prop):
+        return self.properties[prop]
+
+    def __setitem__(self, prop, val):
+        self.properties[prop] = sanitize(val)
+
     def merge(self, system_annotations={}, properties={}):
         """Merges a new edge onto this instance.  The parameter ``edge``
         should contain the 'new' values with the following effects. In

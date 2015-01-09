@@ -1,6 +1,11 @@
 language: python
 python:
     - "2.7"
+
+branches:
+    except:
+        - fly_unit-tests
+
 # command to run tests
 before_script:
   - echo -e 'Host github.com\n\tStrictHostKeyChecking no\n' >> ~/.ssh/config

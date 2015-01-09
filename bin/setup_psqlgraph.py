@@ -59,9 +59,7 @@ def setup_database(user, password, database, root_user='postgres', host=''):
     perm_stmt = 'GRANT ALL PRIVILEGES ON DATABASE {database} to {password}'\
                 ''.format(database=database, password=password)
     conn.execute(perm_stmt)
-
     conn.execute("commit")
-
     conn.close()
 
 
@@ -75,6 +73,38 @@ def create_tables(host, user, password, database):
     add_edge_constraint(UniqueConstraint(
         PsqlEdge.src_id, PsqlEdge.dst_id, PsqlEdge.label))
     Base.metadata.create_all(driver.engine)
+
+
+def create_indexes(host, user, password, database):
+    """
+    create a table
+    """
+    print('Creating indexes')
+    driver = PsqlGraphDriver(host, user, password, database)
+    index = lambda t, c: ["CREATE INDEX ON {} ({})".format(t, x) for x in c]
+    map(driver.engine.execute, index(
+        'nodes', [
+            'node_id',
+            'label',
+            'node_id, label'
+        ]))
+    map(driver.engine.execute, index(
+        'edges', [
+            'edge_id',
+            'src_id',
+            'dst_id',
+            'label',
+            'dst_id, src_id',
+            'dst_id, src_id, label'
+        ]))
+    map(driver.engine.execute, [
+        "CREATE INDEX ON nodes USING gin (system_annotations)",
+        "CREATE INDEX ON nodes USING gin (properties)",
+        "CREATE INDEX ON nodes USING gin (system_annotations, properties)",
+        "CREATE INDEX ON edges USING gin (system_annotations)",
+        "CREATE INDEX ON edges USING gin (properties)",
+        "CREATE INDEX ON edges USING gin (system_annotations, properties)",
+    ])
 
 
 if __name__ == '__main__':
@@ -92,3 +122,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     setup_database(args.user, args.password, args.database)
     create_tables(args.host, args.user, args.password, args.database)
+    create_indexes(args.host, args.user, args.password, args.database)

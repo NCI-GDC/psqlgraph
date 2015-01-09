@@ -393,6 +393,7 @@ class PsqlGraphDriver(object):
                 system_annotation_matches=system_annotation_matches,
                 voided=voided,
                 label=label,
+                session=session,
             )
 
     def node_lookup_by_id(self, node_id, voided=False, session=None):
@@ -470,7 +471,6 @@ class PsqlGraphDriver(object):
 
             # Filter system_annotations
             if system_annotation_matches:
-                print system_annotation_matches
                 for key, value in system_annotation_matches.iteritems():
                     if value is not None:
                         query = query.filter(

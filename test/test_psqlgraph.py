@@ -30,6 +30,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.REPEAT_COUNT = 200
 
     def tearDown(self):
+        self.driver.engine.dispose()
         self._clear_tables()
 
     def _clear_tables(self):

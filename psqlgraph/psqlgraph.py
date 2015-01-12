@@ -63,13 +63,13 @@ class PsqlGraphDriver(object):
         """Override the edge validation callback."""
         self.edge_validator = edge_validator
 
-    def get_nodes(self, session=None):
+    def get_nodes(self, session=None, batch_size=1000):
         with session_scope(self.engine, session) as local:
-            return local.query(PsqlNode)
+            return local.query(PsqlNode).yield_per(batch_size)
 
-    def get_edges(self, session=None):
+    def get_edges(self, session=None, batch_size=1000):
         with session_scope(self.engine, session) as local:
-            return local.query(PsqlEdge)
+            return local.query(PsqlEdge).yield_per(batch_size)
 
     def get_node_count(self, session=None):
         with session_scope(self.engine, session) as local:

@@ -393,6 +393,7 @@ class PsqlGraphDriver(object):
                 system_annotation_matches=system_annotation_matches,
                 voided=voided,
                 label=label,
+                session=session
             )
 
     def node_lookup_by_id(self, node_id, voided=False, session=None):

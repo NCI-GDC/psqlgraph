@@ -522,6 +522,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
                          'to be found, instead found {count}'.format(
                              count=len(nodes)))
 
+    def test_query_then_node_delete(self):
+        """Test querying for a node then deleting it."""
+        node1 = self.driver.node_merge(node_id=str(uuid.uuid4()), label='test')
+        with self.driver.session_scope() as session:
+            for node in self.driver.node_lookup(label="test", session=session).all():
+                self.driver.node_delete(node=node, session=session)
+
+        nodes = self.driver.node_lookup(node1.node_id).all()
+        self.assertEqual(len(nodes), 0, 'Expected a no non-voided nodes '
+                         'to be found, instead found {count}'.format(
+                             count=len(nodes)))
+
     def test_repeated_node_delete(self):
         """Test repeated node deletion correctness"""
 

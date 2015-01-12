@@ -77,7 +77,7 @@ class PsqlNode(Base):
     def get_edges(self):
         for edge_in in self.edges_in:
             yield edge_in
-        for edge_out in self.edges_iout:
+        for edge_out in self.edges_out:
             yield edge_out
 
     def get_neighbors(self):

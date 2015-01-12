@@ -38,12 +38,17 @@ def validate_no_unexpected_props(schema, datum):
         field_names = [f.name for f in schema.fields]
         if any((k not in field_names for k in datum.keys())):
             return False
+        if any((name not in datum.keys() for name in field_names)):
+            # this is a bit of an overloading of the name of this
+            # function.  it verifies that all field names in a record
+            # schema exist in the datum. avro does not do this by
+            # default for optional properties
+            return False
         else:
             return all((validate_no_unexpected_props(f.type, datum[f.name])
-                        for f in schema.fields))
+                        for f in schema.fields if datum.get(f.name)))
     else:
         return True
-
 
 class AvroNodeValidator(PsqlNodeValidator):
     def __init__(self, schema):

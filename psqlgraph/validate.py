@@ -46,9 +46,10 @@ def validate_no_unexpected_props(schema, datum):
             return False
         else:
             return all((validate_no_unexpected_props(f.type, datum[f.name])
-                        for f in schema.fields if datum.get(f.name)))
+                        for f in schema.fields))
     else:
         return True
+
 
 class AvroNodeValidator(PsqlNodeValidator):
     def __init__(self, schema):

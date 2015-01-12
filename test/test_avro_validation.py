@@ -57,6 +57,13 @@ class TestAvroValidation(unittest.TestCase):
                         properties={"file_name": "foobar.txt"})
         self.driver.node_insert(node)
 
+    def test_optional_props_must_be_set_explicitly(self):
+        self.driver.node_validator = AvroNodeValidator(
+            self.make_avro_node_schema({"baz": {"foo": "null"}}))
+        node = PsqlNode(str(uuid.uuid4()), "baz", properties={})
+        with self.assertRaises(ValidationError):
+            self.driver.node_insert(node)
+
     def test_avro_validation_catches_errors_on_update(self):
         self.driver.node_validator = AvroNodeValidator(
             self.make_avro_node_schema({"file": {"file_name": "string"}}))

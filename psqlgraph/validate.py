@@ -80,6 +80,13 @@ class AvroEdgeValidator(PsqlEdgeValidator):
         return res
 
     def validate(self, edge, *args, **kwargs):
+        if not edge.src:
+            logger.error('Edge {} has no source.'.format(edge))
+            return False
+        if not edge.dst:
+            logger.error('Edge {} has no desination.'.format(edge))
+            return False
+
         edge_as_dict = self.munge_edge_into_dict(edge)
         return (avro_validate(self.schema, edge_as_dict) and
                 validate_no_unexpected_props(self.schema, edge_as_dict))

@@ -470,7 +470,6 @@ class PsqlGraphDriver(object):
 
             # Filter system_annotations
             if system_annotation_matches:
-                print system_annotation_matches
                 for key, value in system_annotation_matches.iteritems():
                     if value is not None:
                         query = query.filter(

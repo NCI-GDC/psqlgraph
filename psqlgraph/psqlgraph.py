@@ -188,6 +188,7 @@ class PsqlGraphDriver(object):
                     system_annotations=system_annotations,
                     acl=acl,
                     properties=properties,
+                    session=session
                 )
 
             else:
@@ -555,7 +556,8 @@ class PsqlGraphDriver(object):
                 node,
                 system_annotations=system_annotations,
                 acl=acl,
-                properties=properties
+                properties=properties,
+                session=session
             )
 
     @retryable
@@ -717,7 +719,7 @@ class PsqlGraphDriver(object):
             if not node:
                 raise QueryError('Node not found')
 
-            # Void this node's edges and the node entry
+            # Void this noode's edges and the node entry
             self.logger.debug('deleting node: {0}'.format(node.node_id))
             self.edge_delete_by_node_id(node.node_id, session=local)
             self._node_void(node, session=local)

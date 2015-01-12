@@ -188,6 +188,7 @@ class PsqlGraphDriver(object):
                     system_annotations=system_annotations,
                     acl=acl,
                     properties=properties,
+                    session=session
                 )
 
             else:
@@ -393,6 +394,7 @@ class PsqlGraphDriver(object):
                 system_annotation_matches=system_annotation_matches,
                 voided=voided,
                 label=label,
+                session=session
             )
 
     def node_lookup_by_id(self, node_id, voided=False, session=None):
@@ -470,7 +472,6 @@ class PsqlGraphDriver(object):
 
             # Filter system_annotations
             if system_annotation_matches:
-                print system_annotation_matches
                 for key, value in system_annotation_matches.iteritems():
                     if value is not None:
                         query = query.filter(
@@ -555,7 +556,8 @@ class PsqlGraphDriver(object):
                 node,
                 system_annotations=system_annotations,
                 acl=acl,
-                properties=properties
+                properties=properties,
+                session=session
             )
 
     @retryable
@@ -717,7 +719,7 @@ class PsqlGraphDriver(object):
             if not node:
                 raise QueryError('Node not found')
 
-            # Void this node's edges and the node entry
+            # Void this noode's edges and the node entry
             self.logger.debug('deleting node: {0}'.format(node.node_id))
             self.edge_delete_by_node_id(node.node_id, session=local)
             self._node_void(node, session=local)

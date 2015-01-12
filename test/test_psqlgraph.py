@@ -29,11 +29,17 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.driver = PsqlGraphDriver(host, user, password, database)
         self.REPEAT_COUNT = 200
 
+    def tearDown(self):
+        self.driver.engine.dispose()
+        self._clear_tables()
+
     def _clear_tables(self):
         conn = self.driver.engine.connect()
         conn.execute('commit')
         conn.execute('delete from edges')
         conn.execute('delete from nodes')
+        conn.execute('delete from voided_nodes')
+        conn.execute('delete from voided_edges')
         conn.close()
 
     def test_sanitize_int(self):
@@ -513,6 +519,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.driver.node_delete(node_id=tempid)
 
         nodes = list(self.driver.node_lookup(tempid))
+        self.assertEqual(len(nodes), 0, 'Expected a no non-voided nodes '
+                         'to be found, instead found {count}'.format(
+                             count=len(nodes)))
+
+    def test_query_then_node_delete(self):
+        """Test querying for a node then deleting it."""
+        node1 = self.driver.node_merge(node_id=str(uuid.uuid4()), label='test')
+        with self.driver.session_scope() as session:
+            for node in self.driver.node_lookup(label="test", session=session).all():
+                self.driver.node_delete(node=node, session=session)
+
+        nodes = self.driver.node_lookup(node1.node_id).all()
         self.assertEqual(len(nodes), 0, 'Expected a no non-voided nodes '
                          'to be found, instead found {count}'.format(
                              count=len(nodes)))

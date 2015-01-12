@@ -71,9 +71,12 @@ class PsqlGraph2Neo4j(object):
         nodes = self.psqlgraphDriver.get_nodes()
         for node in nodes:
             self.convert_node(node)
-            self.neo4jDriver.create(py2neo.Node(node.label, **node.properties))
+            self.neo4jDriver.graph.create(
+                py2neo.Node(node.label, **node.properties))
             if not silent:
                 i = self.update_pbar(pbar, i)
+        if not silent:
+            self.update_pbar(pbar, node_count)
 
     def start_pbar(self, maxval):
         pbar = progressbar.ProgressBar(
@@ -109,14 +112,13 @@ class PsqlGraph2Neo4j(object):
         edges = self.psqlgraphDriver.get_edges()
         for edge in edges:
             batch_count += 1
-
             if not (edge.src and edge.dst):
                 i += self.update_pbar(pbar, i)
                 continue
 
             cypher = """
             MATCH (s:{src_label}), (d:{dst_label})
-            WHERE s.id = {{src_id}} and d.id = {{dst_id}}
+            WHERE s.id = {{src_id}} AND d.id = {{dst_id}}
             CREATE (s)-[:{edge_label}]->(d)
             """.format(
                 src_label=edge.src.label,
@@ -129,32 +131,28 @@ class PsqlGraph2Neo4j(object):
                 dst_id=edge.dst_id,
             )
 
-            transaction.append(
-                cypher,
-                parameters=parameters,
-            )
-
+            transaction.append(cypher, parameters=parameters)
             if batch_count >= batch_size:
                 transaction.commit()
-                batch_count = 0
-                transaction = self.neo4jDriver.cypher.begin()
-
-            if not silent:
-                i = self.update_pbar(pbar, i)
+                batch_count, transaction = 0, self.neo4jDriver.cypher.begin()
+                if not silent:
+                    i = self.update_pbar(pbar, i)
 
         transaction.commit()
+        if not silent:
+            self.update_pbar(pbar, edge_count)
 
-    def export(self, silent=False, batch_size=1000):
+    def export(self, silent=False, batch_size=1000, create_indexes=True):
+        if create_indexes:
+            self.create_indexes()
 
         if not self.psqlgraphDriver:
             raise ExportError(
-                'No psqlgraph driver.  Please call .connect_to_psql()'
-            )
+                'No psqlgraph driver.  Please call .connect_to_psql()')
 
         if not self.neo4jDriver:
             raise ExportError(
-                'No neo4j driver.  Please call .connect_to_neo4j()'
-            )
+                'No neo4j driver.  Please call .connect_to_neo4j()')
 
         self.export_nodes(silent)
         self.export_edges(silent, batch_size)

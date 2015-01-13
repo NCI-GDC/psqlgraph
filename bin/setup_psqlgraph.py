@@ -25,15 +25,16 @@ def try_drop_test_data(user, database, root_user='postgres', host=''):
     try:
         create_stmt = 'DROP DATABASE "{database}"'.format(database=database)
         conn.execute(create_stmt)
-
-        user_stmt = "DROP USER {user}".format(user=user)
-        conn.execute(user_stmt)
-
     except Exception, msg:
         logging.warn("Unable to drop test data:" + str(msg))
 
-    else:
-        conn.close()
+    try:
+        user_stmt = "DROP USER {user}".format(user=user)
+        conn.execute(user_stmt)
+    except Exception, msg:
+        logging.warn("Unable to drop test data:" + str(msg))
+
+    conn.close()
 
 
 def setup_database(user, password, database, root_user='postgres', host=''):
@@ -52,14 +53,17 @@ def setup_database(user, password, database, root_user='postgres', host=''):
     create_stmt = 'CREATE DATABASE "{database}"'.format(database=database)
     conn.execute(create_stmt)
 
-    user_stmt = "CREATE USER {user} WITH PASSWORD '{password}'".format(
-        user=user, password=password)
-    conn.execute(user_stmt)
+    try:
+        user_stmt = "CREATE USER {user} WITH PASSWORD '{password}'".format(
+            user=user, password=password)
+        conn.execute(user_stmt)
 
-    perm_stmt = 'GRANT ALL PRIVILEGES ON DATABASE {database} to {password}'\
-                ''.format(database=database, password=password)
-    conn.execute(perm_stmt)
-    conn.execute("commit")
+        perm_stmt = 'GRANT ALL PRIVILEGES ON DATABASE {database} to {password}'\
+                    ''.format(database=database, password=password)
+        conn.execute(perm_stmt)
+        conn.execute("commit")
+    except Exception, msg:
+        logging.warn("Unable to add user:" + str(msg))
     conn.close()
 
 

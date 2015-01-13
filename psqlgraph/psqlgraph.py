@@ -919,7 +919,7 @@ class PsqlGraphDriver(object):
 
         :param str node_id:
              The node_id which any edge contains as a source or destination.
-        :returns: None
+        :returns: The number of edges deleted
 
         """
 
@@ -929,8 +929,11 @@ class PsqlGraphDriver(object):
         self.logger.debug('cascading node deletion to edge: {0})'.format(
             node_id))
 
+        count = 0
         with session_scope(self.engine, session) as local:
             src_nodes = self.edge_lookup(src_id=node_id, session=local)
             dst_nodes = self.edge_lookup(dst_id=node_id, session=local)
             for edge in itertools.chain(src_nodes, dst_nodes):
                 self.edge_delete(edge, local)
+                count += 1
+        return count

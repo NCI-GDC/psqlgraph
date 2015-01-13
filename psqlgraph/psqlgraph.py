@@ -494,9 +494,8 @@ class PsqlGraphDriver(object):
 
     @retryable
     def node_clobber(self, node_id=None, node=None, acl=[],
-                     system_annotations={}, label=None,
-                     properties={}, session=None,
-                     max_retries=DEFAULT_RETRIES,
+                     system_annotations={}, properties={},
+                     session=None, max_retries=DEFAULT_RETRIES,
                      backoff=default_backoff):
         """This function will overwrite an ORM node instance in the table or
         a node relating to a give ``node_id``.
@@ -537,10 +536,7 @@ class PsqlGraphDriver(object):
         with session_scope(self.engine, session) as local:
             if not node:
                 """ try and lookup the node """
-                node = self.node_lookup_one(
-                    node_id=node_id,
-                    session=local,
-                )
+                node = self.node_lookup_one(node_id=node_id, session=local)
 
             if not node_id and node:
                 node_id = node.node_id
@@ -550,14 +546,13 @@ class PsqlGraphDriver(object):
                     'Cannot create a node with no node_id.')
 
             self.logger.debug('overwritting node: {0}'.format(node.node_id))
+            node.system_annotations = system_annotations
+            node.properties = properties
+            node.acl = acl
 
-            self.node_update(
-                node,
-                system_annotations=system_annotations,
-                acl=acl,
-                properties=properties,
-                session=local
-            )
+            local.merge(node)
+            if not self.node_validator(node):
+                raise ValidationError('Node failed schema constraints')
 
     @retryable
     def node_delete_property_keys(self, property_keys, node_id=None,

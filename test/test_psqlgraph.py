@@ -460,14 +460,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
         tempid = str(uuid.uuid4())
 
         propertiesA = {'key1':  None, 'key2':  3, 'key3':  'test'}
-
         {'key1':  None, 'key2':  2, 'key3':  datetime.now()}
         self.driver.node_merge(node_id=tempid, label='test',
                                properties=propertiesA)
 
         propertiesB = {'key1':  True, 'key2':  0, 'key3':  'test'}
-        self.driver.node_clobber(node_id=tempid, properties=propertiesB,
-                                 label='test')
+        self.driver.node_clobber(node_id=tempid, properties=propertiesB)
 
         propertiesB = sanitizer.sanitize(propertiesB)
         nodes = list(self.driver.node_lookup(node_id=tempid))

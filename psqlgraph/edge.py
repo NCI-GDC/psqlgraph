@@ -1,4 +1,4 @@
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, object_session
 from sqlalchemy import ForeignKey
 from sqlalchemy.dialects.postgres import JSONB
 from sqlalchemy import Column, Integer, Text, DateTime
@@ -61,6 +61,9 @@ class PsqlEdge(Base):
 
     src = relationship("PsqlNode", foreign_keys=[src_id])
     dst = relationship("PsqlNode", foreign_keys=[dst_id])
+
+    def get_session(self):
+        return object_session(self)
 
     def __init__(self, src_id, dst_id, label,
                  edge_id=str(uuid.uuid4),

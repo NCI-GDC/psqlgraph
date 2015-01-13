@@ -29,11 +29,12 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--password', default=None, type=str,
                         help='password for given user. If no '
                         'password given, one will be prompted.')
+
     args = parser.parse_args()
+    print(message.format(args.database, args.host, args.user))
     if not args.password:
         args.password = getpass.getpass()
 
-    print(message.format(args.database, args.host, args.user))
     g = psqlgraph.PsqlGraphDriver(**args.__dict__)
 
     if ipython:

@@ -1,7 +1,7 @@
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgres import ARRAY, JSONB
 from sqlalchemy import Column, Integer, Text, DateTime
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, object_session
 from datetime import datetime
 import copy
 
@@ -43,6 +43,9 @@ class PsqlNode(Base):
     properties = Column(JSONB, default={})
     edges_out = relationship("PsqlEdge", foreign_keys=[PsqlEdge.src_id])
     edges_in = relationship("PsqlEdge", foreign_keys=[PsqlEdge.dst_id])
+
+    def get_session(self):
+        return object_session(self)
 
     def __repr__(self):
         return '<PsqlNode({node_id}, {label})>'.format(

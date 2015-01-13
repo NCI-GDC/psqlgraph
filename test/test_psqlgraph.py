@@ -554,6 +554,19 @@ class TestPsqlGraphDriver(unittest.TestCase):
             str(uuid.uuid4()), str(uuid.uuid4), None,
         )
 
+    def test_edges_have_unique_ids(self):
+        """Test that generated edge ids are unique"""
+        src_id = str(uuid.uuid4())
+        dst_id = str(uuid.uuid4())
+        self.driver.node_merge(node_id=src_id, label='test')
+        self.driver.node_merge(node_id=dst_id, label='test')
+
+        edge1 = self.driver.edge_insert(PsqlEdge(
+            src_id=src_id, dst_id=dst_id, label='test1'))
+        edge2 = self.driver.edge_insert(PsqlEdge(
+            src_id=src_id, dst_id=dst_id, label='test2'))
+        self.assertNotEqual(edge1.edge_id, edge2.edge_id)
+
     def test_edge_insert_and_lookup(self):
         """Test edge creation and lookup by dst_id, src_id, dst_id and src_id"""
 

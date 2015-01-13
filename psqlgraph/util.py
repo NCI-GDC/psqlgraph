@@ -4,6 +4,7 @@ from functools import wraps
 import time
 import random
 from sqlalchemy.orm import sessionmaker
+from query import GraphQuery
 import logging
 
 #  PsqlNode modules
@@ -16,7 +17,7 @@ def session_scope(engine, session=None):
 
     if not session:
         Session = sessionmaker(expire_on_commit=False)
-        Session.configure(bind=engine)
+        Session.configure(bind=engine, query_cls=GraphQuery)
         local = Session()
         logging.debug('Created session {session}'.format(session=local))
     else:

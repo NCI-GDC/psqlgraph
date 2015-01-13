@@ -1,12 +1,23 @@
-from sqlalchemy import UniqueConstraint, String
-from sqlalchemy.dialects.postgres import ARRAY, JSONB, TIMESTAMP
-from sqlalchemy import Column, Integer, Text
+from sqlalchemy import UniqueConstraint
+from sqlalchemy.dialects.postgres import ARRAY, JSONB
+from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
 from sanitizer import sanitize
 from psqlgraph import Base
 from edge import PsqlEdge
+
+
+def add_node_constraint(constraint):
+    """Adds a constraint to edges table.  This would need to be called
+    prior to creation of tables to have any effect
+
+    :param UniqueConstraint constraint:
+        The uniqueness constraint to add to the tables `nodes`
+
+    """
+    Base.metadata.tables.get('nodes').constraints.add(constraint)
 
 
 class PsqlNode(Base):
@@ -19,10 +30,13 @@ class PsqlNode(Base):
     __table_args__ = (UniqueConstraint('node_id', name='_node_id_uc'),)
 
     key = Column(Integer, primary_key=True)
-    node_id = Column(String(36), nullable=False)
+    node_id = Column(Text, nullable=False)
     label = Column(Text, nullable=False)
-    created = Column(TIMESTAMP, nullable=False,
-                     default=sanitize(datetime.now()))
+    created = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=sanitize(datetime.now())
+    )
     acl = Column(ARRAY(Text))
     system_annotations = Column(JSONB, default={})
     properties = Column(JSONB, default={})
@@ -45,6 +59,12 @@ class PsqlNode(Base):
         self.label = label
         self.properties = properties
 
+    def __getitem__(self, prop):
+        return self.properties[prop]
+
+    def __setitem__(self, prop, val):
+        self.properties[prop] = sanitize(val)
+
     def copy(self):
         return PsqlNode(
             node_id=self.node_id,
@@ -57,7 +77,7 @@ class PsqlNode(Base):
     def get_edges(self):
         for edge_in in self.edges_in:
             yield edge_in
-        for edge_out in self.edges_iout:
+        for edge_out in self.edges_out:
             yield edge_out
 
     def get_neighbors(self):
@@ -121,11 +141,18 @@ class PsqlVoidedNode(Base):
     __tablename__ = 'voided_nodes'
 
     key = Column(Integer, primary_key=True)
-    node_id = Column(String(36), nullable=False)
+    node_id = Column(Text, nullable=False)
     label = Column(Text, nullable=False)
-    voided = Column(TIMESTAMP, nullable=False)
+    voided = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=sanitize(datetime.now())
+    )
     created = Column(
-        TIMESTAMP, nullable=False, default=sanitize(datetime.now()))
+        DateTime(timezone=True),
+        nullable=False,
+        default=sanitize(datetime.now())
+    )
     acl = Column(ARRAY(Text))
     system_annotations = Column(JSONB, default={})
     properties = Column(JSONB, default={})

@@ -4,7 +4,7 @@ from psqlgraph import PsqlGraphDriver, PsqlNode, PsqlEdge
 from psqlgraph.exc import ValidationError
 from psqlgraph.validate import AvroNodeValidator, AvroEdgeValidator
 
-from avro.schema import make_avsc_object, Names
+from avro.schema import make_avsc_object
 
 
 host = 'localhost'
@@ -56,6 +56,13 @@ class TestAvroValidation(unittest.TestCase):
         node = PsqlNode(str(uuid.uuid4()), "file",
                         properties={"file_name": "foobar.txt"})
         self.driver.node_insert(node)
+
+    def test_optional_props_must_be_set_explicitly(self):
+        self.driver.node_validator = AvroNodeValidator(
+            self.make_avro_node_schema({"baz": {"foo": "null"}}))
+        node = PsqlNode(str(uuid.uuid4()), "baz", properties={})
+        with self.assertRaises(ValidationError):
+            self.driver.node_insert(node)
 
     def test_avro_validation_catches_errors_on_update(self):
         self.driver.node_validator = AvroNodeValidator(
@@ -134,7 +141,6 @@ class TestAvroValidation(unittest.TestCase):
         with self.assertRaises(ValidationError):
             self.driver.node_insert(node)
 
-
     def avro_edge_node_labels_dict(self, label_pairs):
         return [
             {"type": "record",
@@ -154,7 +160,7 @@ class TestAvroValidation(unittest.TestCase):
                          "type": "enum",
                          "name": str(uuid.uuid4()) + dst + "_enum"
                      },
-                     "name": "dest_node_label"
+                     "name": "dst_node_label"
                  }
                  ]
              } for src, dst in label_pairs.items()]
@@ -176,10 +182,10 @@ class TestAvroValidation(unittest.TestCase):
                 {
                     "type": {
                         "type": "record",
-                        "name": str(uuid.uuid4()) + "src_dest_nodes",
+                        "name": str(uuid.uuid4()) + "src_dst_nodes",
                         "fields": [
                             {"type": "string", "name": "src_node_id"},
-                            {"type": "string", "name": "dest_node_id"}
+                            {"type": "string", "name": "dst_node_id"}
                         ]
                     },
                     "name": "node_ids"

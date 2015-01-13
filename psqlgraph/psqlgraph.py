@@ -188,7 +188,7 @@ class PsqlGraphDriver(object):
                     system_annotations=system_annotations,
                     acl=acl,
                     properties=properties,
-                    session=session
+                    session=local
                 )
 
             else:
@@ -205,8 +205,7 @@ class PsqlGraphDriver(object):
                     acl=acl,
                     properties=properties,
                 ), session=local)
-
-            return node
+        return node
 
     def node_insert(self, node, session=None):
         """Takes a PsqlNode and inserts it into the graph.
@@ -557,7 +556,7 @@ class PsqlGraphDriver(object):
                 system_annotations=system_annotations,
                 acl=acl,
                 properties=properties,
-                session=session
+                session=local
             )
 
     @retryable

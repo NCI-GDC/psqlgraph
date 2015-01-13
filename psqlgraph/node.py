@@ -3,6 +3,7 @@ from sqlalchemy.dialects.postgres import ARRAY, JSONB
 from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime
+import copy
 
 from sanitizer import sanitize
 from psqlgraph import Base
@@ -121,14 +122,15 @@ class PsqlNode(Base):
         """
 
         if system_annotations:
-            self.syste_annotations = self.system_annotations.update(
-                sanitize(system_annotations))
+            self.system_annotations = copy.deepcopy(self.system_annotations)
+            self.system_annotations.update(sanitize(system_annotations))
 
         if properties:
-            properties = sanitize(properties)
-            self.properties.update(properties)
+            self.properties = copy.deepcopy(self.properties)
+            self.properties.update(sanitize(properties))
 
         if acl:
+            self.acl = copy.deepcopy(self.acl)
             self.acl += acl
 
 

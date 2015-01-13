@@ -188,7 +188,7 @@ class PsqlGraphDriver(object):
                     system_annotations=system_annotations,
                     acl=acl,
                     properties=properties,
-                    session=session
+                    session=local
                 )
 
             else:
@@ -557,7 +557,7 @@ class PsqlGraphDriver(object):
                 system_annotations=system_annotations,
                 acl=acl,
                 properties=properties,
-                session=session
+                session=local
             )
 
     @retryable

@@ -74,7 +74,7 @@ class AvroEdgeValidator(PsqlEdgeValidator):
 
     def munge_edge_into_dict(self, edge):
         res = {}
-        res["id"] = str(edge.key)
+        res["id"] = edge.edge_id
         res["label"] = edge.label
         res["node_labels"] = {"src_node_label": edge.src.label,
                               "dst_node_label": edge.dst.label}

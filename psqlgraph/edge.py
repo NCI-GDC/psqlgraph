@@ -39,7 +39,7 @@ class PsqlEdge(Base):
     __table_args__ = None
 
     key = Column(Integer, primary_key=True)
-    edge_id = Column(Text, nullable=False, default=str(uuid.uuid4()))
+    edge_id = Column(Text, nullable=False, default=lambda: str(uuid.uuid4()))
     src_id = Column(
         Text,
         ForeignKey('nodes.node_id', deferrable=True, initially="DEFERRED"),
@@ -66,7 +66,7 @@ class PsqlEdge(Base):
         return object_session(self)
 
     def __init__(self, src_id, dst_id, label,
-                 edge_id=str(uuid.uuid4),
+                 edge_id=None,
                  system_annotations={},
                  properties={}):
 
@@ -76,7 +76,8 @@ class PsqlEdge(Base):
 
         system_annotations = sanitize(system_annotations)
         properties = sanitize(properties)
-        self.edge_id = edge_id
+        if edge_id:
+            self.edge_id = edge_id
         self.src_id = src_id
         self.dst_id = dst_id
         self.system_annotations = system_annotations

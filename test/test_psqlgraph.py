@@ -12,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError, EdgeCreationError
 
 from datetime import datetime
+from copy import deepcopy
 
 host = 'localhost'
 user = 'test'
@@ -172,6 +173,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         (2) The update is successful
         (3) The transaction of the update is maintained
         (4) There is only a single version of the node
+        (5) The voided node is a snapshot of the previous version.
         """
 
         node_id = str(uuid.uuid4()) if not given_id else given_id
@@ -191,17 +193,20 @@ class TestPsqlGraphDriver(unittest.TestCase):
                                max_retries=retries)
 
         # Merge properties
+        merged = deepcopy(propertiesA)
         for key, val in propertiesB.iteritems():
-            propertiesA[key] = val
+            merged[key] = val
 
         if not given_id:
             # Test that there is only 1 non-void node with node_id and property
             # equality
             # if this is not part of another test, check the count
             node = self.driver.node_lookup_one(node_id)
-            self.assertEqual(sanitize(propertiesA),
+            self.assertEqual(sanitize(merged),
                              node.properties)
-
+            voided_node = self.driver.node_lookup(node_id, voided=True).one()
+            self.assertEqual(sanitize(propertiesA),
+                             voided_node.properties)
             self.verify_node_count(2, node_id=node_id, voided=True)
 
         return propertiesA

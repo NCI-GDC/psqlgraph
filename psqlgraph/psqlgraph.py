@@ -242,11 +242,10 @@ class PsqlGraphDriver(object):
             logging.debug('Node left unchanged: {}'.format(node))
             return node
 
-        node.merge(system_annotations=system_annotations, acl=acl,
-                   properties=properties)
-
         with session_scope(self.engine, session) as local:
             self._node_void(node, local)
+            node.merge(system_annotations=system_annotations, acl=acl,
+                       properties=properties)
             local.merge(node)
             if not self.node_validator(node):
                 raise ValidationError('Node failed schema constraints')

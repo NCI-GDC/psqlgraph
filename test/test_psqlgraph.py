@@ -209,7 +209,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                              voided_node.properties)
             self.verify_node_count(2, node_id=node_id, voided=True)
 
-        return propertiesA
+        return merged
 
     def test_query_by_label(self, node_id=None):
         """Test ability to query for nodes by label"""
@@ -249,19 +249,21 @@ class TestPsqlGraphDriver(unittest.TestCase):
                                properties=propertiesB)
 
         # Merge properties
+        merged = deepcopy(propertiesA)
         for key, val in propertiesB.iteritems():
-            propertiesA[key] = val
+            merged[key] = val
+
 
         node = self.driver.node_lookup_one(property_matches=propertiesB)
-        self.assertEqual(propertiesA, node.properties)
+        self.assertEqual(merged, node.properties)
 
         node = self.driver.node_lookup_one(node_id=node_id)
-        self.assertEqual(propertiesA, node.properties)
+        self.assertEqual(merged, node.properties)
 
         nodes = self.verify_node_count(2, node_id=node_id, voided=True)
         self.assertEqual(propertiesA, nodes[1].properties)
 
-        return propertiesA
+        return merged
 
     def test_node_update_system_annotations_id(self, given_id=None):
         """Test updating node system annotations ID
@@ -291,23 +293,24 @@ class TestPsqlGraphDriver(unittest.TestCase):
                                system_annotations=system_annotationsB)
 
         # Merge system_annotations
+        merged = deepcopy(system_annotationsA)
         for key, val in system_annotationsB.iteritems():
-            system_annotationsA[key] = val
+            merged[key] = val
 
         # if this is not part of another test, check the count
         if not given_id:
             # Test that there is only 1 non-void node with node_id and property
             # equality
             node = self.driver.node_lookup_one(node_id)
-            self.assertEqual(sanitize(system_annotationsA),
+            self.assertEqual(sanitize(merged),
                              node.system_annotations)
 
             nodes = list(self.verify_node_count(
                 2, node_id=node_id, voided=True))
             self.assertEqual(sanitize(system_annotationsA),
-                             nodes[0].system_annotations)
+                             nodes[1].system_annotations)
 
-        return system_annotationsA
+        return merged
 
     def _insert_node(self, node):
         """Test inserting a node"""
@@ -587,6 +590,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(edge.src_id, src_id)
         self.assertEqual(edge.dst_id, dst_id)
         self.assertEqual(edge.properties, props)
+
+    def test_edge_snapshot(self):
+        src_id = str(uuid.uuid4())
+        dst_id = str(uuid.uuid4())
+        self.driver.node_merge(node_id=src_id, label='test')
+        self.driver.node_merge(node_id=dst_id, label='test')
+
+        edge = self.driver.edge_insert(PsqlEdge(
+            src_id=src_id, dst_id=dst_id, label='test'))
+        self.driver.edge_update(edge, properties={'test': 2})
+        voided_edge = self.driver.edge_lookup(label='test', voided=True).one()
+        self.assertEqual({}, voided_edge.properties)
 
     def test_edge_insert_and_lookup_properties(self):
         """Test edge property merging"""

@@ -242,11 +242,10 @@ class PsqlGraphDriver(object):
             logging.debug('Node left unchanged: {}'.format(node))
             return node
 
-        node.merge(system_annotations=system_annotations, acl=acl,
-                   properties=properties)
-
         with session_scope(self.engine, session) as local:
             self._node_void(node, local)
+            node.merge(system_annotations=system_annotations, acl=acl,
+                       properties=properties)
             local.merge(node)
             if not self.node_validator(node):
                 raise ValidationError('Node failed schema constraints')
@@ -765,15 +764,14 @@ class PsqlGraphDriver(object):
             logging.debug('Edge left unchanged: {}'.format(edge))
             return edge
 
-        edge.merge(system_annotations=system_annotations,
-                   properties=properties)
-        properties = edge.properties
-
         with session_scope(self.engine, session) as local:
+            self._edge_void(edge, local)
+            edge.merge(system_annotations=system_annotations,
+                       properties=properties)
+            local.merge(edge)
             if not self.edge_validator(edge):
                 raise ValidationError('Edge failed schema constraints')
-            self._edge_void(edge, local)
-            return local.merge(edge)
+            return edge
 
     def edge_lookup_one(self, src_id=None, dst_id=None, label=None,
                         voided=False, session=None):
@@ -821,12 +819,12 @@ class PsqlGraphDriver(object):
 
         """
 
-        if src_id is None and dst_id is None:
-            raise QueryError('Cannot lookup edge, no src_id or dst_id')
-
         with session_scope(self.engine, session) as local:
             if voided:
-                return self.edge_lookup_voided(src_id, dst_id, local)
+                return self.edge_lookup_voided(src_id=src_id,
+                                               dst_id=dst_id,
+                                               label=label,
+                                               session=local)
 
             query = local.query(PsqlEdge)
             if src_id:
@@ -852,9 +850,6 @@ class PsqlGraphDriver(object):
         :returns: A list of PsqlEdge instances ([] if none found)
 
         """
-
-        if src_id is None and dst_id is None:
-            raise QueryError('Cannot lookup edge, no src_id or dst_id')
 
         with session_scope(self.engine, session) as local:
             query = local.query(PsqlVoidedEdge)

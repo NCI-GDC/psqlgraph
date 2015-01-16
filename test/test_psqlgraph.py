@@ -970,6 +970,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 self.driver.node_insert(PsqlNode(id2, 'label2'))
                 inner.rollback()
         self.assertEqual(self.driver.node_lookup(id1).count(), 0)
+        self.assertEqual(self.driver.node_lookup(id2).count(), 0)
 
     def test_explicit_to_inherit_nested_session(self):
         """test_explicit_to_inherit_nested_session

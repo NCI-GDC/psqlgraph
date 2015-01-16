@@ -41,7 +41,7 @@ class PsqlGraphDriver(object):
         self.host = host
         self.logger = logging.getLogger('psqlgraph')
         self.default_retries = 10
-        self.sessions = []
+        self._sessions = []
 
         if node_validator is None:
             node_validator = PsqlNodeValidator(self)
@@ -71,12 +71,12 @@ class PsqlGraphDriver(object):
         inherited_session = True
         if session:
             local = session
-        elif nested or not self.sessions:
+        elif nested or not self._sessions:
             inherited_session = False
             local = self._new_session()
-            self.sessions.append(local)
+            self._sessions.append(local)
         else:
-            local = self.sessions[-1]
+            local = self._sessions[-1]
 
         # Context manager functionality
         try:
@@ -94,7 +94,7 @@ class PsqlGraphDriver(object):
             if not inherited_session:
                 local.expunge_all()
                 local.close()
-                self.sessions.pop()
+                self._sessions.pop()
 
     def set_node_validator(self, node_validator):
         """Override the node validation callback."""

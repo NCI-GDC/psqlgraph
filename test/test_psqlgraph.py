@@ -924,11 +924,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_automatic_nested_session3(self):
         """test_automatic_nested_session
 
-        Make sure that given a call to explicitly nest session scopes,
-        failure of the nested session scope does not affect the parent
-        scope. Also, verify that two statements in a nested
-        session_scope inherit the same session (i.e. the session stack
-        is working properly).
+        Also, verify that two statements in a nested session_scope
+        inherit the same session (i.e. the session stack is working
+        properly).
 
         """
         id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())

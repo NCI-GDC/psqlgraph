@@ -942,6 +942,36 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
         self.assertEqual(self.driver.node_lookup(id3).count(), 0)
 
+    def test_automatic_nested_session_inherit_valid(self):
+        """test_automatic_nested_session
+
+        Verify that implicitly nested session scopes correctly inherit
+        the parent session for valid node insertion
+
+        """
+        id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
+        with self.driver.session_scope():
+            self.driver.node_insert(PsqlNode(id1, 'label1'))
+            with self.driver.session_scope():
+                    self.driver.node_insert(PsqlNode(id2, 'label2'))
+        self.assertEqual(self.driver.node_lookup(id1).one().label, 'label1')
+        self.assertEqual(self.driver.node_lookup(id2).one().label, 'label2')
+
+    def test_automatic_nested_session_inherit_invalid(self):
+        """test_automatic_nested_session
+
+        Verify that implicitly nested session scopes correctly inherit
+        the parent session.
+
+        """
+        id1 = str(uuid.uuid4())
+        with self.assertRaises(IntegrityError):
+            with self.driver.session_scope():
+                self.driver.node_insert(PsqlNode(id1, 'label1'))
+                with self.driver.session_scope():
+                    self.driver.node_insert(PsqlNode(id1, 'label2'))
+        self.assertEqual(self.driver.node_lookup(id1).count(), 0)
+
     def test_explicit_session(self):
         """test_explicit_session
 

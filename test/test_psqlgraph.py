@@ -963,9 +963,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         id1 = str(uuid.uuid4())
-        with self.assertRaises(IntegrityError):
-            with self.driver.session_scope():
-                self.driver.node_insert(PsqlNode(id1, 'label1'))
+        with self.driver.session_scope():
+            self.driver.node_insert(PsqlNode(id1, 'label1'))
+            with self.assertRaises(IntegrityError):
                 with self.driver.session_scope():
                     self.driver.node_insert(PsqlNode(id1, 'label2'))
         self.assertEqual(self.driver.node_lookup(id1).count(), 0)

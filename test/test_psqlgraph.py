@@ -871,7 +871,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             with self.driver.session_scope():
                 self.driver.node_insert(PsqlNode(nid, 'label'))
                 self.driver.node_insert(PsqlNode(nid, 'label2'))
-        except:
+        except IntegrityError:
             pass
         else:
             raise RuntimeError('Session handler faile to catch duplicate keys')
@@ -905,7 +905,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 self.driver.node_insert(PsqlNode(nid, 'label'))
                 with self.driver.session_scope(nested=True):
                     self.driver.node_insert(PsqlNode(nid, 'label2'))
-        except:
+        except IntegrityError:
             pass
         else:
             raise RuntimeError('Session handler failed to catch conflict')
@@ -927,7 +927,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             try:
                 with self.driver.session_scope(nested=True):
                     self.driver.node_insert(PsqlNode(id1, 'label2'))
-            except:
+            except IntegrityError:
                 pass
             else:
                 raise RuntimeError('Session handler failed to catch conflict')
@@ -951,7 +951,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 with self.driver.session_scope(nested=True):
                     self.driver.node_insert(PsqlNode(id1, 'label2'))
                     self.driver.node_insert(PsqlNode(id3, 'label2'))
-            except:
+            except IntegrityError:
                 pass
             else:
                 raise RuntimeError('Session handler failed to catch conflict')

@@ -887,6 +887,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertRaises(
             IntegrityError, self.driver.node_insert, PsqlNode(nid, 'label2'))
         self.assertEqual(self.driver.node_lookup(nid).one().label, 'label')
+        self.assertFalse(self.driver._sessions)
 
     def test_automatic_nested_session(self):
         """test_automatic_nested_session
@@ -902,6 +903,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 with self.driver.session_scope(inherit=False):
                     self.driver.node_insert(PsqlNode(nid, 'label2'))
         self.assertEqual(self.driver.node_lookup(nid).one().label, 'label2')
+        self.assertFalse(self.driver._sessions)
 
     def test_automatic_nested_session2(self):
         """test_automatic_nested_session2
@@ -920,6 +922,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 with self.driver.session_scope(inherit=False):
                     self.driver.node_insert(PsqlNode(id1, 'label2'))
         self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
+        self.assertFalse(self.driver._sessions)
 
     def test_automatic_nested_session3(self):
         """test_automatic_nested_session3
@@ -939,6 +942,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                     self.driver.node_insert(PsqlNode(id3, 'label2'))
         self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
         self.assertEqual(self.driver.node_lookup(id3).count(), 0)
+        self.assertFalse(self.driver._sessions)
 
     def test_automatic_nested_session_inherit_valid(self):
         """test_automatic_nested_session_inherit_valid
@@ -954,6 +958,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                     self.driver.node_insert(PsqlNode(id2, 'label2'))
         self.assertEqual(self.driver.node_lookup(id1).one().label, 'label1')
         self.assertEqual(self.driver.node_lookup(id2).one().label, 'label2')
+        self.assertFalse(self.driver._sessions)
 
     def test_automatic_nested_session_inherit_invalid(self):
         """test_automatic_nested_session_inherit_invalid
@@ -971,6 +976,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 inner.rollback()
         self.assertEqual(self.driver.node_lookup(id1).count(), 0)
         self.assertEqual(self.driver.node_lookup(id2).count(), 0)
+        self.assertFalse(self.driver._sessions)
 
     def test_explicit_to_inherit_nested_session(self):
         """test_explicit_to_inherit_nested_session
@@ -989,10 +995,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 with self.driver.session_scope() as third:
                     self.assertEqual(third, outer)
                     self.driver.node_insert(PsqlNode(id3, 'label2'))
+        self.assertEqual(self.driver.node_lookup(id2).count(), 0)
         outer.commit()
         self.assertEqual(self.driver.node_lookup(id1).count(), 1)
         self.assertEqual(self.driver.node_lookup(id2).count(), 1)
         self.assertEqual(self.driver.node_lookup(id3).count(), 1)
+        self.assertFalse(self.driver._sessions)
 
     def test_explicit_to_inherit_nested_session_rollback(self):
         """test_explicit_to_inherit_nested_session_rollback
@@ -1015,6 +1023,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(self.driver.node_lookup(id1).count(), 0)
         self.assertEqual(self.driver.node_lookup(id2).count(), 0)
         self.assertEqual(self.driver.node_lookup(id3).count(), 0)
+        self.assertFalse(self.driver._sessions)
 
     def test_mixed_session_inheritance(self):
         """test_mixed_session_inheritance
@@ -1030,14 +1039,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.driver.node_insert(PsqlNode(id1, 'rollback'))
             with self.driver.session_scope(external) as inner:
                 self.assertEqual(inner, external)
+                self.assertNotEqual(inner, outer)
                 self.driver.node_insert(PsqlNode(id2, 'inserted'))
                 with self.driver.session_scope(outer) as third:
                     self.assertEqual(third, outer)
                     self.driver.node_insert(PsqlNode(id3, 'rollback'))
                     third.rollback()
+        self.assertEqual(self.driver.node_lookup(id2).count(), 0)
+        external.commit()
         self.assertEqual(self.driver.node_lookup(id1).count(), 0)
         self.assertEqual(self.driver.node_lookup(id2).count(), 1)
         self.assertEqual(self.driver.node_lookup(id3).count(), 0)
+        self.assertFalse(self.driver._sessions)
 
     def test_explicit_session(self):
         """test_explicit_session
@@ -1052,6 +1065,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             session.rollback()
         self.assertEqual(self.driver.node_lookup(id2).count(), 0)
         self.assertEqual(self.driver.node_lookup(id1).count(), 0)
+        self.assertFalse(self.driver._sessions)
 
 if __name__ == '__main__':
 

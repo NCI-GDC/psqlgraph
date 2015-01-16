@@ -1,4 +1,4 @@
-#
+
 # Driver to implement the graph model in postgres
 #
 
@@ -70,11 +70,13 @@ class PsqlGraphDriver(object):
         # Set up local session
         inherited_session = True
         if session:
-            self._sessions.append(session)
+            local = session
         elif not (inherit and self._sessions):
             inherited_session = False
-            self._sessions.append(self._new_session())
-        local = self._sessions[-1]
+            local = self._new_session()
+        else:
+            local = self._sessions[-1]
+        self._sessions.append(local)
 
         # Context manager functionality
         try:
@@ -92,7 +94,7 @@ class PsqlGraphDriver(object):
             if not inherited_session:
                 local.expunge_all()
                 local.close()
-                self._sessions.pop()
+            self._sessions.pop()
 
     def set_node_validator(self, node_validator):
         """Override the node validation callback."""
@@ -208,10 +210,10 @@ class PsqlGraphDriver(object):
 
         """
 
-        with self.session_scope(session) as local:
+        with self.session_scope(session):
             if not node:
                 """ try and lookup the node """
-                node = self.node_lookup_one(node_id=node_id, session=local)
+                node = self.node_lookup_one(node_id=node_id)
 
             if node:
                 """ there is a pre-existing node """
@@ -226,8 +228,7 @@ class PsqlGraphDriver(object):
                     node,
                     system_annotations=system_annotations,
                     acl=acl,
-                    properties=properties,
-                    session=local
+                    properties=properties
                 )
 
             else:
@@ -243,7 +244,7 @@ class PsqlGraphDriver(object):
                     system_annotations=system_annotations,
                     acl=acl,
                     properties=properties,
-                ), session=local)
+                ))
         return node
 
     def node_insert(self, node, session=None):
@@ -574,7 +575,7 @@ class PsqlGraphDriver(object):
         with self.session_scope(session) as local:
             if not node:
                 """ try and lookup the node """
-                node = self.node_lookup_one(node_id=node_id, session=local)
+                node = self.node_lookup_one(node_id=node_id)
 
             if not node_id and node:
                 node_id = node.node_id
@@ -636,12 +637,12 @@ class PsqlGraphDriver(object):
         with self.session_scope(session) as local:
             if not node:
                 """ try and lookup the node """
-                node = self.node_lookup_one(node_id=node_id, session=local)
+                node = self.node_lookup_one(node_id=node_id)
 
             if not node:
                 raise QueryError('Node not found')
 
-            self._node_void(node, session=local)
+            self._node_void(node)
             properties = node.properties
             for key in property_keys:
                 properties.pop(key)
@@ -695,12 +696,12 @@ class PsqlGraphDriver(object):
         with self.session_scope(session) as local:
             if not node:
                 """ try and lookup the node """
-                node = self.node_lookup_one(node_id=node_id, session=local)
+                node = self.node_lookup_one(node_id=node_id)
 
             if not node:
                 raise QueryError('Node not found')
 
-            self._node_void(node, session=local)
+            self._node_void(node)
             system_annotations = node.system_annotations
             for key in system_annotation_keys:
                 system_annotations.pop(key)
@@ -746,15 +747,15 @@ class PsqlGraphDriver(object):
         with self.session_scope(session) as local:
             if not node:
                 """ try and lookup the node """
-                node = self.node_lookup_one(node_id=node_id, session=local)
+                node = self.node_lookup_one(node_id=node_id)
 
             if not node:
                 raise QueryError('Node not found')
 
             # Void this noode's edges and the node entry
             self.logger.debug('deleting node: {0}'.format(node.node_id))
-            self.edge_delete_by_node_id(node.node_id, session=local)
-            self._node_void(node, session=local)
+            self.edge_delete_by_node_id(node.node_id)
+            self._node_void(node)
             local.delete(node)
 
     @retryable
@@ -860,10 +861,10 @@ class PsqlGraphDriver(object):
 
         with self.session_scope(session) as local:
             if voided:
-                return self.edge_lookup_voided(src_id=src_id,
-                                               dst_id=dst_id,
-                                               label=label,
-                                               session=local)
+                return self.edge_lookup_voided(
+                    src_id=src_id,
+                    dst_id=dst_id,
+                    label=label)
 
             query = local.query(PsqlEdge)
             if src_id:
@@ -935,7 +936,7 @@ class PsqlGraphDriver(object):
 
         self.logger.debug('Deleting edge: {}'.format(edge))
         with self.session_scope(session) as local:
-            self._edge_void(edge, session=local)
+            self._edge_void(edge)
             local.delete(edge)
 
     def edge_delete_by_node_id(self, node_id, session=None):
@@ -960,8 +961,8 @@ class PsqlGraphDriver(object):
 
         count = 0
         with self.session_scope(session) as local:
-            src_nodes = self.edge_lookup(src_id=node_id, session=local)
-            dst_nodes = self.edge_lookup(dst_id=node_id, session=local)
+            src_nodes = self.edge_lookup(src_id=node_id)
+            dst_nodes = self.edge_lookup(dst_id=node_id)
             for edge in itertools.chain(src_nodes, dst_nodes):
                 self.edge_delete(edge, local)
                 count += 1

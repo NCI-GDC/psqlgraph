@@ -20,7 +20,7 @@ password = 'test'
 database = 'automated_test'
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 class TestPsqlGraphDriver(unittest.TestCase):
@@ -852,6 +852,125 @@ class TestPsqlGraphDriver(unittest.TestCase):
             PsqlEdge(src_id=src_id, dst_id=dst_id, label='a')
         )
 
+    def test_simple_automatic_session(self):
+        idA = str(uuid.uuid4())
+        with self.driver.session_scope():
+            self.driver.node_insert(PsqlNode(idA, 'label'))
+        self.driver.node_lookup(idA).one()
+
+    def test_rollback_automatic_session(self):
+        """test_rollback_automatic_session
+
+        Make sure that within a session scope, an error causes the
+        entire scope to be rolled back even without an explicit
+        session being passed
+
+        """
+        nid = str(uuid.uuid4())
+        try:
+            with self.driver.session_scope():
+                self.driver.node_insert(PsqlNode(nid, 'label'))
+                self.driver.node_insert(PsqlNode(nid, 'label2'))
+        except:
+            pass
+        else:
+            raise Exception('Session handler faile to catch duplicate keys')
+        self.assertEqual(len(list(self.driver.node_lookup(nid).all())), 0)
+
+    def test_commit_automatic_session(self):
+        """test_commit_automatic_session
+
+        Make sure that when not wrapped in a session scope the
+        successful commit of a conflicting node does not rollback
+        previously committed nodes. (i.e. the statements don't inherit
+        the same session)
+
+        """
+        nid = str(uuid.uuid4())
+        self.driver.node_insert(PsqlNode(nid, 'label'))
+        self.assertRaises(
+            IntegrityError, self.driver.node_insert, PsqlNode(nid, 'label2'))
+        self.assertEqual(self.driver.node_lookup(nid).one().label, 'label')
+
+    def test_automatic_nested_session(self):
+        """test_automatic_nested_session
+
+        Make sure that given a call to explicitly nest session scopes,
+        the nested session commits first
+
+        """
+        nid = str(uuid.uuid4())
+        try:
+            with self.driver.session_scope():
+                self.driver.node_insert(PsqlNode(nid, 'label'))
+                with self.driver.session_scope(nested=True):
+                    self.driver.node_insert(PsqlNode(nid, 'label2'))
+        except:
+            pass
+        else:
+            raise Exception('Session handler failed to catch conflict')
+        self.assertEqual(self.driver.node_lookup(nid).one().label, 'label2')
+
+    def test_automatic_nested_session2(self):
+        """test_automatic_nested_session
+
+        Make sure that given a call to explicitly nest session scopes,
+        failure of the nested session scope does not affect the parent
+        scope.
+
+        """
+        id1 = str(uuid.uuid4())
+        id2 = str(uuid.uuid4())
+        self.driver.node_insert(PsqlNode(id1, 'label2'))
+        with self.driver.session_scope():
+            self.driver.node_insert(PsqlNode(id2, 'label'))
+            try:
+                with self.driver.session_scope(nested=True):
+                    self.driver.node_insert(PsqlNode(id1, 'label2'))
+            except:
+                pass
+            else:
+                raise Exception('Session handler failed to catch conflict')
+        self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
+
+    def test_automatic_nested_session3(self):
+        """test_automatic_nested_session
+
+        Make sure that given a call to explicitly nest session scopes,
+        failure of the nested session scope does not affect the parent
+        scope. Also, verify that two statements in a nested
+        session_scope inherit the same session (i.e. the session stack
+        is working properly).
+
+        """
+        id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+        self.driver.node_insert(PsqlNode(id1, 'label2'))
+        with self.driver.session_scope():
+            self.driver.node_insert(PsqlNode(id2, 'label'))
+            try:
+                with self.driver.session_scope(nested=True):
+                    self.driver.node_insert(PsqlNode(id1, 'label2'))
+                    self.driver.node_insert(PsqlNode(id3, 'label2'))
+            except:
+                pass
+            else:
+                raise Exception('Session handler failed to catch conflict')
+        self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
+        self.assertEqual(self.driver.node_lookup(id3).count(), 0)
+
+    def test_explicit_session(self):
+        """test_explicit_session
+
+        Verify that passing a session explicitly functions as expected
+
+        """
+        id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
+        with self.driver.session_scope() as session:
+            self.driver.node_insert(PsqlNode(id1, 'label2'))
+            self.driver.node_insert(PsqlNode(id2, 'label2'), session)
+            session.rollback()
+        self.assertEqual(self.driver.node_lookup(id2).count(), 0)
+        self.assertEqual(self.driver.node_lookup(id1).count(), 0)
 
 if __name__ == '__main__':
 

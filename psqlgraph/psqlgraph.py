@@ -8,6 +8,8 @@ import itertools
 from sqlalchemy import create_engine, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm.exc import NoResultFound
+from contextlib import contextmanager
+from sqlalchemy.orm import sessionmaker
 
 #  ORM object base
 Base = declarative_base()
@@ -20,7 +22,8 @@ import sanitizer
 from constants import DEFAULT_RETRIES
 from node import PsqlNode, PsqlVoidedNode
 from edge import PsqlEdge, PsqlVoidedEdge
-from util import session_scope, retryable, default_backoff
+from util import retryable, default_backoff
+from query import GraphQuery
 
 
 class PsqlGraphDriver(object):
@@ -38,6 +41,7 @@ class PsqlGraphDriver(object):
         self.host = host
         self.logger = logging.getLogger('psqlgraph')
         self.default_retries = 10
+        self.sessions = []
 
         if node_validator is None:
             node_validator = PsqlNodeValidator(self)
@@ -52,8 +56,45 @@ class PsqlGraphDriver(object):
 
         self.engine = create_engine(conn_str)
 
-    def session_scope(self):
-        return session_scope(self.engine)
+    def _new_session(self):
+        Session = sessionmaker(expire_on_commit=False)
+        Session.configure(bind=self.engine, query_cls=GraphQuery)
+        session = Session()
+        logging.debug('Created session {}'.format(session))
+        return session
+
+    @contextmanager
+    def session_scope(self, session=None, nested=False):
+        """Provide a transactional scope around a series of operations."""
+
+        # Set up local session
+        inherited_session = True
+        if session:
+            local = session
+        elif nested or not self.sessions:
+            inherited_session = False
+            local = self._new_session()
+            self.sessions.append(local)
+        else:
+            local = self.sessions[-1]
+
+        # Context manager functionality
+        try:
+            yield local
+            if not inherited_session:
+                logging.debug('Committing session {}'.format(local))
+                local.commit()
+
+        except Exception, msg:
+            logging.error('Rolling back session {}'.format(msg))
+            local.rollback()
+            raise
+
+        finally:
+            if not inherited_session:
+                local.expunge_all()
+                local.close()
+                self.sessions.pop()
 
     def set_node_validator(self, node_validator):
         """Override the node validation callback."""
@@ -64,20 +105,20 @@ class PsqlGraphDriver(object):
         self.edge_validator = edge_validator
 
     def get_nodes(self, session=None, batch_size=1000):
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             return local.query(PsqlNode).yield_per(batch_size)
 
     def get_edges(self, session=None, batch_size=1000):
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             return local.query(PsqlEdge).yield_per(batch_size)
 
     def get_node_count(self, session=None):
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             query = local.query(func.count(PsqlNode.key))
         return query.one()[0]
 
     def get_edge_count(self, session=None):
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             query = local.query(func.count(PsqlEdge.key))
         return query.one()[0]
 
@@ -169,7 +210,7 @@ class PsqlGraphDriver(object):
 
         """
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             if not node:
                 """ try and lookup the node """
                 node = self.node_lookup_one(node_id=node_id, session=local)
@@ -217,7 +258,7 @@ class PsqlGraphDriver(object):
 
         self.logger.debug('Creating a new node: {}'.format(node))
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             local.add(node)
             if not self.node_validator(node):
                 raise ValidationError('Node failed schema constraints')
@@ -242,7 +283,7 @@ class PsqlGraphDriver(object):
             logging.debug('Node left unchanged: {}'.format(node))
             return node
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             self._node_void(node, local)
             node.merge(system_annotations=system_annotations, acl=acl,
                        properties=properties)
@@ -274,7 +315,7 @@ class PsqlGraphDriver(object):
         if not node:
             raise ProgrammingError('node_void was passed a NoneType PsqlNode')
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             voided = PsqlVoidedNode(node)
             local.add(voided)
 
@@ -417,7 +458,7 @@ class PsqlGraphDriver(object):
 
         self.logger.debug('Looking up node by id: {id}'.format(id=node_id))
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             if voided:
                 return local.query(PsqlVoidedNode).filter(
                     PsqlVoidedNode.node_id == node_id)
@@ -465,7 +506,7 @@ class PsqlGraphDriver(object):
             system_annotation_matches)
         property_matches = sanitizer.sanitize(property_matches)
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             query = local.query(PsqlNode)
 
             # Filter system_annotations
@@ -532,7 +573,7 @@ class PsqlGraphDriver(object):
 
         """
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             if not node:
                 """ try and lookup the node """
                 node = self.node_lookup_one(node_id=node_id, session=local)
@@ -594,7 +635,7 @@ class PsqlGraphDriver(object):
 
         """
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             if not node:
                 """ try and lookup the node """
                 node = self.node_lookup_one(node_id=node_id, session=local)
@@ -653,7 +694,7 @@ class PsqlGraphDriver(object):
 
         """
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             if not node:
                 """ try and lookup the node """
                 node = self.node_lookup_one(node_id=node_id, session=local)
@@ -704,7 +745,7 @@ class PsqlGraphDriver(object):
 
         """
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             if not node:
                 """ try and lookup the node """
                 node = self.node_lookup_one(node_id=node_id, session=local)
@@ -735,7 +776,7 @@ class PsqlGraphDriver(object):
 
         self.logger.debug('Inserting: {0}'.format(edge))
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             local.add(edge)
             local.flush()
             if not self.edge_validator(edge):
@@ -764,7 +805,7 @@ class PsqlGraphDriver(object):
             logging.debug('Edge left unchanged: {}'.format(edge))
             return edge
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             self._edge_void(edge, local)
             edge.merge(system_annotations=system_annotations,
                        properties=properties)
@@ -819,7 +860,7 @@ class PsqlGraphDriver(object):
 
         """
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             if voided:
                 return self.edge_lookup_voided(src_id=src_id,
                                                dst_id=dst_id,
@@ -851,7 +892,7 @@ class PsqlGraphDriver(object):
 
         """
 
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             query = local.query(PsqlVoidedEdge)
             if src_id:
                 query = query.filter(PsqlVoidedEdge.src_id == src_id)
@@ -875,7 +916,7 @@ class PsqlGraphDriver(object):
             raise ProgrammingError('edge_void was passed a NoneType PsqlEdge')
 
         self.logger.debug('Voiding edge: {}'.format(edge))
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             voided = PsqlVoidedEdge(edge)
             local.add(voided)
 
@@ -895,7 +936,7 @@ class PsqlGraphDriver(object):
             raise ProgrammingError('edge_delete was passed a NoneType edge')
 
         self.logger.debug('Deleting edge: {}'.format(edge))
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             self._edge_void(edge, session=local)
             local.delete(edge)
 
@@ -920,7 +961,7 @@ class PsqlGraphDriver(object):
             node_id))
 
         count = 0
-        with session_scope(self.engine, session) as local:
+        with self.session_scope(session) as local:
             src_nodes = self.edge_lookup(src_id=node_id, session=local)
             dst_nodes = self.edge_lookup(dst_id=node_id, session=local)
             for edge in itertools.chain(src_nodes, dst_nodes):

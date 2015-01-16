@@ -91,10 +91,10 @@ class PsqlGraphDriver(object):
             raise
 
         finally:
+            self._sessions.pop()
             if not inherited_session:
                 local.expunge_all()
                 local.close()
-            self._sessions.pop()
 
     def set_node_validator(self, node_validator):
         """Override the node validation callback."""

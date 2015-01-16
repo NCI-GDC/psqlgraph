@@ -64,19 +64,17 @@ class PsqlGraphDriver(object):
         return session
 
     @contextmanager
-    def session_scope(self, session=None, nested=False):
+    def session_scope(self, session=None, inherit=True):
         """Provide a transactional scope around a series of operations."""
 
         # Set up local session
         inherited_session = True
         if session:
-            local = session
-        elif nested or not self._sessions:
+            self._sessions.append(session)
+        elif not (inherit and self._sessions):
             inherited_session = False
-            local = self._new_session()
-            self._sessions.append(local)
-        else:
-            local = self._sessions[-1]
+            self._sessions.append(self._new_session())
+        local = self._sessions[-1]
 
         # Context manager functionality
         try:

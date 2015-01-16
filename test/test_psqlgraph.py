@@ -874,7 +874,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         except:
             pass
         else:
-            raise Exception('Session handler faile to catch duplicate keys')
+            raise RuntimeError('Session handler faile to catch duplicate keys')
         self.assertEqual(len(list(self.driver.node_lookup(nid).all())), 0)
 
     def test_commit_automatic_session(self):
@@ -908,7 +908,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         except:
             pass
         else:
-            raise Exception('Session handler failed to catch conflict')
+            raise RuntimeError('Session handler failed to catch conflict')
         self.assertEqual(self.driver.node_lookup(nid).one().label, 'label2')
 
     def test_automatic_nested_session2(self):
@@ -930,7 +930,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             except:
                 pass
             else:
-                raise Exception('Session handler failed to catch conflict')
+                raise RuntimeError('Session handler failed to catch conflict')
         self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
 
     def test_automatic_nested_session3(self):
@@ -954,7 +954,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             except:
                 pass
             else:
-                raise Exception('Session handler failed to catch conflict')
+                raise RuntimeError('Session handler failed to catch conflict')
         self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
         self.assertEqual(self.driver.node_lookup(id3).count(), 0)
 

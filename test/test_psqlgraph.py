@@ -867,14 +867,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         nid = str(uuid.uuid4())
-        try:
+        with self.assertRaises(IntegrityError):
             with self.driver.session_scope():
                 self.driver.node_insert(PsqlNode(nid, 'label'))
                 self.driver.node_insert(PsqlNode(nid, 'label2'))
-        except IntegrityError:
-            pass
-        else:
-            raise RuntimeError('Session handler faile to catch duplicate keys')
         self.assertEqual(len(list(self.driver.node_lookup(nid).all())), 0)
 
     def test_commit_automatic_session(self):
@@ -900,15 +896,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         nid = str(uuid.uuid4())
-        try:
+        with self.assertRaises(IntegrityError):
             with self.driver.session_scope():
                 self.driver.node_insert(PsqlNode(nid, 'label'))
                 with self.driver.session_scope(nested=True):
                     self.driver.node_insert(PsqlNode(nid, 'label2'))
-        except IntegrityError:
-            pass
-        else:
-            raise RuntimeError('Session handler failed to catch conflict')
         self.assertEqual(self.driver.node_lookup(nid).one().label, 'label2')
 
     def test_automatic_nested_session2(self):
@@ -924,13 +916,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.driver.node_insert(PsqlNode(id1, 'label2'))
         with self.driver.session_scope():
             self.driver.node_insert(PsqlNode(id2, 'label'))
-            try:
+            with self.assertRaises(IntegrityError):
                 with self.driver.session_scope(nested=True):
                     self.driver.node_insert(PsqlNode(id1, 'label2'))
-            except IntegrityError:
-                pass
-            else:
-                raise RuntimeError('Session handler failed to catch conflict')
         self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
 
     def test_automatic_nested_session3(self):
@@ -947,14 +935,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.driver.node_insert(PsqlNode(id1, 'label2'))
         with self.driver.session_scope():
             self.driver.node_insert(PsqlNode(id2, 'label'))
-            try:
+            with self.assertRaises(IntegrityError):
                 with self.driver.session_scope(nested=True):
                     self.driver.node_insert(PsqlNode(id1, 'label2'))
                     self.driver.node_insert(PsqlNode(id3, 'label2'))
-            except IntegrityError:
-                pass
-            else:
-                raise RuntimeError('Session handler failed to catch conflict')
         self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
         self.assertEqual(self.driver.node_lookup(id3).count(), 0)
 

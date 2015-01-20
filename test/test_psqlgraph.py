@@ -1067,6 +1067,16 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertEqual(self.driver.node_lookup(id1).count(), 0)
         self.assertFalse(self.driver._sessions)
 
+    def test_library_functions_use_session_implicitly(self):
+        """Test that library functions use the session they're scoped in
+
+        """
+        id1 = str(uuid.uuid4())
+        with self.driver.session_scope():
+            self.driver.node_insert(PsqlNode(id1, 'label'))
+            self.driver.node_lookup(node_id=id1).one()
+
+
 if __name__ == '__main__':
 
     def run_test(test):

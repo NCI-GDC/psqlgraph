@@ -84,32 +84,32 @@ class PsqlGraphDriver(object):
 
         .. note::
             A session scope that is nested has the following
-            properties:
+            properties given `driver` is a PsqlGraphDriver instance:
 
         .. code-block:: python
             driver.session_scope() as A:
                 driver.node_insert()  # uses session A
-                session_scope(A) as B:
+                driver.session_scope(A) as B:
                     B == A  # is True
-                session_scope() as C:
+                driver.session_scope() as C:
                     C == A  # is True
-                session_scope():
+                driver.session_scope():
                     driver.node_insert()  # uses session A still
-                session_scope(inherit=False):
+                driver.session_scope(inherit=False):
                     driver.node_insert()  # uses new session D
-                session_scope(inherit=False) as D:
+                driver.session_scope(inherit=False) as D:
                     D != A  # is True
-                session_scope() as E:
+                driver.session_scope() as E:
                     E.rollback()  # rolls back session A
-                session_scope(inherit=False) as F:
+                driver.session_scope(inherit=False) as F:
                     F.rollback()  # does not roll back session A
-                session_scope(inherit=False) as G:
+                driver.session_scope(inherit=False) as G:
                     G != A  # is True
                     driver.node_insert()  # uses session G
-                    session_scope(A) as H:
+                    driver.session_scope(A) as H:
                         H == A; H != G  # are true
                         H.rollback()  # rolls back A but not G
-                    session_scope(A):
+                    driver.session_scope(A):
                         driver.node_insert()  # uses session A
 
         :param session:

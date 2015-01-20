@@ -20,7 +20,7 @@ password = 'test'
 database = 'automated_test'
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 class TestPsqlGraphDriver(unittest.TestCase):
@@ -851,6 +851,230 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.driver.edge_insert,
             PsqlEdge(src_id=src_id, dst_id=dst_id, label='a')
         )
+
+    def test_simple_automatic_session(self):
+        idA = str(uuid.uuid4())
+        with self.driver.session_scope():
+            self.driver.node_insert(PsqlNode(idA, 'label'))
+        self.driver.node_lookup(idA).one()
+
+    def test_rollback_automatic_session(self):
+        """test_rollback_automatic_session
+
+        Make sure that within a session scope, an error causes the
+        entire scope to be rolled back even without an explicit
+        session being passed
+
+        """
+        nid = str(uuid.uuid4())
+        with self.assertRaises(IntegrityError):
+            with self.driver.session_scope():
+                self.driver.node_insert(PsqlNode(nid, 'label'))
+                self.driver.node_insert(PsqlNode(nid, 'label2'))
+        self.assertEqual(len(list(self.driver.node_lookup(nid).all())), 0)
+
+    def test_commit_automatic_session(self):
+        """test_commit_automatic_session
+
+        Make sure that when not wrapped in a session scope the
+        successful commit of a conflicting node does not rollback
+        previously committed nodes. (i.e. the statements don't inherit
+        the same session)
+
+        """
+        nid = str(uuid.uuid4())
+        self.driver.node_insert(PsqlNode(nid, 'label'))
+        self.assertRaises(
+            IntegrityError, self.driver.node_insert, PsqlNode(nid, 'label2'))
+        self.assertEqual(self.driver.node_lookup(nid).one().label, 'label')
+        self.assertFalse(self.driver._sessions)
+
+    def test_automatic_nested_session(self):
+        """test_automatic_nested_session
+
+        Make sure that given a call to explicitly nest session scopes,
+        the nested session commits first
+
+        """
+        nid = str(uuid.uuid4())
+        with self.assertRaises(IntegrityError):
+            with self.driver.session_scope():
+                self.driver.node_insert(PsqlNode(nid, 'label'))
+                with self.driver.session_scope(inherit=False):
+                    self.driver.node_insert(PsqlNode(nid, 'label2'))
+        self.assertEqual(self.driver.node_lookup(nid).one().label, 'label2')
+        self.assertFalse(self.driver._sessions)
+
+    def test_automatic_nested_session2(self):
+        """test_automatic_nested_session2
+
+        Make sure that given a call to explicitly nest session scopes,
+        failure of the nested session scope does not affect the parent
+        scope.
+
+        """
+        id1 = str(uuid.uuid4())
+        id2 = str(uuid.uuid4())
+        self.driver.node_insert(PsqlNode(id1, 'label2'))
+        with self.driver.session_scope():
+            self.driver.node_insert(PsqlNode(id2, 'label'))
+            with self.assertRaises(IntegrityError):
+                with self.driver.session_scope(inherit=False):
+                    self.driver.node_insert(PsqlNode(id1, 'label2'))
+        self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
+        self.assertFalse(self.driver._sessions)
+
+    def test_automatic_nested_session3(self):
+        """test_automatic_nested_session3
+
+        Also, verify that two statements in a nested session_scope
+        inherit the same session (i.e. the session stack is working
+        properly).
+
+        """
+        id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+        self.driver.node_insert(PsqlNode(id1, 'label2'))
+        with self.driver.session_scope():
+            self.driver.node_insert(PsqlNode(id2, 'label'))
+            with self.assertRaises(IntegrityError):
+                with self.driver.session_scope(inherit=False):
+                    self.driver.node_insert(PsqlNode(id1, 'label2'))
+                    self.driver.node_insert(PsqlNode(id3, 'label2'))
+        self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
+        self.assertEqual(self.driver.node_lookup(id3).count(), 0)
+        self.assertFalse(self.driver._sessions)
+
+    def test_automatic_nested_session_inherit_valid(self):
+        """test_automatic_nested_session_inherit_valid
+
+        Verify that implicitly nested session scopes correctly inherit
+        the parent session for valid node insertion
+
+        """
+        id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
+        with self.driver.session_scope():
+            self.driver.node_insert(PsqlNode(id1, 'label1'))
+            with self.driver.session_scope():
+                    self.driver.node_insert(PsqlNode(id2, 'label2'))
+        self.assertEqual(self.driver.node_lookup(id1).one().label, 'label1')
+        self.assertEqual(self.driver.node_lookup(id2).one().label, 'label2')
+        self.assertFalse(self.driver._sessions)
+
+    def test_automatic_nested_session_inherit_invalid(self):
+        """test_automatic_nested_session_inherit_invalid
+
+        Verify that implicitly nested session scopes correctly inherit
+        the parent session.
+
+        """
+        id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
+        with self.driver.session_scope() as outer:
+            self.driver.node_insert(PsqlNode(id1, 'label1'))
+            with self.driver.session_scope() as inner:
+                self.assertEqual(inner, outer)
+                self.driver.node_insert(PsqlNode(id2, 'label2'))
+                inner.rollback()
+        self.assertEqual(self.driver.node_lookup(id1).count(), 0)
+        self.assertEqual(self.driver.node_lookup(id2).count(), 0)
+        self.assertFalse(self.driver._sessions)
+
+    def test_explicit_to_inherit_nested_session(self):
+        """test_explicit_to_inherit_nested_session
+
+        Verify that the children of an explicitly passed session scope
+        inherit the explicit session and commit all updates.
+
+        """
+        id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+        outer = self.driver._new_session()  # don't do this
+        with self.driver.session_scope(outer):
+            self.driver.node_insert(PsqlNode(id1, 'label1'))
+            with self.driver.session_scope() as inner:
+                self.assertEqual(inner, outer)
+                self.driver.node_insert(PsqlNode(id2, 'label2'))
+                with self.driver.session_scope() as third:
+                    self.assertEqual(third, outer)
+                    self.driver.node_insert(PsqlNode(id3, 'label2'))
+        self.assertEqual(self.driver.node_lookup(id2).count(), 0)
+        outer.commit()
+        self.assertEqual(self.driver.node_lookup(id1).count(), 1)
+        self.assertEqual(self.driver.node_lookup(id2).count(), 1)
+        self.assertEqual(self.driver.node_lookup(id3).count(), 1)
+        self.assertFalse(self.driver._sessions)
+
+    def test_explicit_to_inherit_nested_session_rollback(self):
+        """test_explicit_to_inherit_nested_session_rollback
+
+        Verify that the children of an explicitly passed session scope
+        inherit the explicit session and rolls back all levels.
+
+        """
+        id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+        outer = self.driver._new_session()  # don't do this
+        with self.driver.session_scope(outer):
+            self.driver.node_insert(PsqlNode(id1, 'label1'))
+            with self.driver.session_scope() as inner:
+                self.assertEqual(inner, outer)
+                self.driver.node_insert(PsqlNode(id2, 'label2'))
+                with self.driver.session_scope() as third:
+                    self.assertEqual(third, outer)
+                    self.driver.node_insert(PsqlNode(id3, 'label2'))
+                    third.rollback()
+        self.assertEqual(self.driver.node_lookup(id1).count(), 0)
+        self.assertEqual(self.driver.node_lookup(id2).count(), 0)
+        self.assertEqual(self.driver.node_lookup(id3).count(), 0)
+        self.assertFalse(self.driver._sessions)
+
+    def test_mixed_session_inheritance(self):
+        """test_mixed_session_inheritance
+
+        Verify that an explicit session passed to a middle level in a
+        tripple nested session_scope is independent from the outer and
+        inner levels.
+
+        """
+        id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+        external = self.driver._new_session()
+        with self.driver.session_scope() as outer:
+            self.driver.node_insert(PsqlNode(id1, 'rollback'))
+            with self.driver.session_scope(external) as inner:
+                self.assertEqual(inner, external)
+                self.assertNotEqual(inner, outer)
+                self.driver.node_insert(PsqlNode(id2, 'inserted'))
+                with self.driver.session_scope(outer) as third:
+                    self.assertEqual(third, outer)
+                    self.driver.node_insert(PsqlNode(id3, 'rollback'))
+                    third.rollback()
+        self.assertEqual(self.driver.node_lookup(id2).count(), 0)
+        external.commit()
+        self.assertEqual(self.driver.node_lookup(id1).count(), 0)
+        self.assertEqual(self.driver.node_lookup(id2).count(), 1)
+        self.assertEqual(self.driver.node_lookup(id3).count(), 0)
+        self.assertFalse(self.driver._sessions)
+
+    def test_explicit_session(self):
+        """test_explicit_session
+
+        Verify that passing a session explicitly functions as expected
+
+        """
+        id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
+        with self.driver.session_scope() as session:
+            self.driver.node_insert(PsqlNode(id1, 'label2'))
+            self.driver.node_insert(PsqlNode(id2, 'label2'), session)
+            session.rollback()
+        self.assertEqual(self.driver.node_lookup(id2).count(), 0)
+        self.assertEqual(self.driver.node_lookup(id1).count(), 0)
+        self.assertFalse(self.driver._sessions)
+
+    def test_library_functions_use_session_implicitly(self):
+        """Test that library functions use the session they're scoped in
+
+        """
+        id1 = str(uuid.uuid4())
+        with self.driver.session_scope():
+            self.driver.node_insert(PsqlNode(id1, 'label'))
+            self.driver.node_lookup(node_id=id1).one()
 
 
 if __name__ == '__main__':

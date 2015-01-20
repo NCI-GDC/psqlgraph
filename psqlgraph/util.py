@@ -1,44 +1,11 @@
 from sqlalchemy.exc import IntegrityError
-from contextlib import contextmanager
 from functools import wraps
 import time
 import random
-from sqlalchemy.orm import sessionmaker
-from query import GraphQuery
 import logging
 
 #  PsqlNode modules
 from constants import DEFAULT_RETRIES
-
-
-@contextmanager
-def session_scope(engine, session=None):
-    """Provide a transactional scope around a series of operations."""
-
-    if not session:
-        Session = sessionmaker(expire_on_commit=False)
-        Session.configure(bind=engine, query_cls=GraphQuery)
-        local = Session()
-        logging.debug('Created session {session}'.format(session=local))
-    else:
-        local = session
-
-    try:
-        yield local
-        if not session:
-            logging.debug('Committing session {session}'.format(session=local))
-            local.commit()
-
-    except Exception, msg:
-        logging.error('Failed to commit session: {msg}'.format(msg=msg))
-        logging.error('Rolling back session {session}'.format(session=local))
-        local.rollback()
-        raise
-
-    finally:
-        if not session:
-            local.expunge_all()
-            local.close()
 
 
 def default_backoff(retries, max_retries):

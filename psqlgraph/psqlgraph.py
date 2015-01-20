@@ -1,4 +1,3 @@
-
 # Driver to implement the graph model in postgres
 #
 
@@ -65,7 +64,66 @@ class PsqlGraphDriver(object):
 
     @contextmanager
     def session_scope(self, session=None, inherit=True):
-        """Provide a transactional scope around a series of operations."""
+        """Provide a transactional scope around a series of operations.
+
+        This session scope has a deceptively complex behavior, so be
+        careful when nesting sessions.
+
+        .. note::
+            A session scope that is not nested has the following
+            properties:
+
+        1. Driver calls within the session scope will, by default,
+        inherit the scope's session.
+
+        2. Explicitly passing a session as `session` will cause driver
+        calls within the session scope to use the explicitly passed
+        session.
+
+        3. Setting `inherit` to false will have no effect
+
+        .. note::
+            A session scope that is nested has the following
+            properties:
+
+        .. code-block:: python
+            driver.session_scope() as A:
+                driver.node_insert()  # uses session A
+                session_scope(A) as B:
+                    B == A  # is True
+                session_scope() as C:
+                    C == A  # is True
+                session_scope():
+                    driver.node_insert()  # uses session A still
+                session_scope(inherit=False):
+                    driver.node_insert()  # uses new session D
+                session_scope(inherit=False) as D:
+                    D != A  # is True
+                session_scope() as E:
+                    E.rollback()  # rolls back session A
+                session_scope(inherit=False) as F:
+                    F.rollback()  # does not roll back session A
+                session_scope(inherit=False) as G:
+                    G != A  # is True
+                    driver.node_insert()  # uses session G
+                    session_scope(A) as H:
+                        H == A; H != G  # are true
+                        H.rollback()  # rolls back A but not G
+                    session_scope(A):
+                        driver.node_insert()  # uses session A
+
+        :param session:
+            The SQLAlchemy session to force the session scope to
+            inherit
+        :param bool inherit:
+            The boolean value which determines whether the session
+            scope inherits the session from any parent sessions in a
+            nested context.  The default behavior is to inherit the
+            parent's session.  If the session stack is empty for the
+            driver, then this parameter is moot, there is no session
+            to inherit, so one must be created.
+
+        """
 
         # Set up local session
         inherited_session = True

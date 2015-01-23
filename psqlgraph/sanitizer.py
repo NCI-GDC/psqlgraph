@@ -19,6 +19,7 @@ type_mapping = {
 type_conversion = {
     int: int,
     str: str,
+    long: long,
     unicode: unicode,
     float: float,
     datetime: str,

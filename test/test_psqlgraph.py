@@ -94,6 +94,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
         edge["bar"] = 2
         self.assertEqual(edge["bar"], 2)
 
+    def test_long_ints_roundtrip(self):
+        """Test that integers that only fit in 26 bits round trip correctly."""
+        node = PsqlNode(node_id=str(uuid.uuid4()),label="foo",
+                        properties={"bar": 9223372036854775808})
+        self.driver.node_insert(node=node)
+        loaded = self.driver.node_lookup(node_id=node.node_id).one()
+        self.assertEqual(loaded["bar"], 9223372036854775808)
+
     def test_node_null_label_merge(self):
         """Test merging of a non-existent node
 

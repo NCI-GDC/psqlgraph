@@ -1,11 +1,13 @@
 from edge import PsqlEdge
 from node import PsqlNode
 from sqlalchemy.orm import Query
+from sqlalchemy import or_, not_
 
 
 class GraphQuery(Query):
     """Query subclass implementing graph specific operations."""
 
+    # ======== Edges ========
     def with_edge_to_node(self, edge_label, target_node):
         """Returns a new query that filters the query to just those nodes that
         have an edge with label ``edge_label`` to ``target_node``.
@@ -46,3 +48,84 @@ class GraphQuery(Query):
                                     .filter(PsqlEdge.src_id == source_node.node_id)\
                                     .subquery()
         return self.filter(PsqlNode.node_id == sq.c.dst_id)
+
+    def has_edges(self):
+        """Adds filter to query to return only nodes with edges
+
+        """
+        return self.filter(
+            or_(PsqlNode.edges_in.any(), PsqlNode.edges_out.any()))
+
+    def has_no_edges(self):
+        """Adds filter to query to return only nodes without edges
+
+        """
+        return self.\
+            filter(not_(PsqlNode.edges_in.any())).\
+            filter(not_(PsqlNode.edges_out.any()))
+
+    # ======== Labels ========
+    def w_label(self, labels):
+        """With (PsqlNode.label in labels).  If label is type `str` then
+        filter will check for equality.
+
+        """
+        if isinstance(labels, str):
+            return self.filter(PsqlNode.label == labels)
+        else:
+            return self.filter(PsqlNode.label.in_(labels))
+
+    # ======== Properties ========
+    def w_props(self, props):
+        """With properties. Subset props in properties.
+
+        """
+        assert isinstance(props, dict)
+        return self.filter(PsqlNode.properties.contains(props))
+
+    def wo_props(self, props):
+        """Without properties. Subset props not in properties.
+
+        """
+        assert isinstance(props, dict)
+        return self.filter(not_(PsqlNode.properties.contains(props)))
+
+    def w_prop_in(self, key, values):
+        """With (properties[key] in values).
+
+        """
+        assert isinstance(key, str) and isinstance(values, list)
+        return self.filter(PsqlNode.properties[key].astext.in_([
+            str(v) for v in values]))
+
+    def w_null_props(self, keys, ):
+        """
+
+        """
+        if isinstance(keys, str):
+            keys = [keys]
+        return self.filter(PsqlNode.properties.contains(
+            {key: None for key in keys}))
+
+    # ======== System Annotations ========
+    def w_sysan(self, sysans):
+        """With system_annotations. Subset sysans in system_annotations.
+
+        """
+        assert isinstance(sysans, dict)
+        return self.filter(PsqlNode.system_annotations.contains(sysans))
+
+    def wo_sysan(self, sysans):
+        """Without system_annotations. Subset sysans not in system_annotations.
+
+        """
+        assert isinstance(sysans, dict)
+        return self.filter(not_(PsqlNode.system_annotations.contains(sysans)))
+
+    def w_sysan_in(self, key, values):
+        """With (system_annotations[key] in values).
+
+        """
+        assert isinstance(key, str) and isinstance(values, list)
+        return self.filter(PsqlNode.system_annotations[key].astext.in_([
+            str(v) for v in values]))

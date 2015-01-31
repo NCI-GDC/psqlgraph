@@ -19,8 +19,8 @@ from exc import QueryError, ProgrammingError, NodeCreationError, \
     ValidationError
 import sanitizer
 from constants import DEFAULT_RETRIES
-from node import PsqlNode, PsqlVoidedNode
-from edge import PsqlEdge, PsqlVoidedEdge
+from node import PsqlNode, PsqlVoidedNode, Node
+from edge import PsqlEdge, PsqlVoidedEdge, Edge
 from util import retryable, default_backoff
 from query import GraphQuery
 
@@ -166,8 +166,8 @@ class PsqlGraphDriver(object):
         with self.session_scope(session) as local:
             return local.query(PsqlNode).yield_per(batch_size)
 
-    def nodes(self, query=PsqlNode, session=None, batch_size=1000):
-        with self.session_scope(session) as local:
+    def nodes(self, query=Node):
+        with self.session_scope() as local:
             if isinstance(query, list) or isinstance(query, tuple):
                 return local.query(*query)
             else:

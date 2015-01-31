@@ -124,6 +124,10 @@ class PsqlEdge(Base):
             self.properties.update(properties)
 
 
+class Edge(PsqlEdge):
+    pass
+
+
 class PsqlVoidedEdge(Base):
 
     """Edge class to represent a edge entry in the postgresql table

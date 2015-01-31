@@ -137,6 +137,10 @@ class PsqlNode(Base):
             self.acl += acl
 
 
+class Node(PsqlNode):
+    pass
+
+
 class PsqlVoidedNode(Base):
 
     """Node class to represent a node entry in the postgresql table

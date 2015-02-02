@@ -1,5 +1,5 @@
-from edge import Edge
-from node import Node
+from edge import Edge, PsqlEdge
+from node import Node, PsqlNode
 from sqlalchemy.orm import Query
 from sqlalchemy import or_, not_
 
@@ -19,7 +19,7 @@ class GraphQuery(Query):
 
         """
 
-        assert self._entity_zero().type == Node
+        assert self._entity_zero().type in [PsqlNode, Node]
         # first we construct a subquery for edges of the correct label
         # to the target_node
         session = self.session
@@ -40,7 +40,7 @@ class GraphQuery(Query):
 
         """
 
-        assert self._entity_zero().type == Node
+        assert self._entity_zero().type in [PsqlNode, Node]
         # first we construct a subquery for edges of the correct label
         # to the target_node
         session = self.session

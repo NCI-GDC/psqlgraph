@@ -24,6 +24,10 @@ class Test_psql2neo(unittest.TestCase):
         self.psqlDriver = self.driver.psqlgraphDriver
         self.neo4jDriver = self.driver.neo4jDriver
 
+    def tearDown(self):
+        self._clear_tables()
+        self.psqlDriver.engine.dispose()
+
     def _clear_tables(self):
         # clear psqltables
         conn = self.psqlDriver.engine.connect()

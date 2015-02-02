@@ -7,7 +7,7 @@ host = 'localhost'
 user = 'test'
 password = 'test'
 database = 'automated_test'
-
+g = PsqlGraphDriver(host, user, password, database)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -16,7 +16,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def setUp(self):
         self.logger = logging.getLogger(__name__)
-        self.g = PsqlGraphDriver(host, user, password, database)
+        self.g = g
         self.parent_id = str(uuid.uuid4())
         self.g.node_insert(Node(self.parent_id, 'test'))
         self._create_subtree(self.parent_id)

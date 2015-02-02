@@ -10,6 +10,9 @@ user = 'test'
 password = 'test'
 database = 'automated_test'
 
+driver = psqlgraph2neo4j.PsqlGraph2Neo4j()
+driver.connect_to_psql(host, user, password, database)
+driver.connect_to_neo4j(host)
 
 logging.basicConfig(level=logging.INFO)
 
@@ -18,11 +21,13 @@ class Test_psql2neo(unittest.TestCase):
 
     def setUp(self):
         self.logger = logging.getLogger(__name__)
-        self.driver = psqlgraph2neo4j.PsqlGraph2Neo4j()
-        self.driver.connect_to_psql(host, user, password, database)
-        self.driver.connect_to_neo4j(host)
+        self.driver = driver
         self.psqlDriver = self.driver.psqlgraphDriver
         self.neo4jDriver = self.driver.neo4jDriver
+
+    def tearDown(self):
+        self._clear_tables()
+        self.psqlDriver.engine.dispose()
 
     def _clear_tables(self):
         # clear psqltables

@@ -1,6 +1,8 @@
 import argparse
 import getpass
 import psqlgraph
+from psqlgraph import PsqlNode, Node, PsqlEdge, Edge
+from sqlalchemy import func
 
 try:
     import IPython

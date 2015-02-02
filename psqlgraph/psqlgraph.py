@@ -173,6 +173,13 @@ class PsqlGraphDriver(object):
             else:
                 return local.query(query)
 
+    def edges(self, query=Edge):
+        with self.session_scope() as local:
+            if isinstance(query, list) or isinstance(query, tuple):
+                return local.query(*query)
+            else:
+                return local.query(query)
+
     def get_edges(self, session=None, batch_size=1000):
         with self.session_scope(session) as local:
             return local.query(PsqlEdge).yield_per(batch_size)

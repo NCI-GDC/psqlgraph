@@ -86,9 +86,9 @@ class GraphQuery(Query):
             self = self.outerjoin(
                 'edges_out', 'dst', aliased=True, from_joinpoint=True
             ).filter(Node.label == label)
-            if reset:
-                self = self.reset_joinpoint()
-                return self
+        if reset:
+            self = self.reset_joinpoint()
+        return self
 
     def path_in(self, labels, reset=False):
         """Takes a list of labels and filters on nodes that have that path into
@@ -105,9 +105,9 @@ class GraphQuery(Query):
             self = self.outerjoin(
                 'edges_in', 'src', aliased=True, from_joinpoint=True
             ).filter(Node.label == label)
-            if reset:
-                self = self.reset_joinpoint()
-                return self
+        if reset:
+            self = self.reset_joinpoint()
+        return self
 
     def ids(self, ids):
         """Filter on nodes with either specific id, or nodes with ids in a
@@ -195,8 +195,8 @@ class GraphQuery(Query):
         """
         if isinstance(keys, str):
             keys = [keys]
-            return self.filter(Node.properties.contains(
-                {key: None for key in keys}))
+        return self.filter(Node.properties.contains(
+            {key: None for key in keys}))
 
     # ======== System Annotations ========
     def sysan(self, sysans):

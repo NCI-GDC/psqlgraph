@@ -9,7 +9,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm.exc import NoResultFound
 from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm.scoping import scoped_session
 
 #  ORM object base
 Base = declarative_base()
@@ -57,7 +56,7 @@ class PsqlGraphDriver(object):
         self.engine = create_engine(conn_str)
 
     def _new_session(self):
-        Session = scoped_session(sessionmaker(expire_on_commit=False))
+        Session = sessionmaker(expire_on_commit=False)
         Session.configure(bind=self.engine, query_cls=GraphQuery)
         session = Session()
         logging.debug('Created session {}'.format(session))

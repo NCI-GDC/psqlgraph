@@ -1,7 +1,8 @@
 from edge import Edge, PsqlEdge
 from node import Node, PsqlNode
-from sqlalchemy.orm import Query
-from sqlalchemy import or_, not_
+from sqlalchemy.orm import Query, aliased
+from sqlalchemy import or_, not_, literal
+from sqlalchemy.dialects.postgresql import array, ARRAY
 
 
 class GraphQuery(Query):
@@ -71,6 +72,15 @@ class GraphQuery(Query):
             filter(not_(Node.edges_in.any())).\
             filter(not_(Node.edges_out.any()))
 
+    def _path(self, labels, edges, node, reset=False):
+        for label in labels:
+            self = self.outerjoin(
+                edges, node, aliased=True, from_joinpoint=True
+            ).filter(Node.label == label)
+        if reset:
+            self = self.reset_joinpoint()
+        return self
+
     def path_out(self, labels, reset=False):
         """Takes a list of labels and filters on nodes that have that path out
         from source node.  If `reset` is False, then this filter
@@ -82,13 +92,7 @@ class GraphQuery(Query):
         :param bool reset: reset the join point to the source node
 
         """
-        for label in labels:
-            self = self.outerjoin(
-                'edges_out', 'dst', aliased=True, from_joinpoint=True
-            ).filter(Node.label == label)
-        if reset:
-            self = self.reset_joinpoint()
-        return self
+        return self._path(labels, 'edges_out', 'dst', reset)
 
     def path_in(self, labels, reset=False):
         """Takes a list of labels and filters on nodes that have that path into
@@ -101,12 +105,41 @@ class GraphQuery(Query):
         :param bool reset: reset the join point to the source node
 
         """
+        return self._path(labels, 'edges_in', 'src', reset)
+
+    def path_in_end(self, labels):
+        """Same as path_in, but forces the select statement to return with
+        the entities from the end of the query
+
+        """
         for label in labels:
-            self = self.outerjoin(
-                'edges_in', 'src', aliased=True, from_joinpoint=True
+            self = self.outerjoin(Edge, Node.node_id == Edge.dst_id)\
+                       .outerjoin(Node, Edge.src_id == Node.node_id)\
+                       .filter(Node.label == label)
+        return self
+
+    def path_out_end(self, labels):
+        """Same as path_out, but forces the select statement to return with
+        the entities from the end of the query
+
+        """
+        for label in labels:
+            self = self.outerjoin(Edge, Node.node_id == Edge.src_id)\
+                       .outerjoin(Node, Edge.dst_id == Node.node_id)\
+                       .filter(Node.label == label)
+        return self
+
+    def path_end(self, labels):
+        """
+        Magic.
+
+        """
+        for label in labels:
+            self = self.outerjoin(Edge, or_(
+                Node.node_id == Edge.src_id, Node.node_id == Edge.dst_id)
+            ).outerjoin(Node, or_(
+                Node.node_id == Edge.src_id, Node.node_id == Edge.dst_id)
             ).filter(Node.label == label)
-        if reset:
-            self = self.reset_joinpoint()
         return self
 
     def ids(self, ids):
@@ -114,16 +147,18 @@ class GraphQuery(Query):
         provided list
 
         """
-        if isinstance(ids, str):
-            return self.filter(Node.node_id == ids)
-        else:
+        if isinstance(ids, list) or isinstance(ids, tuple) \
+           or isinstance(ids, set):
             return self.filter(Node.node_id.in_(ids))
+        else:
+            return self.filter(Node.node_id == str(ids))
 
     def not_ids(self, ids):
-        if isinstance(ids, str):
-            return self.filter(Node.node_id != ids)
-        else:
+        if isinstance(ids, list) or isinstance(ids, tuple) \
+           or isinstance(ids, set):
             return self.filter(not_(Node.node_id.in_(ids)))
+        else:
+            return self.filter(not_(Node.node_id == ids))
 
     # ======== Labels ========
     def labels(self, labels):

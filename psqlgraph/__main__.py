@@ -17,7 +17,9 @@ Entering psqlgraph console:
     host     : {}
     user     : {}
 
-NOTE: PsqlGraphDriver stored in local variable `g`.
+NOTE:
+    PsqlGraphDriver stored in local variable `g`.
+    `g.session_scope` is aliased as `ss`.
 """
 
 if __name__ == '__main__':
@@ -38,6 +40,7 @@ if __name__ == '__main__':
         args.password = getpass.getpass()
 
     g = psqlgraph.PsqlGraphDriver(**args.__dict__)
+    ss = g.session_scope
 
     if ipython:
         IPython.embed()

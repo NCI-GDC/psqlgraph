@@ -1,8 +1,7 @@
 from edge import Edge, PsqlEdge
 from node import Node, PsqlNode
-from sqlalchemy.orm import Query, aliased
-from sqlalchemy import or_, not_, literal
-from sqlalchemy.dialects.postgresql import array, ARRAY
+from sqlalchemy.orm import Query
+from sqlalchemy import or_, not_
 
 
 class GraphQuery(Query):

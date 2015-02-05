@@ -158,7 +158,7 @@ class GraphQuery(Query):
            or isinstance(ids, set):
             return self.filter(not_(Node.node_id.in_(ids)))
         else:
-            return self.filter(not_(Node.node_id == ids))
+            return self.filter(not_(Node.node_id == str(ids)))
 
     # ======== Labels ========
     def labels(self, labels):
@@ -166,10 +166,11 @@ class GraphQuery(Query):
         filter will check for equality.
 
         """
-        if isinstance(labels, str):
-            return self.filter(Node.label == labels)
-        else:
+        if isinstance(labels, list) or isinstance(labels, tuple) \
+           or isinstance(labels, set):
             return self.filter(Node.label.in_(labels))
+        else:
+            return self.filter(Node.label == str(labels))
 
     def not_labels(self, labels):
         """With (Node.label not in labels).  If label is type `str` then

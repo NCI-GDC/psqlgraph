@@ -72,6 +72,8 @@ class GraphQuery(Query):
             filter(not_(Node.edges_out.any()))
 
     def _path(self, labels, edges, node, reset=False):
+        if isinstance(labels, str):
+            labels = [labels]
         for label in labels:
             self = self.outerjoin(
                 edges, node, aliased=True, from_joinpoint=True
@@ -111,6 +113,8 @@ class GraphQuery(Query):
         the entities from the end of the query
 
         """
+        if isinstance(labels, str):
+            labels = [labels]
         for label in labels:
             self = self.outerjoin(Edge, Node.node_id == Edge.dst_id)\
                        .outerjoin(Node, Edge.src_id == Node.node_id)\
@@ -122,6 +126,8 @@ class GraphQuery(Query):
         the entities from the end of the query
 
         """
+        if isinstance(labels, str):
+            labels = [labels]
         for label in labels:
             self = self.outerjoin(Edge, Node.node_id == Edge.src_id)\
                        .outerjoin(Node, Edge.dst_id == Node.node_id)\
@@ -133,6 +139,8 @@ class GraphQuery(Query):
         Magic.
 
         """
+        if isinstance(labels, str):
+            labels = [labels]
         for label in labels:
             self = self.outerjoin(Edge, or_(
                 Node.node_id == Edge.src_id, Node.node_id == Edge.dst_id)

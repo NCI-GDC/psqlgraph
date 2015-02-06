@@ -114,9 +114,8 @@ class PsqlNode(Base):
         PsqlGraphDriver.node_delete_system_annotation_keys:, :func
         PsqlGraphDriver.node_remove_acl_item:
 
-        .. note::
-           If the new node contains an acl list, it be appended to
-           the previous acl list
+        .. note:: If the new node contains an acl, the previous acl is
+           replaced by the new one
 
         The following class members cannot be updated: ``label, key, node_id``
 
@@ -133,8 +132,7 @@ class PsqlNode(Base):
             self.properties.update(sanitize(properties))
 
         if acl:
-            self.acl = copy.deepcopy(self.acl)
-            self.acl += acl
+            self.acl = acl
 
 
 class Node(PsqlNode):

@@ -1,4 +1,5 @@
 import logging
+from exc import ValidationError
 from avro.io import validate as avro_validate
 
 logger = logging.getLogger('psqlgraph.validate')
@@ -64,8 +65,12 @@ class AvroNodeValidator(PsqlNodeValidator):
 
     def validate(self, node, *args, **kwargs):
         node_as_dict = self.munge_node_into_dict(node)
-        return (avro_validate(self.schema, node_as_dict) and
-                validate_no_unexpected_props(self.schema, node_as_dict))
+        if not (avro_validate(self.schema, node_as_dict) and
+                validate_no_unexpected_props(self.schema, node_as_dict)):
+            raise ValidationError(
+                'Node failed schema constraints {} {}'.format(
+                    node, node.properties))
+        return True
 
 
 class AvroEdgeValidator(PsqlEdgeValidator):
@@ -87,12 +92,14 @@ class AvroEdgeValidator(PsqlEdgeValidator):
 
     def validate(self, edge, *args, **kwargs):
         if not edge.src:
-            logger.error('Edge {} has no source.'.format(edge))
-            return False
+            raise ValidationError('Edge {} has no source.'.format(edge))
         if not edge.dst:
-            logger.error('Edge {} has no desination.'.format(edge))
-            return False
+            raise ValidationError('Edge {} has no desination.'.format(edge))
 
         edge_as_dict = self.munge_edge_into_dict(edge)
-        return (avro_validate(self.schema, edge_as_dict) and
-                validate_no_unexpected_props(self.schema, edge_as_dict))
+        if not (avro_validate(self.schema, edge_as_dict) and
+                validate_no_unexpected_props(self.schema, edge_as_dict)):
+            raise ValidationError(
+                'Edge failed schema constraints {} {} {}->{}'.format(
+                    edge, edge.properties, edge.src.label, edge.dst.label))
+        return True

@@ -7,6 +7,12 @@ from sqlalchemy import or_, not_
 class GraphQuery(Query):
     """Query subclass implementing graph specific operations."""
 
+    def _iterable(self, val):
+        if hasattr(val, '__iter__'):
+            return val
+        else:
+            return (val,)
+
     # ======== Edges ========
     def with_edge_to_node(self, edge_label, target_node):
         """Returns a new query that filters the query to just those nodes that
@@ -72,9 +78,7 @@ class GraphQuery(Query):
             filter(not_(Node.edges_out.any()))
 
     def _path(self, labels, edges, node, reset=False):
-        if isinstance(labels, str):
-            labels = [labels]
-        for label in labels:
+        for label in self._iterable(labels):
             self = self.outerjoin(
                 edges, node, aliased=True, from_joinpoint=True
             ).filter(Node.label == label)
@@ -113,9 +117,7 @@ class GraphQuery(Query):
         the entities from the end of the query
 
         """
-        if isinstance(labels, str):
-            labels = [labels]
-        for label in labels:
+        for label in self._iterable(labels):
             self = self.outerjoin(Edge, Node.node_id == Edge.dst_id)\
                        .outerjoin(Node, Edge.src_id == Node.node_id)\
                        .filter(Node.label == label)
@@ -126,9 +128,7 @@ class GraphQuery(Query):
         the entities from the end of the query
 
         """
-        if isinstance(labels, str):
-            labels = [labels]
-        for label in labels:
+        for label in self._iterable(labels):
             self = self.outerjoin(Edge, Node.node_id == Edge.src_id)\
                        .outerjoin(Node, Edge.dst_id == Node.node_id)\
                        .filter(Node.label == label)
@@ -139,9 +139,7 @@ class GraphQuery(Query):
         Magic.
 
         """
-        if isinstance(labels, str):
-            labels = [labels]
-        for label in labels:
+        for label in self._iterable(labels):
             self = self.outerjoin(Edge, or_(
                 Node.node_id == Edge.src_id, Node.node_id == Edge.dst_id)
             ).outerjoin(Node, or_(
@@ -154,15 +152,13 @@ class GraphQuery(Query):
         provided list
 
         """
-        if isinstance(ids, list) or isinstance(ids, tuple) \
-           or isinstance(ids, set):
+        if hasattr(ids, '__iter__'):
             return self.filter(Node.node_id.in_(ids))
         else:
             return self.filter(Node.node_id == str(ids))
 
     def not_ids(self, ids):
-        if isinstance(ids, list) or isinstance(ids, tuple) \
-           or isinstance(ids, set):
+        if hasattr(ids, '__iter__'):
             return self.filter(not_(Node.node_id.in_(ids)))
         else:
             return self.filter(not_(Node.node_id == str(ids)))
@@ -173,8 +169,7 @@ class GraphQuery(Query):
         filter will check for equality.
 
         """
-        if isinstance(labels, list) or isinstance(labels, tuple) \
-           or isinstance(labels, set):
+        if hasattr(labels, '__iter__'):
             return self.filter(Node.label.in_(labels))
         else:
             return self.filter(Node.label == str(labels))
@@ -184,10 +179,10 @@ class GraphQuery(Query):
         filter will check for equality.
 
         """
-        if isinstance(labels, str):
-            return self.filter(Node.label != labels)
-        else:
+        if hasattr(labels, '__iter__'):
             return self.filter(not_(Node.label.in_(labels)))
+        else:
+            return self.filter(Node.label != labels)
 
     # ======== Properties ========
     def props(self, props):
@@ -232,14 +227,17 @@ class GraphQuery(Query):
         """
         return self.filter(Node.properties[key].astext == str(value))
 
+    def has_props(self, keys):
+        for key in self._iterable(keys):
+            self = self.filter(Node.properties.has_key(key))
+        return self
+
     def null_props(self, keys):
         """
 
         """
-        if isinstance(keys, str):
-            keys = [keys]
         return self.filter(Node.properties.contains(
-            {key: None for key in keys}))
+            {key: None for key in self._iterable(keys)}))
 
     # ======== System Annotations ========
     def sysan(self, sysans):
@@ -263,3 +261,10 @@ class GraphQuery(Query):
         assert isinstance(key, str) and isinstance(values, list)
         return self.filter(Node.system_annotations[key].astext.in_([
             str(v) for v in values]))
+
+    def has_sysan(self, keys):
+        if isinstance(keys, str):
+            keys = [keys]
+        for key in keys:
+            self = self.filter(Node.system_annotations.has_key(key))
+        return self

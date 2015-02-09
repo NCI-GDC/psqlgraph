@@ -172,6 +172,19 @@ class TestPsqlGraphDriver(unittest.TestCase):
         node = self.driver.node_lookup_one(tempid)
         self.assertEqual(sanitize(properties), node.properties)
 
+    def test_node_update_updates_acls(self):
+        tempid = str(uuid.uuid4())
+        with self.driver.session_scope():
+            node = self.driver.node_merge(node_id=tempid, label='test')
+            self.driver.node_update(node, acl=["somebody"])
+        with self.driver.session_scope():
+            node = self.driver.nodes().ids([tempid]).one()
+            self.assertEqual(node.acl, ["somebody"])
+        self.driver.node_merge(node_id=node.node_id, acl=[])
+        with self.driver.session_scope():
+            node = self.driver.nodes().ids([tempid]).one()
+            self.assertEqual(node.acl, [])
+
     def test_node_update_properties_by_id(self, given_id=None, label=None):
         """Test updating node properties by ID
 

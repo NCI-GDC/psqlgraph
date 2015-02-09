@@ -102,7 +102,7 @@ class PsqlNode(Base):
             for subsrc in edge_in.src.walk_backward():
                 yield subsrc
 
-    def merge(self, acl=[], system_annotations={}, properties={}):
+    def merge(self, acl=None, system_annotations={}, properties={}):
         """Merges a new node onto this instance.  The parameter ``node``
         should contain the 'new' values with the following effects. In
         general, updates are additive. New properties will be added to
@@ -131,7 +131,7 @@ class PsqlNode(Base):
             self.properties = copy.deepcopy(self.properties)
             self.properties.update(sanitize(properties))
 
-        if acl:
+        if acl is not None:
             self.acl = acl
 
 

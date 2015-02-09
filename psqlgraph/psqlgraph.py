@@ -83,6 +83,8 @@ class PsqlGraphDriver(object):
 
         3. Setting `can_inherit` to false will have no effect
 
+        4. Setting `must_inherit` to will raise a RuntimeError
+
         .. note::
             A session scope that is nested has the following
             properties given `driver` is a PsqlGraphDriver instance:
@@ -115,14 +117,19 @@ class PsqlGraphDriver(object):
 
         :param session:
             The SQLAlchemy session to force the session scope to
-            can_inherit
+            inherit
         :param bool can_inherit:
             The boolean value which determines whether the session
-            scope can_inherits the session from any parent sessions in a
-            nested context.  The default behavior is to can_inherit the
+            scope inherits the session from any parent sessions in a
+            nested context.  The default behavior is to inherit the
             parent's session.  If the session stack is empty for the
             driver, then this parameter is moot, there is no session
-            to can_inherit, so one must be created.
+            to inherit, so one must be created.
+        :param bool must_inherit:
+            The boolean value which determines whether the session
+            scope must inherit a session from a parent session.  This
+            parameter can be set to true to prevent session leaks from
+            functions which return raw query objects
 
         """
 

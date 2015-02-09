@@ -63,7 +63,8 @@ class PsqlGraphDriver(object):
         return session
 
     @contextmanager
-    def session_scope(self, session=None, inherit=True):
+    def session_scope(self, session=None, can_inherit=True,
+                      must_inherit=False):
         """Provide a transactional scope around a series of operations.
 
         This session scope has a deceptively complex behavior, so be
@@ -80,7 +81,9 @@ class PsqlGraphDriver(object):
         calls within the session scope to use the explicitly passed
         session.
 
-        3. Setting `inherit` to false will have no effect
+        3. Setting `can_inherit` to false will have no effect
+
+        4. Setting `must_inherit` to will raise a RuntimeError
 
         .. note::
             A session scope that is nested has the following
@@ -95,15 +98,15 @@ class PsqlGraphDriver(object):
                     C == A  # is True
                 driver.session_scope():
                     driver.node_insert()  # uses session A still
-                driver.session_scope(inherit=False):
+                driver.session_scope(can_inherit=False):
                     driver.node_insert()  # uses new session D
-                driver.session_scope(inherit=False) as D:
+                driver.session_scope(can_inherit=False) as D:
                     D != A  # is True
                 driver.session_scope() as E:
                     E.rollback()  # rolls back session A
-                driver.session_scope(inherit=False) as F:
+                driver.session_scope(can_inherit=False) as F:
                     F.rollback()  # does not roll back session A
-                driver.session_scope(inherit=False) as G:
+                driver.session_scope(can_inherit=False) as G:
                     G != A  # is True
                     driver.node_insert()  # uses session G
                     driver.session_scope(A) as H:
@@ -115,21 +118,32 @@ class PsqlGraphDriver(object):
         :param session:
             The SQLAlchemy session to force the session scope to
             inherit
-        :param bool inherit:
+        :param bool can_inherit:
             The boolean value which determines whether the session
             scope inherits the session from any parent sessions in a
             nested context.  The default behavior is to inherit the
             parent's session.  If the session stack is empty for the
             driver, then this parameter is moot, there is no session
             to inherit, so one must be created.
+        :param bool must_inherit:
+            The boolean value which determines whether the session
+            scope must inherit a session from a parent session.  This
+            parameter can be set to true to prevent session leaks from
+            functions which return raw query objects
 
         """
+
+        if must_inherit and not self._sessions:
+            raise RuntimeError(
+                'Session scope requires it to be wrapped in a pre-existing '
+                'session.  This was likely done to prevent a leaked session '
+                'from a function which returns a query object.')
 
         # Set up local session
         inherited_session = True
         if session:
             local = session
-        elif not (inherit and self._sessions):
+        elif not (can_inherit and self._sessions):
             inherited_session = False
             local = self._new_session()
         else:
@@ -167,14 +181,14 @@ class PsqlGraphDriver(object):
             return local.query(PsqlNode).yield_per(batch_size)
 
     def nodes(self, query=Node):
-        with self.session_scope() as local:
+        with self.session_scope(must_inherit=True) as local:
             if isinstance(query, list) or isinstance(query, tuple):
                 return local.query(*query)
             else:
                 return local.query(query)
 
     def edges(self, query=Edge):
-        with self.session_scope() as local:
+        with self.session_scope(must_inherit=True) as local:
             if isinstance(query, list) or isinstance(query, tuple):
                 return local.query(*query)
             else:
@@ -529,7 +543,7 @@ class PsqlGraphDriver(object):
 
         self.logger.debug('Looking up node by id: {id}'.format(id=node_id))
 
-        with self.session_scope(session) as local:
+        with self.session_scope(session, must_inherit=True) as local:
             if voided:
                 return local.query(PsqlVoidedNode).filter(
                     PsqlVoidedNode.node_id == node_id)
@@ -577,7 +591,7 @@ class PsqlGraphDriver(object):
             system_annotation_matches)
         property_matches = sanitizer.sanitize(property_matches)
 
-        with self.session_scope(session) as local:
+        with self.session_scope(session, must_inherit=True) as local:
             query = local.query(PsqlNode)
 
             # Filter system_annotations
@@ -931,7 +945,7 @@ class PsqlGraphDriver(object):
 
         """
 
-        with self.session_scope(session) as local:
+        with self.session_scope(session, must_inherit=True) as local:
             if voided:
                 return self.edge_lookup_voided(
                     src_id=src_id,
@@ -963,7 +977,7 @@ class PsqlGraphDriver(object):
 
         """
 
-        with self.session_scope(session) as local:
+        with self.session_scope(session, must_inherit=True) as local:
             query = local.query(PsqlVoidedEdge)
             if src_id:
                 query = query.filter(PsqlVoidedEdge.src_id == src_id)

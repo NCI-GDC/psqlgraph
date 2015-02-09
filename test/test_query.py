@@ -49,80 +49,110 @@ class TestPsqlGraphDriver(unittest.TestCase):
         conn.close()
 
     def test_ids(self):
-        self.assertTrue(self.g.nodes().ids(self.lone_id).one()
-                        .node_id == self.lone_id)
+        with self.g.session_scope():
+            self.assertTrue(self.g.nodes().ids(self.lone_id).one()
+                            .node_id == self.lone_id)
 
     def test_not_ids(self):
-        for n in self.g.nodes().not_ids(self.lone_id).all():
-            self.assertTrue(n.node_id != self.lone_id)
+        with self.g.session_scope():
+            for n in self.g.nodes().not_ids(self.lone_id).all():
+                self.assertTrue(n.node_id != self.lone_id)
 
     def test_has_edges(self):
-        for n in self.g.nodes():
-            self.assertTrue(self.g.nodes().ids(n.node_id).has_edges)
+        with self.g.session_scope():
+            for n in self.g.nodes():
+                self.assertTrue(self.g.nodes().ids(n.node_id).has_edges)
 
     def test_has_no_edges(self):
-        n = self.g.nodes().ids(self.lone_id).one()
-        self.assertTrue(self.g.nodes().ids(n.node_id).has_no_edges)
+        with self.g.session_scope():
+            n = self.g.nodes().ids(self.lone_id).one()
+            self.assertTrue(self.g.nodes().ids(n.node_id).has_no_edges)
 
     def test_labels(self):
-        for i in range(3):
-            label = 'test_{}'.format(i)
-            print label
-            ns = self.g.nodes().labels(label).all()
-            self.assertTrue(ns != [])
-            for n in ns:
-                self.assertTrue(n.label == label)
+        with self.g.session_scope():
+            for i in range(3):
+                label = 'test_{}'.format(i)
+                print label
+                ns = self.g.nodes().labels(label).all()
+                self.assertTrue(ns != [])
+                for n in ns:
+                    self.assertTrue(n.label == label)
 
     def test_not_labels(self):
-        for i in range(3):
-            label = 'test_{}'.format(i)
-            ns = self.g.nodes().not_labels(label).all()
-            self.assertTrue(ns != [])
-            for n in ns:
-                self.assertTrue(n.label != label)
+        with self.g.session_scope():
+            for i in range(3):
+                label = 'test_{}'.format(i)
+                ns = self.g.nodes().not_labels(label).all()
+                self.assertTrue(ns != [])
+                for n in ns:
+                    self.assertTrue(n.label != label)
 
     def test_props(self):
-        for i in range(3):
-            ns = self.g.nodes().props({'level': i, 'isTest': True}).all()
-            self.assertNotEqual(ns, [])
-            for n in ns:
-                self.assertEqual(n['level'], i)
-                self.assertEqual(n['isTest'], True)
+        with self.g.session_scope():
+            for i in range(3):
+                ns = self.g.nodes().props({'level': i, 'isTest': True}).all()
+                self.assertNotEqual(ns, [])
+                for n in ns:
+                    self.assertEqual(n['level'], i)
+                    self.assertEqual(n['isTest'], True)
 
     def test_not_props(self):
-        for i in range(3):
+        with self.g.session_scope():
+            for i in range(3):
+                ns = self.g.nodes().not_labels('test')\
+                                   .not_props({'level': i, 'isTest': True})\
+                                   .all()
+                self.assertNotEqual(ns, [])
+                for n in ns:
+                    self.assertNotEqual(n['level'], i)
+                    self.assertEqual(n['isTest'], True)
+
+    def test_null_props(self):
+        with self.g.session_scope():
             ns = self.g.nodes().not_labels('test')\
-                               .not_props({'level': i, 'isTest': True})\
+                               .null_props(['null'])\
                                .all()
             self.assertNotEqual(ns, [])
             for n in ns:
-                self.assertNotEqual(n['level'], i)
-                self.assertEqual(n['isTest'], True)
-
-    def test_null_props(self):
-        ns = self.g.nodes().not_labels('test')\
-                           .null_props(['null'])\
-                           .all()
-        self.assertNotEqual(ns, [])
-        for n in ns:
-            self.assertFalse(n['null'])
+                self.assertFalse(n['null'])
 
     def test_path_out(self):
-        n = self.g.nodes().path_out(['test_0', 'test_1', 'test_2']).one()
-        self.assertEqual(n.node_id, self.parent_id)
-        ns = self.g.nodes().path_out(['test_1', 'test_2']).all()
-        self.assertNotEqual(ns, [])
-        for n in ns:
-            self.assertEqual(n.label, 'test_0')
+        with self.g.session_scope():
+            n = self.g.nodes().path_out(['test_0', 'test_1', 'test_2']).one()
+            self.assertEqual(n.node_id, self.parent_id)
+            ns = self.g.nodes().path_out(['test_1', 'test_2']).all()
+            self.assertNotEqual(ns, [])
+            for n in ns:
+                self.assertEqual(n.label, 'test_0')
 
     def test_empty_path_out(self):
-        self.assertFalse(self.g.nodes().path_out(['test_0', 'test_2']).all())
+        with self.g.session_scope():
+            self.assertFalse(self.g.nodes().path_out(
+                ['test_0', 'test_2']).all())
 
     def test_path_in(self):
-        ns = self.g.nodes().path_in(['test_1', 'test_0']).all()
-        self.assertNotEqual(ns, [])
-        for n in ns:
-            self.assertEqual(n.label, 'test_2')
+        with self.g.session_scope():
+            ns = self.g.nodes().path_in(['test_1', 'test_0']).all()
+            self.assertNotEqual(ns, [])
+            for n in ns:
+                self.assertEqual(n.label, 'test_2')
 
     def test_empty_path_in(self):
-        self.assertFalse(self.g.nodes().path_in(['test_0', 'test_2']).all())
+        with self.g.session_scope():
+            self.assertFalse(self.g.nodes().path_in(
+                ['test_0', 'test_2']).all())
+
+    def test_path_end(self):
+        with self.g.session_scope():
+            ns = self.g.nodes().path_end(['test_1', 'test_0']).all()
+            self.assertNotEqual(ns, [])
+            for n in ns:
+                self.assertEqual(n.label, 'test_0')
+
+    def test_ids_path_end(self):
+        with self.g.session_scope():
+            ns = self.g.nodes().ids_path_end(self.parent_id, ['test_0']).all()
+            self.assertNotEqual(ns, [])
+            for n in ns:
+                self.assertEqual(n.label, 'test_0')
+                self.assertNotEqual(n.node_id, self.parent_id)

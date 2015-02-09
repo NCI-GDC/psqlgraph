@@ -56,10 +56,10 @@ class GraphQuery(Query):
         return self.filter(Node.node_id == sq.c.dst_id)
 
     def src(self, src_id):
-        """
-
-        """
         return self.filter(Edge.src_id == src_id)
+
+    def dst(self, dst_id):
+        return self.filter(Edge.src_id == dst_id)
 
     # ======== Nodes ========
     def has_edges(self):
@@ -93,6 +93,8 @@ class GraphQuery(Query):
         manually add a .reset_joinpoint to the query to bring it back
         to the path source.
 
+        Returns a query pointing to the nodes at the beginning of the path.
+
         :param list labels: list of labels in path
         :param bool reset: reset the join point to the source node
 
@@ -106,6 +108,8 @@ class GraphQuery(Query):
         manually add a .reset_joinpoint to the query to bring it back
         to the path source.
 
+        Returns a query pointing to the nodes at the beginning of the path.
+
         :param list labels: list of labels in path
         :param bool reset: reset the join point to the source node
 
@@ -115,6 +119,8 @@ class GraphQuery(Query):
     def path_in_end(self, labels):
         """Same as path_in, but forces the select statement to return with
         the entities from the end of the query
+
+        Returns a query pointing to the nodes at the end of the path.
 
         """
         for label in self._iterable(labels):
@@ -127,6 +133,8 @@ class GraphQuery(Query):
         """Same as path_out, but forces the select statement to return with
         the entities from the end of the query
 
+        Returns a query pointing to the nodes at the end of the path.
+
         """
         for label in self._iterable(labels):
             self = self.outerjoin(Edge, Node.node_id == Edge.src_id)\
@@ -135,8 +143,11 @@ class GraphQuery(Query):
         return self
 
     def path_end(self, labels):
-        """
-        Magic.
+        """Start at last query endpoint, walk a path through `labels` to
+        destination nodes.
+
+        .. note: This function will return the source node if your
+        path includes the same label as the source node
 
         """
         for label in self._iterable(labels):
@@ -145,6 +156,28 @@ class GraphQuery(Query):
             ).outerjoin(Node, or_(
                 Node.node_id == Edge.src_id, Node.node_id == Edge.dst_id)
             ).filter(Node.label == label)
+        return self
+
+    def ids_path_end(self, ids, labels):
+        """Start at node with node_id and walk a path through `labels` to
+        destination nodes.
+
+        .. note: This function is particularly useful when walking
+        from one known node to another with the same label.
+
+        Returns a query pointing to the nodes at the end of the path.
+
+        """
+        self = self.ids(ids)
+        for label in self._iterable(labels):
+            self = self.outerjoin(Edge, or_(
+                Node.node_id == Edge.src_id, Node.node_id == Edge.dst_id)
+            ).outerjoin(Node, or_(
+                Node.node_id == Edge.src_id, Node.node_id == Edge.dst_id)
+            ).filter(
+                Node.label == label
+            ).filter(
+                not_(Node.node_id.in_(self._iterable(ids))))
         return self
 
     def ids(self, ids):

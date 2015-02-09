@@ -202,7 +202,7 @@ class PsqlGraphDriver(object):
         return query.one()[0]
 
     @retryable
-    def node_merge(self, node_id=None, node=None, acl=[],
+    def node_merge(self, node_id=None, node=None, acl=None,
                    label=None, system_annotations={}, properties={},
                    session=None, max_retries=DEFAULT_RETRIES,
                    backoff=default_backoff):
@@ -343,7 +343,7 @@ class PsqlGraphDriver(object):
         return node
 
     def node_update(self, node, system_annotations={},
-                    acl=[], properties={}, session=None):
+                    acl=None, properties={}, session=None):
         """
         This function assumes that you have already done a query for an
         existing node!  This function will take an node, void it and

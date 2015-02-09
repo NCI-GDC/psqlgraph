@@ -102,7 +102,7 @@ class PsqlNode(Base):
             for subsrc in edge_in.src.walk_backward():
                 yield subsrc
 
-    def merge(self, acl=[], system_annotations={}, properties={}):
+    def merge(self, acl=None, system_annotations={}, properties={}):
         """Merges a new node onto this instance.  The parameter ``node``
         should contain the 'new' values with the following effects. In
         general, updates are additive. New properties will be added to
@@ -114,9 +114,8 @@ class PsqlNode(Base):
         PsqlGraphDriver.node_delete_system_annotation_keys:, :func
         PsqlGraphDriver.node_remove_acl_item:
 
-        .. note::
-           If the new node contains an acl list, it be appended to
-           the previous acl list
+        .. note:: If the new node contains an acl, the previous acl is
+           replaced by the new one
 
         The following class members cannot be updated: ``label, key, node_id``
 
@@ -132,9 +131,8 @@ class PsqlNode(Base):
             self.properties = copy.deepcopy(self.properties)
             self.properties.update(sanitize(properties))
 
-        if acl:
-            self.acl = copy.deepcopy(self.acl)
-            self.acl += acl
+        if acl is not None:
+            self.acl = acl
 
 
 class Node(PsqlNode):

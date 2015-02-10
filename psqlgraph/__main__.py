@@ -42,7 +42,8 @@ if __name__ == '__main__':
     g = psqlgraph.PsqlGraphDriver(**args.__dict__)
     ss = g.session_scope
 
-    if ipython:
-        IPython.embed()
-    else:
-        code.InteractiveConsole(locals=globals()).interact()
+    with g.session_scope():
+        if ipython:
+            IPython.embed()
+        else:
+            code.InteractiveConsole(locals=globals()).interact()

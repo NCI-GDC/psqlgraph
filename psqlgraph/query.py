@@ -190,6 +190,17 @@ class GraphQuery(Query):
         else:
             return self.filter(Node.node_id == str(ids))
 
+    def neighbors(self):
+        """Filter on nodes with either specific id, or nodes with ids in a
+        provided list
+
+        """
+        self = self.outerjoin(Edge, or_(
+            Node.node_id == Edge.src_id, Node.node_id == Edge.dst_id)
+        ).outerjoin(Node, or_(
+            Node.node_id == Edge.src_id, Node.node_id == Edge.dst_id))
+        return self
+
     def not_ids(self, ids):
         if hasattr(ids, '__iter__'):
             return self.filter(not_(Node.node_id.in_(ids)))

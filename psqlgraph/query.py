@@ -230,10 +230,12 @@ class GraphQuery(Query):
         neighbors = [e.src_id for e in node.edges_in] + \
             [e.dst_id for e in node.edges_out]
         for nid in neighbors:
-            if nid not in visited and nid in nodes\
+            if (visited is None or nid not in visited)\
+               and nid in nodes\
                and nodes[nid].label in tree:
                 n = nodes[nid]
-                visited.append(nid)
+                if visited is not None:
+                    visited.append(nid)
                 doc[n] = {}
                 GraphQuery._reconstruct_tree(
                     n, nodes, doc[n], tree[n.label], visited)
@@ -248,6 +250,32 @@ class GraphQuery(Query):
         return {nodes[root_id]:
                 self._reconstruct_tree(
                     nodes[root_id], nodes, {}, tree, [root_id])}
+
+    def path_whole(self, path):
+        """Filter on nodes with either specific id, or nodes with ids in a
+        provided list
+
+        """
+        if not path:
+            return self
+        endpoint = self
+        for label in self._iterable(path)[:-1]:
+            endpoint = endpoint.load_edges().neighbors().labels(
+                label).load_edges()
+            self = self.union(endpoint)
+        return self.union(
+            endpoint.neighbors().labels(self._iterable(path)[-1]))
+
+    def path_linked(self, src_id, path):
+        tree = {}
+        tree_temp = tree
+        for label in path:
+            tree_temp[label] = {}
+            tree_temp = tree_temp[label]
+        nodes = {n.node_id: n for n in self.ids(src_id).path_whole(path)}
+        return {nodes[src_id]:
+                self._reconstruct_tree(
+                    nodes[src_id], nodes, {}, tree, None)}
 
     def not_ids(self, ids):
         if hasattr(ids, '__iter__'):

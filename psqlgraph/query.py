@@ -188,7 +188,7 @@ class GraphQuery(Query):
         provided list
 
         """
-        if self.entity() == Node:
+        if self.entity() in [Node, PsqlNode]:
             _id = Node.node_id
         else:
             _id = Edge.node_id
@@ -209,7 +209,7 @@ class GraphQuery(Query):
         return self
 
     def not_ids(self, ids):
-        if self.entity() == Node:
+        if self.entity() in [Node, PsqlNode]:
             _id = Node.node_id
         else:
             _id = Edge.node_id

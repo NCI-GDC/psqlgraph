@@ -203,42 +203,40 @@ class GraphQuery(Query):
         return self
 
     def load_edges(self):
-        return self.options(joinedload('edges_in'))\
-                   .options(joinedload('edges_out'))
+        return self.options(joinedload(Node.edges_in))\
+                   .options(joinedload(Node.edges_out))
 
-    def flatten_tree(self, tree):
+    def load_neighbors(self):
+        return self.options(
+            joinedload(Node.edges_in).joinedload(Edge.src)
+        ).options(
+            joinedload(Node.edges_out).joinedload(Edge.dst))
+
+    def _flatten_tree(self, tree):
         """Filter on nodes with either specific id, or nodes with ids in a
         provided list
 
         """
-        leaves = [key for key in tree if not tree[key]]
         nonleaves = [key for key in tree if tree[key]]
-        if nonleaves:
-            n = self.load_edges().neighbors().labels(nonleaves).load_edges()
-        else:
-            n = self
+        if not nonleaves:
+            return self
+        n = self.load_neighbors().neighbors().labels(
+            nonleaves).load_neighbors()
         for key in tree.keys():
             if tree[key]:
                 self = self.union(
-                    n.flatten_tree(tree[key])).load_edges()
-        if leaves:
-            n = n.union(self.neighbors().labels(leaves))
+                    n._flatten_tree(tree[key])).load_neighbors()
         return self
 
     @staticmethod
     def _reconstruct_tree(node, nodes, doc, tree, visited):
-        neighbors = [e.src_id for e in node.edges_in] + \
-            [e.dst_id for e in node.edges_out]
-        for nid in neighbors:
-            if (visited is None or nid not in visited)\
-               and nid in nodes\
-               and nodes[nid].label in tree:
-                n = nodes[nid]
-                if visited is not None:
-                    visited.append(nid)
-                doc[n] = {}
+        neighbors = [e.src for e in node.edges_in if e.src.label in tree] + \
+                    [e.dst for e in node.edges_out if e.dst.label in tree]
+        for node in neighbors:
+            doc[node] = {}
+            if tree[node.label]:
                 GraphQuery._reconstruct_tree(
-                    n, nodes, doc[n], tree[n.label], visited)
+                    node, nodes, doc[node], tree[node.label], visited)
         return doc
 
     def tree(self, root_id, tree):
@@ -246,7 +244,7 @@ class GraphQuery(Query):
         provided list
 
         """
-        nodes = {n.node_id: n for n in self.ids(root_id).flatten_tree(tree)}
+        nodes = {n.node_id: n for n in self.ids(root_id)._flatten_tree(tree)}
         return {nodes[root_id]:
                 self._reconstruct_tree(
                     nodes[root_id], nodes, {}, tree, [root_id])}

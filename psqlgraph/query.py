@@ -258,8 +258,8 @@ class GraphQuery(Query):
             return self
         endpoint = self
         for label in self._iterable(path)[:-1]:
-            endpoint = endpoint.load_edges().neighbors().labels(
-                label).load_edges()
+            endpoint = endpoint.load_neighbors().neighbors().labels(
+                label).load_neighbors()
             self = self.union(endpoint)
         return self.union(
             endpoint.neighbors().labels(self._iterable(path)[-1]))
@@ -270,7 +270,7 @@ class GraphQuery(Query):
         for label in path:
             tree_temp[label] = {}
             tree_temp = tree_temp[label]
-        nodes = {n.node_id: n for n in self.ids(src_id).path_whole(path)}
+        nodes = {n.node_id: n for n in self.ids(src_id)._flatten_tree(tree)}
         return {nodes[src_id]:
                 self._reconstruct_tree(
                     nodes[src_id], nodes, {}, tree, None)}
@@ -287,20 +287,22 @@ class GraphQuery(Query):
         filter will check for equality.
 
         """
+        entity = self._entity_zero().type
         if hasattr(labels, '__iter__'):
-            return self.filter(Node.label.in_(labels))
+            return self.filter(entity.label.in_(labels))
         else:
-            return self.filter(Node.label == str(labels))
+            return self.filter(entity.label == str(labels))
 
     def not_labels(self, labels):
         """With (Node.label not in labels).  If label is type `str` then
         filter will check for equality.
 
         """
+        entity = self._entity_zero().type
         if hasattr(labels, '__iter__'):
-            return self.filter(not_(Node.label.in_(labels)))
+            return self.filter(not_(entity.label.in_(labels)))
         else:
-            return self.filter(Node.label != labels)
+            return self.filter(entity.label != labels)
 
     # ======== Properties ========
     def props(self, props):
@@ -384,5 +386,6 @@ class GraphQuery(Query):
         if isinstance(keys, str):
             keys = [keys]
         for key in keys:
-            self = self.filter(Node.system_annotations.has_key(key))
+            self = self.filter(
+                self._entity_zero().type.system_annotations.has_key(key))
         return self

@@ -1,7 +1,8 @@
 from edge import Edge, PsqlEdge
 from node import Node, PsqlNode
-from sqlalchemy.orm import Query
+from sqlalchemy.orm import Query, joinedload, aliased
 from sqlalchemy import or_, not_
+from pprint import pprint
 
 
 class GraphQuery(Query):
@@ -200,6 +201,53 @@ class GraphQuery(Query):
         ).outerjoin(Node, or_(
             Node.node_id == Edge.src_id, Node.node_id == Edge.dst_id))
         return self
+
+    def load_edges(self):
+        return self.options(joinedload('edges_in'))\
+                   .options(joinedload('edges_out'))
+
+    def flatten_tree(self, tree):
+        """Filter on nodes with either specific id, or nodes with ids in a
+        provided list
+
+        """
+        leaves = [key for key in tree if not tree[key]]
+        nonleaves = [key for key in tree if tree[key]]
+        if nonleaves:
+            n = self.load_edges().neighbors().labels(nonleaves).load_edges()
+        else:
+            n = self
+        for key in tree.keys():
+            if tree[key]:
+                self = self.union(
+                    n.flatten_tree(tree[key])).load_edges()
+        if leaves:
+            n = n.union(self.neighbors().labels(leaves))
+        return self
+
+    @staticmethod
+    def _reconstruct_tree(node, nodes, doc, tree, visited):
+        neighbors = [e.src_id for e in node.edges_in] + \
+            [e.dst_id for e in node.edges_out]
+        for nid in neighbors:
+            if nid not in visited and nid in nodes\
+               and nodes[nid].label in tree:
+                n = nodes[nid]
+                visited.append(nid)
+                doc[n] = {}
+                GraphQuery._reconstruct_tree(
+                    n, nodes, doc[n], tree[n.label], visited)
+        return doc
+
+    def tree(self, root_id, tree):
+        """Filter on nodes with either specific id, or nodes with ids in a
+        provided list
+
+        """
+        nodes = {n.node_id: n for n in self.ids(root_id).flatten_tree(tree)}
+        return {nodes[root_id]:
+                self._reconstruct_tree(
+                    nodes[root_id], nodes, {}, tree, [root_id])}
 
     def not_ids(self, ids):
         if hasattr(ids, '__iter__'):

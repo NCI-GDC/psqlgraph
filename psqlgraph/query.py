@@ -1,7 +1,8 @@
 from edge import Edge, PsqlEdge
 from node import Node, PsqlNode
-from sqlalchemy.orm import Query
+from sqlalchemy.orm import Query, joinedload, aliased
 from sqlalchemy import or_, not_
+from pprint import pprint
 
 
 class GraphQuery(Query):
@@ -207,6 +208,79 @@ class GraphQuery(Query):
         ).outerjoin(Node, or_(
             Node.node_id == Edge.src_id, Node.node_id == Edge.dst_id))
         return self
+
+    def load_edges(self):
+        return self.options(joinedload(Node.edges_in))\
+                   .options(joinedload(Node.edges_out))
+
+    def load_neighbors(self):
+        return self.options(
+            joinedload(Node.edges_in).joinedload(Edge.src)
+        ).options(
+            joinedload(Node.edges_out).joinedload(Edge.dst))
+
+    def _flatten_tree(self, tree):
+        """Filter on nodes with either specific id, or nodes with ids in a
+        provided list
+
+        """
+        nonleaves = [key for key in tree if tree[key]]
+        if not nonleaves:
+            return self
+        n = self.load_neighbors().neighbors().labels(
+            nonleaves).load_neighbors()
+        for key in tree.keys():
+            if tree[key]:
+                self = self.union(
+                    n._flatten_tree(tree[key])).load_neighbors()
+        return self
+
+    @staticmethod
+    def _reconstruct_tree(node, nodes, doc, tree, visited):
+        neighbors = [e.src for e in node.edges_in if e.src.label in tree] + \
+                    [e.dst for e in node.edges_out if e.dst.label in tree]
+        for node in neighbors:
+            doc[node] = {}
+            if tree[node.label]:
+                GraphQuery._reconstruct_tree(
+                    node, nodes, doc[node], tree[node.label], visited)
+        return doc
+
+    def tree(self, root_id, tree):
+        """Filter on nodes with either specific id, or nodes with ids in a
+        provided list
+
+        """
+        nodes = {n.node_id: n for n in self.ids(root_id)._flatten_tree(tree)}
+        return {nodes[root_id]:
+                self._reconstruct_tree(
+                    nodes[root_id], nodes, {}, tree, [root_id])}
+
+    def path_whole(self, path):
+        """Filter on nodes with either specific id, or nodes with ids in a
+        provided list
+
+        """
+        if not path:
+            return self
+        endpoint = self
+        for label in self._iterable(path)[:-1]:
+            endpoint = endpoint.load_edges().neighbors().labels(
+                label).load_edges()
+            self = self.union(endpoint)
+        return self.union(
+            endpoint.neighbors().labels(self._iterable(path)[-1]))
+
+    def path_linked(self, src_id, path):
+        tree = {}
+        tree_temp = tree
+        for label in path:
+            tree_temp[label] = {}
+            tree_temp = tree_temp[label]
+        nodes = {n.node_id: n for n in self.ids(src_id).path_whole(path)}
+        return {nodes[src_id]:
+                self._reconstruct_tree(
+                    nodes[src_id], nodes, {}, tree, None)}
 
     def not_ids(self, ids):
         if self.entity() in [Node, PsqlNode]:

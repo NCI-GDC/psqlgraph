@@ -1,7 +1,7 @@
 from edge import Edge, PsqlEdge
 from node import Node, PsqlNode
 from sqlalchemy.orm import Query, joinedload, aliased
-from sqlalchemy import or_, not_
+from sqlalchemy import or_, not_, and_
 from pprint import pprint
 
 
@@ -265,8 +265,7 @@ class GraphQuery(Query):
             return self
         endpoint = self
         for label in self._iterable(path)[:-1]:
-            endpoint = endpoint.load_edges().neighbors().labels(
-                label).load_edges()
+            endpoint = endpoint.neighbors().labels(label)
             self = self.union(endpoint)
         return self.union(
             endpoint.neighbors().labels(self._iterable(path)[-1]))
@@ -277,7 +276,7 @@ class GraphQuery(Query):
         for label in path:
             tree_temp[label] = {}
             tree_temp = tree_temp[label]
-        nodes = {n.node_id: n for n in self.ids(src_id).path_whole(path)}
+        nodes = {n.node_id: n for n in self.ids(src_id)._flatten_tree(tree)}
         return {nodes[src_id]:
                 self._reconstruct_tree(
                     nodes[src_id], nodes, {}, tree, None)}

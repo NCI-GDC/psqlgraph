@@ -885,11 +885,6 @@ class PsqlGraphDriver(object):
         """
 
         self.logger.debug('Updating: {}'.format(edge))
-        if ((properties == edge.properties) and (
-                system_annotations == edge.system_annotations)):
-            logging.debug('Edge left unchanged: {}'.format(edge))
-            return edge
-
         with self.session_scope(session) as local:
             self._edge_void(edge, local)
             edge.merge(system_annotations=system_annotations,

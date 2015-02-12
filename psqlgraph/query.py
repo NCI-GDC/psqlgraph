@@ -14,6 +14,9 @@ class GraphQuery(Query):
         else:
             return (val,)
 
+    def entity(self):
+        return self._entity_zero().type
+
     # ======== Edges ========
     def with_edge_to_node(self, edge_label, target_node):
         """Returns a new query that filters the query to just those nodes that
@@ -186,10 +189,14 @@ class GraphQuery(Query):
         provided list
 
         """
-        if hasattr(ids, '__iter__'):
-            return self.filter(Node.node_id.in_(ids))
+        if self.entity() in [Node, PsqlNode]:
+            _id = Node.node_id
         else:
-            return self.filter(Node.node_id == str(ids))
+            _id = Edge.node_id
+        if hasattr(ids, '__iter__'):
+            return self.filter(_id.in_(ids))
+        else:
+            return self.filter(_id == str(ids))
 
     def neighbors(self):
         """Filter on nodes with either specific id, or nodes with ids in a
@@ -275,33 +282,35 @@ class GraphQuery(Query):
                     nodes[src_id], nodes, {}, tree, None)}
 
     def not_ids(self, ids):
-        if hasattr(ids, '__iter__'):
-            return self.filter(not_(Node.node_id.in_(ids)))
+        if self.entity() in [Node, PsqlNode]:
+            _id = Node.node_id
         else:
-            return self.filter(not_(Node.node_id == str(ids)))
+            _id = Edge.node_id
+        if hasattr(ids, '__iter__'):
+            return self.filter(not_(_id.in_(ids)))
+        else:
+            return self.filter(not_(_id == str(ids)))
 
     # ======== Labels ========
     def labels(self, labels):
-        """With (Node.label in labels).  If label is type `str` then
+        """With (entity.label in labels).  If label is type `str` then
         filter will check for equality.
 
         """
-        entity = self._entity_zero().type
         if hasattr(labels, '__iter__'):
-            return self.filter(entity.label.in_(labels))
+            return self.filter(self.entity().label.in_(labels))
         else:
-            return self.filter(entity.label == str(labels))
+            return self.filter(self.entity().label == str(labels))
 
     def not_labels(self, labels):
-        """With (Node.label not in labels).  If label is type `str` then
+        """With (entity.label not in labels).  If label is type `str` then
         filter will check for equality.
 
         """
-        entity = self._entity_zero().type
         if hasattr(labels, '__iter__'):
-            return self.filter(not_(entity.label.in_(labels)))
+            return self.filter(not_(self.entity().label.in_(labels)))
         else:
-            return self.filter(entity.label != labels)
+            return self.filter(self.entity().label != labels)
 
     # ======== Properties ========
     def props(self, props):
@@ -313,7 +322,7 @@ class GraphQuery(Query):
 
         """
         assert isinstance(props, dict)
-        return self.filter(Node.properties.contains(props))
+        return self.filter(self.entity().properties.contains(props))
 
     def not_props(self, props):
         """Without properties. Subset props not in properties.
@@ -324,7 +333,7 @@ class GraphQuery(Query):
 
         """
         assert isinstance(props, dict)
-        return self.filter(not_(Node.properties.contains(props)))
+        return self.filter(not_(self.entity().properties.contains(props)))
 
     def prop_in(self, key, values):
         """With (properties[key] in values).
@@ -334,7 +343,7 @@ class GraphQuery(Query):
 
         """
         assert isinstance(key, str) and isinstance(values, list)
-        return self.filter(Node.properties[key].astext.in_([
+        return self.filter(self.entity().properties[key].astext.in_([
             str(v) for v in values]))
 
     def prop(self, key, value):
@@ -344,18 +353,18 @@ class GraphQuery(Query):
         :param list values: a list of possible properties
 
         """
-        return self.filter(Node.properties[key].astext == str(value))
+        return self.filter(self.entity().properties[key].astext == str(value))
 
     def has_props(self, keys):
         for key in self._iterable(keys):
-            self = self.filter(Node.properties.has_key(key))
+            self = self.filter(self.entity().properties.has_key(key))
         return self
 
     def null_props(self, keys):
         """
 
         """
-        return self.filter(Node.properties.contains(
+        return self.filter(self.entity().properties.contains(
             {key: None for key in self._iterable(keys)}))
 
     # ======== System Annotations ========
@@ -364,27 +373,27 @@ class GraphQuery(Query):
 
         """
         assert isinstance(sysans, dict)
-        return self.filter(Node.system_annotations.contains(sysans))
+        return self.filter(self.entity().system_annotations.contains(sysans))
 
     def not_sysan(self, sysans):
         """Without system_annotations. Subset sysans not in system_annotations.
 
         """
         assert isinstance(sysans, dict)
-        return self.filter(not_(Node.system_annotations.contains(sysans)))
+        return self.filter(
+            not_(self.entity().system_annotations.contains(sysans)))
 
     def not_sysan_in(self, key, values):
         """With (system_annotations[key] in values).
 
         """
         assert isinstance(key, str) and isinstance(values, list)
-        return self.filter(Node.system_annotations[key].astext.in_([
+        return self.filter(self.entity().system_annotations[key].astext.in_([
             str(v) for v in values]))
 
     def has_sysan(self, keys):
         if isinstance(keys, str):
             keys = [keys]
         for key in keys:
-            self = self.filter(
-                self._entity_zero().type.system_annotations.has_key(key))
+            self = self.filter(self.entity().system_annotations.has_key(key))
         return self

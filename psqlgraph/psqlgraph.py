@@ -362,12 +362,6 @@ class PsqlGraphDriver(object):
         """
 
         self.logger.debug('Updating: {}'.format(node))
-        if ((properties == node.properties) and (
-                system_annotations == node.system_annotations) and (
-                    acl == node.acl)):
-            logging.debug('Node left unchanged: {}'.format(node))
-            return node
-
         with self.session_scope(session) as local:
             self._node_void(node, local)
             node.merge(system_annotations=system_annotations, acl=acl,

@@ -63,7 +63,7 @@ class GraphQuery(Query):
         return self.filter(Edge.src_id == src_id)
 
     def dst(self, dst_id):
-        return self.filter(Edge.src_id == dst_id)
+        return self.filter(Edge.dst_id == dst_id)
 
     # ======== Nodes ========
     def has_edges(self):

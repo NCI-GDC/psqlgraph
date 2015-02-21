@@ -1,12 +1,14 @@
 import py2neo
 import psqlgraph
+import time
 from datetime import datetime
 import progressbar
 
+MAX_RETRIES = 3
+TIMEOUT = 30
 
 class ExportError(Exception):
     pass
-
 
 class PsqlGraph2Neo4j(object):
 
@@ -61,20 +63,37 @@ class PsqlGraph2Neo4j(object):
                 except Exception, msg:
                     print('Unable to create index: ' + str(msg))
 
-    def export_nodes(self, silent=False):
+    def export_nodes(self, silent=False,batch_size=1000):
+        node_count = self.psqlgraphDriver.get_node_count()
+        i = 0
         if not silent:
-            i = 0
-            node_count = self.psqlgraphDriver.get_node_count()
             print("Exporting {n} nodes:".format(n=node_count))
             pbar = self.start_pbar(node_count)
-
+        batch_size = min(batch_size,node_count)
+        txn = self.neo4jDriver.cypher.begin()
+        batch_ct = 0
         nodes = self.psqlgraphDriver.get_nodes()
+        node_batch = []
         for node in nodes:
             self.convert_node(node)
-            self.neo4jDriver.graph.create(
-                py2neo.Node(node.label, **node.properties))
-            if not silent:
-                i = self.update_pbar(pbar, i)
+            batch_ct += 1
+            cypher="""
+            CREATE (n:{label} {{props}}) RETURN ID(n), n.id
+            """.format(
+                label=node.label
+            )
+            props = dict( [ (j, node.properties[j]) for j in node.properties if node.properties[j] != None ] )
+            parameters = {"props":props}
+            node_batch.append( (cypher,parameters) )
+            txn.append(cypher, parameters={"props":props})
+            if batch_ct >= batch_size:
+                self._transact(node_batch)
+                node_batch = []
+                if not silent:
+                    i += self.update_pbar(pbar, i+batch_ct)
+                batch_ct=0
+        if len(node_batch):
+            self._transact(node_batch)
         if not silent:
             self.update_pbar(pbar, node_count)
 
@@ -106,16 +125,14 @@ class PsqlGraph2Neo4j(object):
         if not silent:
             print("\nExporting {n} edges:".format(n=edge_count))
             pbar = self.start_pbar(edge_count)
-
-        transaction = self.neo4jDriver.cypher.begin()
-        batch_count = 0
+        batch_count=0
         edges = self.psqlgraphDriver.get_edges()
+        edge_batch = []
         for edge in edges:
             batch_count += 1
             if not (edge.src and edge.dst):
                 i += self.update_pbar(pbar, i)
                 continue
-
             cypher = """
             MATCH (s:{src_label}), (d:{dst_label})
             WHERE s.id = {{src_id}} AND d.id = {{dst_id}}
@@ -125,23 +142,45 @@ class PsqlGraph2Neo4j(object):
                 dst_label=edge.dst.label,
                 edge_label=edge.label
             )
-
             parameters = dict(
                 src_id=edge.src_id,
                 dst_id=edge.dst_id,
             )
-
-            transaction.append(cypher, parameters=parameters)
+            edge_batch.append( (cypher,parameters) )
             if batch_count >= batch_size:
-                transaction.commit()
-                batch_count, transaction = 0, self.neo4jDriver.cypher.begin()
+                self._transact(edge_batch)
+                edge_batch = []
                 if not silent:
-                    i = self.update_pbar(pbar, i)
+                    i += self.update_pbar(pbar, i+batch_count)
+                batch_count=0
 
-        transaction.commit()
+        if len(edge_batch):
+            self._transact(edge_batch)
         if not silent:
             self.update_pbar(pbar, edge_count)
 
+    def _transact(self, cypher_list):
+        retries = 0
+        ret = None
+        while retries < MAX_RETRIES:
+            transaction = self.neo4jDriver.cypher.begin()
+            try:
+                for c in cypher_list:
+                    transaction.append(c[0],parameters=c[1])
+                ret = transaction.commit()
+                j = 0
+                while (j < TIMEOUT and not transaction.finished):
+                    time.sleep(1.0)
+                    j += 1
+                break
+            except Exception as e: #py2neo.packages.httpstream.http.SocketError:
+                print >> sys.stderr, type(e), e
+                transaction.rollback()
+                retries += 1
+                if not transaction.finished:
+                    raise RuntimeError("transaction failed after %d retries" % retries-1)
+            return ret
+        
     def export(self, silent=False, batch_size=1000, create_indexes=True):
         if create_indexes:
             self.create_indexes()
@@ -154,5 +193,5 @@ class PsqlGraph2Neo4j(object):
             raise ExportError(
                 'No neo4j driver.  Please call .connect_to_neo4j()')
 
-        self.export_nodes(silent)
-        self.export_edges(silent, batch_size)
+        self.export_nodes(silent, batch_size=batch_size)
+        self.export_edges(silent, batch_size=batch_size)

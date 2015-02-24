@@ -1,6 +1,7 @@
 import py2neo
 import psqlgraph
 import time
+import sys
 import os.path
 import pickle
 from datetime import datetime
@@ -8,7 +9,7 @@ import progressbar
 
 
 MAX_RETRIES = 3
-TIMEOUT = 30
+TIMEOUT = 90
 
 class ExportError(Exception):
     pass
@@ -181,7 +182,10 @@ class PsqlGraph2Neo4j(object):
                 while (j < TIMEOUT and not transaction.finished):
                     time.sleep(1.0)
                     j += 1
+                if (not transaction.finished):
+                    raise RuntimeError('Timeout reached before txn finished')
                 break
+            
             except Exception as e: #py2neo.packages.httpstream.http.SocketError:
                 print >> sys.stderr, type(e), e
                 transaction.rollback()

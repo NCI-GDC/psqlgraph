@@ -1,30 +1,19 @@
-import py2neo
+from __future__ import print_function
 import psqlgraph
-from datetime import datetime
 import progressbar
-
-
-class ExportError(Exception):
-    pass
-
-
-class PsqlGraph2Neo4j(object):
-
+import json
+import os
+import gdcdatamodel
+class  PsqlGraph2Neo4j(object):
     def __init__(self):
         self.psqlgraphDriver = None
-        self.neo4jDriver = None
-        self.indexed_keys = [
-            'id'
-        ]
+        self.files=dict()
 
-    def connect_to_psql(self, host, user, password, database):
+
+    
+    def connect_to_psql(self,host,user,password,database):
         self.psqlgraphDriver = psqlgraph.PsqlGraphDriver(
             host, user, password, database
-        )
-
-    def connect_to_neo4j(self, host, port=7474, user=None, password=None):
-        self.neo4jDriver = py2neo.Graph(
-            'http://{host}:{port}/db/data'.format(host=host, port=port)
         )
 
     def datetime2ms_epoch(self, dt):
@@ -41,42 +30,107 @@ class PsqlGraph2Neo4j(object):
                 pass
 
     def convert_node(self, node):
-            node.properties['id'] = node.node_id
             self.try_parse_doc(node.properties)
 
-    def get_distinct_labels(self):
-        conn = self.psqlgraphDriver.engine.connect()
-        conn.execute('commit')
-        labels = conn.execute('select distinct label from nodes').fetchall()
-        conn.close()
-        return [l[0] for l in labels]
 
-    def create_indexes(self):
-        print('Creating indexes ...')
-        labels = self.get_distinct_labels()
-        for label in labels:
-            for key in self.indexed_keys:
-                try:
-                    self.neo4jDriver.schema.create_index(label, key)
-                except Exception, msg:
-                    print('Unable to create index: ' + str(msg))
+    def create_node_files(self,data_dir):
+        with self.psqlgraphDriver.session_scope():
+            count = 0
+            with open(os.path.join(
+                gdcdatamodel.schema_src_dir,'node_properties.avsc'),'r') as f:
+                schema = json.load(f)
+            for node in schema:
+                label = '_'.join(node['name'].split('_')[0:-1])
+                f=open(os.path.join(data_dir,'nodes'+str(count)+'.csv'),'w')
+                count+=1
+                self.files[label]=[f]
+                keys = []
+                title = 'i:id\tid\tl:label\t'
+                for prop in node['fields']:
+                        typ = prop['type']
+                        keys.append(prop['name'])
+                        if type(typ) == list: typ=typ[-1]
+                        typ = typ.replace('string','String')
+                        if typ.endswith('enum'):typ='String'
+                        title += (prop['name'] + ':' + typ + '\t') 
+                print(title,file=f)
+                self.files[label].append(keys)
+    
+    def close_files(self):
+        for f in self.files.values():
+            f[0].close()
 
-    def export_nodes(self, silent=False):
+    def start_pbar(self, maxval):
+        pbar = progressbar.ProgressBar(
+            widgets=[
+                progressbar.Percentage(), ' ',
+                progressbar.Bar(marker='#'), ' ',
+                progressbar.ETA(), ' ',
+            ], maxval=maxval).start()
+        return pbar
+
+   
+    def node_to_csv(self,id,node):
+        result=''
+        node_file = self.files[node.label]
+        f = node_file[0]
+        result=id+'\t'+node.node_id + '\t' + node.label + '\t'
+        try:
+            for key in node_file[1]:
+                value = unicode(node.properties.get(key,''))\
+                    .replace('\r','\\r').replace('\n','\\n')
+                if value == 'None': value=''
+                result+=value+'\t'
+            print(result.encode('utf-8'),file=f)
+        except Exception as e:
+            pdb.set_trace()
+
+    
+    def export_to_csv(self,data_dir,silent=False):
+        node_ids=dict()
         if not silent:
             i = 0
             node_count = self.psqlgraphDriver.get_node_count()
             print("Exporting {n} nodes:".format(n=node_count))
             pbar = self.start_pbar(node_count)
-
+        
+        edge_file = open(os.path.join(data_dir,'rels.csv'),'w')
+        print('start\tend\ttype\t',file=edge_file)
+        self.create_node_files(data_dir)
         nodes = self.psqlgraphDriver.get_nodes()
+        id_count=0
         for node in nodes:
             self.convert_node(node)
-            self.neo4jDriver.graph.create(
-                py2neo.Node(node.label, **node.properties))
+            self.node_to_csv(str(id_count),node)
+            node_ids[node.node_id]=id_count
+            id_count+=1
+           
             if not silent:
                 i = self.update_pbar(pbar, i)
+
         if not silent:
             self.update_pbar(pbar, node_count)
+
+        self.close_files()
+        if not silent:
+            i = 0
+            edge_count = self.psqlgraphDriver.get_edge_count()
+            print("Exporting {n} edges:".format(n=edge_count))
+            pbar = self.start_pbar(node_count)
+
+        edges = self.psqlgraphDriver.get_edges()
+        for edge in edges:
+            src = node_ids[edge.src_id]
+            dst = node_ids[edge.dst_id]
+            edge_file.write(str(src)+'\t'+str(dst)+'\t'+edge.label+'\n')
+            if not silent:
+                i = self.update_pbar(pbar, i)
+
+        edge_file.close()
+        if not silent:
+            self.update_pbar(pbar, edge_count)
+
+     
 
     def start_pbar(self, maxval):
         pbar = progressbar.ProgressBar(
@@ -94,65 +148,11 @@ class PsqlGraph2Neo4j(object):
             pass
         return i+1
 
-    def export_edges(self, silent=False, batch_size=1000):
 
-        i = 0
-        edge_count = self.psqlgraphDriver.get_edge_count()
-
-        if not edge_count:
-            return
-
-        batch_size = min(edge_count, batch_size)
-        if not silent:
-            print("\nExporting {n} edges:".format(n=edge_count))
-            pbar = self.start_pbar(edge_count)
-
-        transaction = self.neo4jDriver.cypher.begin()
-        batch_count = 0
-        edges = self.psqlgraphDriver.get_edges()
-        for edge in edges:
-            batch_count += 1
-            if not (edge.src and edge.dst):
-                i += self.update_pbar(pbar, i)
-                continue
-
-            cypher = """
-            MATCH (s:{src_label}), (d:{dst_label})
-            WHERE s.id = {{src_id}} AND d.id = {{dst_id}}
-            CREATE (s)-[:{edge_label}]->(d)
-            """.format(
-                src_label=edge.src.label,
-                dst_label=edge.dst.label,
-                edge_label=edge.label
-            )
-
-            parameters = dict(
-                src_id=edge.src_id,
-                dst_id=edge.dst_id,
-            )
-
-            transaction.append(cypher, parameters=parameters)
-            if batch_count >= batch_size:
-                transaction.commit()
-                batch_count, transaction = 0, self.neo4jDriver.cypher.begin()
-                if not silent:
-                    i = self.update_pbar(pbar, i)
-
-        transaction.commit()
-        if not silent:
-            self.update_pbar(pbar, edge_count)
-
-    def export(self, silent=False, batch_size=1000, create_indexes=True):
-        if create_indexes:
-            self.create_indexes()
+    def export(self, data_dir, silent=False):
 
         if not self.psqlgraphDriver:
-            raise ExportError(
+            raise Exception(
                 'No psqlgraph driver.  Please call .connect_to_psql()')
-
-        if not self.neo4jDriver:
-            raise ExportError(
-                'No neo4j driver.  Please call .connect_to_neo4j()')
-
-        self.export_nodes(silent)
-        self.export_edges(silent, batch_size)
+        
+        self.export_to_csv(data_dir,silent=silent)

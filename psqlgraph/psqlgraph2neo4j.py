@@ -6,7 +6,7 @@ import os.path
 import pickle
 from datetime import datetime
 import progressbar
-
+from pdb import set_trace
 
 MAX_RETRIES = 3
 TIMEOUT = 90
@@ -75,7 +75,6 @@ class PsqlGraph2Neo4j(object):
             print("Exporting {n} nodes:".format(n=node_count))
             pbar = self.start_pbar(node_count)
         batch_size = min(batch_size,node_count)
-        txn = self.neo4jDriver.cypher.begin()
         batch_ct = 0
         nodes = self.psqlgraphDriver.get_nodes()
         node_batch = []
@@ -90,19 +89,24 @@ class PsqlGraph2Neo4j(object):
             props = dict( [ (j, node.properties[j]) for j in node.properties if node.properties[j] != None ] )
             parameters = {"props":props}
             node_batch.append( (cypher,parameters) )
-            txn.append(cypher, parameters={"props":props})
             if batch_ct >= batch_size:
                 ids = self._transact(node_batch)
                 for r in ids:
-                    self.node_ids[r[0]] = r[1]
+                    self.node_ids[r[0][0]] = r[0][1]
                 node_batch = []
                 if not silent:
                     i += self.update_pbar(pbar, i+batch_ct)
                 batch_ct=0
         if len(node_batch):
-            self._transact(node_batch)
+            ids = self._transact(node_batch)
+            for r in ids:
+                self.node_ids[r[0][0]] = r[0][1]
         if not silent:
             self.update_pbar(pbar, node_count)
+        fh = open("nodeids.o","w")
+        pickle.dump(self.node_ids,fh)
+        fh.close()
+        
 
     def start_pbar(self, maxval):
         pbar = progressbar.ProgressBar(
@@ -153,8 +157,11 @@ class PsqlGraph2Neo4j(object):
             if not (edge.src and edge.dst):
                 i += self.update_pbar(pbar, i)
                 continue
-            src_n = self.neo4jDriver.node( self.node_ids[edge.src_id] )
-            dst_n = self.neo4jDriver.node( self.node_ids[edge.dst_id] )
+            try :
+                src_n = self.neo4jDriver.node( self.node_ids[edge.src_id] )
+                dst_n = self.neo4jDriver.node( self.node_ids[edge.dst_id] )
+            except:
+                set_trace()
             s2d = py2neo.Relationship(src_n,edge.label,dst_n)
             edge_batch.append( (src_n,s2d,dst_n) )
             if batch_count >= batch_size:
@@ -190,9 +197,9 @@ class PsqlGraph2Neo4j(object):
                 print >> sys.stderr, type(e), e
                 transaction.rollback()
                 retries += 1
-                if not transaction.finished:
+                if not transaction.finished or retries >= MAX_RETRIES:
                     raise RuntimeError("transaction failed after %d retries" % retries-1)
-            return ret
+        return ret
     def _batch_edges(self, edge_list):
         batch = py2neo.batch.Batch(self.neo4jDriver)
         for e in edge_list:

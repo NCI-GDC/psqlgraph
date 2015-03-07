@@ -6,7 +6,7 @@ import os.path
 import pickle
 from datetime import datetime
 import progressbar
-from pdb import set_trace
+#from pdb import set_trace
 
 MAX_RETRIES = 3
 TIMEOUT = 90
@@ -157,13 +157,11 @@ class PsqlGraph2Neo4j(object):
             if not (edge.src and edge.dst):
                 i += self.update_pbar(pbar, i)
                 continue
-            try :
-                src_n = self.neo4jDriver.node( self.node_ids[edge.src_id] )
-                dst_n = self.neo4jDriver.node( self.node_ids[edge.dst_id] )
-            except:
-                set_trace()
+            src_n = self.neo4jDriver.node( self.node_ids[edge.src_id] )
+            dst_n = self.neo4jDriver.node( self.node_ids[edge.dst_id] )
             s2d = py2neo.Relationship(src_n,edge.label,dst_n)
-            edge_batch.append( (src_n,s2d,dst_n) )
+            props = dict( [ (j, edge.properties[j]) for j in edge.properties if edge.properties[j] != None ] )
+            edge_batch.append( [(src_n,s2d,dst_n),props] )
             if batch_count >= batch_size:
                 self._batch_edges(edge_batch)
                 edge_batch = []
@@ -203,7 +201,7 @@ class PsqlGraph2Neo4j(object):
     def _batch_edges(self, edge_list):
         batch = py2neo.batch.Batch(self.neo4jDriver)
         for e in edge_list:
-            j = py2neo.batch.CreateRelationshipJob(*e)
+            j = py2neo.batch.CreateRelationshipJob(*e[0],**e[1])
             batch.append(j)
         self.neo4jDriver.batch.run(batch)
         pass

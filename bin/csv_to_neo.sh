@@ -1,3 +1,4 @@
+#!/bin/bash
 while getopts “:s:d:b:” OPTION
 do
     case $OPTION in

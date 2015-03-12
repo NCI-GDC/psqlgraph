@@ -1,9 +1,9 @@
 from __future__ import print_function
+from datetime import datetime
 import psqlgraph
 import progressbar
 import json
 import os
-import gdcdatamodel
 class  PsqlGraph2Neo4j(object):
     def __init__(self):
         self.psqlgraphDriver = None
@@ -33,13 +33,10 @@ class  PsqlGraph2Neo4j(object):
             self.try_parse_doc(node.properties)
 
 
-    def create_node_files(self,data_dir):
+    def create_node_files(self,data_dir,node_properties):
         with self.psqlgraphDriver.session_scope():
             count = 0
-            with open(os.path.join(
-                gdcdatamodel.schema_src_dir,'node_properties.avsc'),'r') as f:
-                schema = json.load(f)
-            for node in schema:
+            for node in node_properties:
                 label = '_'.join(node['name'].split('_')[0:-1])
                 f=open(os.path.join(data_dir,'nodes'+str(count)+'.csv'),'w')
                 count+=1
@@ -86,7 +83,7 @@ class  PsqlGraph2Neo4j(object):
             pdb.set_trace()
 
     
-    def export_to_csv(self,data_dir,silent=False):
+    def export_to_csv(self,data_dir,node_properties,silent=False):
         node_ids=dict()
         if not silent:
             i = 0
@@ -96,7 +93,7 @@ class  PsqlGraph2Neo4j(object):
         
         edge_file = open(os.path.join(data_dir,'rels.csv'),'w')
         print('start\tend\ttype\t',file=edge_file)
-        self.create_node_files(data_dir)
+        self.create_node_files(data_dir,node_properties)
         nodes = self.psqlgraphDriver.get_nodes()
         id_count=0
         for node in nodes:
@@ -149,10 +146,19 @@ class  PsqlGraph2Neo4j(object):
         return i+1
 
 
-    def export(self, data_dir, silent=False):
+    def export(self, data_dir,node_properties, silent=False):
+        ''' 
+        create csv files that will later be parsed by batch
+        importer from psqlgraph.
+
+        data_dir:         directory to store csv
+        node_properties:  dictionary that should have the same structure
+                           as node_properties.avsc in gdcdatamodel.
+        '''
+
 
         if not self.psqlgraphDriver:
             raise Exception(
                 'No psqlgraph driver.  Please call .connect_to_psql()')
         
-        self.export_to_csv(data_dir,silent=silent)
+        self.export_to_csv(data_dir,node_properties,silent=silent)

@@ -30,7 +30,6 @@ exit 0
 elif [ "$cmd" = "setup" ];
 then
     echo "$cmd"
-    export http_proxy=http://cloud-proxy:3128; export https_proxy=http://cloud-proxy:3128;
     wget https://dl.dropboxusercontent.com/u/14493611/batch_importer_20.zip
     unzip batch_importer_20.zip -d batch_importer && rm batch*.zip
 exit 0

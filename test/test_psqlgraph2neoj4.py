@@ -104,7 +104,7 @@ class Test_psql2neo(unittest.TestCase):
         subprocess.call('%s -s %s -d %s -b batch_importer convert' % (script,csv_dir,data_dir),shell=True)
         subprocess.call('%s stop' % self.get_neo4j_script(),shell=True)
         subprocess.call('%s start-no-wait' % self.get_neo4j_script(),shell=True)
-        time.sleep(10) 
+        time.sleep(20) 
         
     def test_neo_single_node(self):
         self._clear_tables()

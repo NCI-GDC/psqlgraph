@@ -9,6 +9,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm.exc import NoResultFound
 from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker
+from xlocal import xlocal
 
 #  ORM object base
 Base = declarative_base()
@@ -40,7 +41,7 @@ class PsqlGraphDriver(object):
         self.host = host
         self.logger = logging.getLogger('psqlgraph')
         self.default_retries = 10
-        self._sessions = []
+        self.context = xlocal()
 
         if node_validator is None:
             node_validator = PsqlNodeValidator(self)
@@ -61,6 +62,12 @@ class PsqlGraphDriver(object):
         session = Session()
         logging.debug('Created session {}'.format(session))
         return session
+
+    def has_session(self):
+        return hasattr(self.context, "session")
+
+    def current_session(self):
+        return self.context.session
 
     @contextmanager
     def session_scope(self, session=None, can_inherit=True,
@@ -133,7 +140,7 @@ class PsqlGraphDriver(object):
 
         """
 
-        if must_inherit and not self._sessions:
+        if must_inherit and not self.has_session():
             raise RuntimeError(
                 'Session scope requires it to be wrapped in a pre-existing '
                 'session.  This was likely done to prevent a leaked session '
@@ -143,16 +150,17 @@ class PsqlGraphDriver(object):
         inherited_session = True
         if session:
             local = session
-        elif not (can_inherit and self._sessions):
+        elif not (can_inherit and self.has_session()):
             inherited_session = False
             local = self._new_session()
         else:
-            local = self._sessions[-1]
-        self._sessions.append(local)
+            local = self.current_session()
 
         # Context manager functionality
         try:
-            yield local
+            with self.context(session=local):
+                yield local
+
             if not inherited_session:
                 logging.debug('Committing session {}'.format(local))
                 local.commit()
@@ -163,7 +171,6 @@ class PsqlGraphDriver(object):
             raise
 
         finally:
-            self._sessions.pop()
             if not inherited_session:
                 local.expunge_all()
                 local.close()

@@ -938,7 +938,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             PsqlNode(nid, 'label2'))
         with self.driver.session_scope():
             self.assertEqual(self.driver.node_lookup(nid).one().label, 'label')
-        self.assertFalse(self.driver._sessions)
+        self.assertFalse(self.driver.has_session())
 
     def test_automatic_nested_session(self):
         """test_automatic_nested_session
@@ -956,7 +956,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         with self.driver.session_scope():
             self.assertEqual(
                 self.driver.node_lookup(nid).one().label, 'label2')
-        self.assertFalse(self.driver._sessions)
+        self.assertFalse(self.driver.has_session())
 
     def test_automatic_nested_session2(self):
         """test_automatic_nested_session2
@@ -976,7 +976,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                     self.driver.node_insert(PsqlNode(id1, 'label2'))
         with self.driver.session_scope():
             self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
-        self.assertFalse(self.driver._sessions)
+        self.assertFalse(self.driver.has_session())
 
     def test_automatic_nested_session3(self):
         """test_automatic_nested_session3
@@ -997,7 +997,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         with self.driver.session_scope():
             self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
             self.assertEqual(self.driver.node_lookup(id3).count(), 0)
-        self.assertFalse(self.driver._sessions)
+        self.assertFalse(self.driver.has_session())
 
     def test_automatic_nested_session_inherit_valid(self):
         """test_automatic_nested_session_inherit_valid
@@ -1015,7 +1015,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 self.driver.node_lookup(id1).one().label, 'label1')
             self.assertEqual(
                 self.driver.node_lookup(id2).one().label, 'label2')
-        self.assertFalse(self.driver._sessions)
+        self.assertFalse(self.driver.has_session())
 
     def test_automatic_nested_session_inherit_invalid(self):
         """test_automatic_nested_session_inherit_invalid
@@ -1034,7 +1034,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         with self.driver.session_scope():
             self.assertEqual(self.driver.node_lookup(id1).count(), 0)
             self.assertEqual(self.driver.node_lookup(id2).count(), 0)
-        self.assertFalse(self.driver._sessions)
+        self.assertFalse(self.driver.has_session())
 
     def test_explicit_to_inherit_nested_session(self):
         """test_explicit_to_inherit_nested_session
@@ -1060,7 +1060,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertEqual(self.driver.node_lookup(id1).count(), 1)
             self.assertEqual(self.driver.node_lookup(id2).count(), 1)
             self.assertEqual(self.driver.node_lookup(id3).count(), 1)
-        self.assertFalse(self.driver._sessions)
+        self.assertFalse(self.driver.has_session())
 
     def test_explicit_to_inherit_nested_session_rollback(self):
         """test_explicit_to_inherit_nested_session_rollback
@@ -1084,7 +1084,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertEqual(self.driver.node_lookup(id1).count(), 0)
             self.assertEqual(self.driver.node_lookup(id2).count(), 0)
             self.assertEqual(self.driver.node_lookup(id3).count(), 0)
-        self.assertFalse(self.driver._sessions)
+        self.assertFalse(self.driver.has_session())
 
     def test_mixed_session_inheritance(self):
         """test_mixed_session_inheritance
@@ -1113,7 +1113,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertEqual(self.driver.node_lookup(id1).count(), 0)
             self.assertEqual(self.driver.node_lookup(id2).count(), 1)
             self.assertEqual(self.driver.node_lookup(id3).count(), 0)
-        self.assertFalse(self.driver._sessions)
+        self.assertFalse(self.driver.has_session())
 
     def test_explicit_session(self):
         """test_explicit_session
@@ -1129,7 +1129,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         with self.driver.session_scope():
             self.assertEqual(self.driver.node_lookup(id2).count(), 0)
             self.assertEqual(self.driver.node_lookup(id1).count(), 0)
-        self.assertFalse(self.driver._sessions)
+        self.assertFalse(self.driver.has_session())
 
     def test_library_functions_use_session_implicitly(self):
         """Test that library functions use the session they're scoped in

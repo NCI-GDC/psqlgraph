@@ -23,6 +23,7 @@ parts/
 sdist/
 var/
 venv/
+.venv/*
 *.egg-info/
 .installed.cfg
 *.egg
@@ -60,3 +61,4 @@ target/
 
 # IDEs
 .idea/
+*.swp

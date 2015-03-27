@@ -851,6 +851,18 @@ class PsqlGraphDriver(object):
             self._node_void(node)
             local.delete(node)
 
+    def node_records(self, node_id):
+        """Returns the record of node updates in order from most recent to
+        least recent
+
+        :param str node_id: The id of the node to return records for
+
+        """
+        with self.session_scope():
+            return self.nodes(PsqlVoidedNode)\
+                       .ids(node_id)\
+                       .order_by(PsqlVoidedNode.created.desc())
+
     @retryable
     def edge_insert(self, edge, max_retries=DEFAULT_RETRIES,
                     backoff=default_backoff, session=None):

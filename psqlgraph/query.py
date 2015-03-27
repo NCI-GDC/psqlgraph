@@ -1,5 +1,5 @@
-from edge import Edge, PsqlEdge
-from node import Node, PsqlNode
+from edge import Edge, PsqlEdge, PsqlVoidedEdge
+from node import Node, PsqlNode, PsqlVoidedNode
 from sqlalchemy.orm import Query, joinedload, aliased
 from sqlalchemy import or_, not_, and_
 from pprint import pprint
@@ -189,10 +189,11 @@ class GraphQuery(Query):
         provided list
 
         """
-        if self.entity() in [Node, PsqlNode]:
-            _id = Node.node_id
+        entity = self.entity()
+        if isinstance(entity, (Node, PsqlNode, PsqlVoidedNode)):
+            _id = entity.node_id
         else:
-            _id = Edge.node_id
+            _id = entity.node_id
         if hasattr(ids, '__iter__'):
             return self.filter(_id.in_(ids))
         else:
@@ -282,10 +283,11 @@ class GraphQuery(Query):
                     nodes[src_id], nodes, {}, tree, None)}
 
     def not_ids(self, ids):
-        if self.entity() in [Node, PsqlNode]:
-            _id = Node.node_id
+        entity = self.entity()
+        if isinstance(entity, (Node, PsqlNode, PsqlVoidedNode)):
+            _id = entity.node_id
         else:
-            _id = Edge.node_id
+            _id = entity.node_id
         if hasattr(ids, '__iter__'):
             return self.filter(not_(_id.in_(ids)))
         else:

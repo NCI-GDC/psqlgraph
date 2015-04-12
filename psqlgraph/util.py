@@ -5,7 +5,7 @@ import random
 import logging
 
 #  PsqlNode modules
-from constants import DEFAULT_RETRIES
+DEFAULT_RETRIES = 0
 
 
 def default_backoff(retries, max_retries):

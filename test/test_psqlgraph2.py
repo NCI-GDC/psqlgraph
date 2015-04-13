@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 from models import TestNode, FooNode, FooEdge
 
 def _props(cls, updates):
-    props = cls().properties
+    props = {k: v for k, v in cls().properties.items()}
     props.update(updates)
     return props
 

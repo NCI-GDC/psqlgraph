@@ -130,7 +130,8 @@ class GraphQuery(Query):
 
     # ======== System Annotations ========
     def sysan(self, sysans):
-        pass
+        assert isinstance(sysans, dict)
+        return self.filter(self.entity()._sysan.contains(sysans))
 
     def not_sysan(self, sysans):
         pass
@@ -142,5 +143,5 @@ class GraphQuery(Query):
         if isinstance(keys, str):
             keys = [keys]
         for key in keys:
-            self = self.filter(self.entity().system_annotations.has_key(key))
+            self = self.filter(self.entity()._sysan.has_key(key))
         return self

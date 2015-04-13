@@ -11,7 +11,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 
 Base = declarative_base()
-basic_attributes = ['_id', '_created', '_acl', '__sysan__', '_label']
+basic_attributes = ['node_id', 'created', 'acl', '_sysan', 'label']
 
 
 def node_load_listener(*args, **kwargs):
@@ -28,50 +28,119 @@ def sanitize(properties):
     return sanitized
 
 
+class SystemAnnotationDict(dict):
+
+    def __init__(self, source):
+        self.source = source
+        super(SystemAnnotationDict, self).__init__(source._sysan)
+
+    def update(self, system_annotations):
+        temp = sanitize({k: v for k, v in self.source._sysan.items()})
+        temp.update(system_annotations)
+        self.source._sysan = temp
+
+    def __setitem__(self, key, val):
+        self.update({key: val})
+
+
+class PropertiesDict(object):
+
+    def __init__(self, source):
+        self.source = source
+        self.properties = self.get_properties()
+
+    def get_properties(self):
+        if not hasattr(self.source, '_properties'):
+            self.source._find_properties()
+        return {k: getattr(self.source, k) for k in self.source._properties}
+
+    def update(self, properties):
+        temp = self.get_properties()
+        temp.update(properties)
+        self.properties.update(properties)
+        self.source.set_properties(temp)
+
+    def __setitem__(self, key, val):
+        self.source.set_property(key, val)
+
+    def __getitem__(self, key):
+        return getattr(self.source, key)
+
+    def __copy__(self):
+        return copy(self.properties)
+
+    def items(self):
+        return self.properties.items()
+
+    def iteritems(self):
+        for item in self.properties.iteritems():
+            yield item
+
+    def __contains__(self, key):
+        return key in self.properties
+
+    def __eq__(self, other):
+        for k, v in other.items():
+            if k not in self.properties or \
+               self.properties[k] != v:
+                return False
+        for k, v in self.properties.items():
+            if k not in other or other[k] != v:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        return str(self.properties)
+
+
 class Node(Base):
 
     # General node attributes
-    _id = Column(
+    node_id = Column(
         Text,
         primary_key=True,
         nullable=False,
     )
 
-    _created = Column(
+    created = Column(
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(),
     )
 
-    _acl = Column(
+    acl = Column(
         ARRAY(Text),
+        default=list(),
     )
 
-    __sysan__ = Column(
+    _sysan = Column(
         'system_annotations',
         JSONB,
         default={},
     )
 
-    _label = Column(
+    label = Column(
         Text,
         nullable=False,
     )
 
     # Table properties
     __tablename__ = '_nodes'
-    __table_args__ = (UniqueConstraint('_id', name='_node_id_uc'),)
+    __table_args__ = (UniqueConstraint('node_id', name='_node_id_uc'),)
     __mapper_args__ = {
-        'polymorphic_on': _label,
+        'polymorphic_on': label,
         'polymorphic_identity': '_node',
         'with_polymorphic': '*',
     }
 
-    def __init__(self, _id=None, label=None, acl=[],
+    def __init__(self, node_id=None, label=None, acl=[],
                  sysan={}, properties={}):
         self._find_properties()
-        self._sysan = sysan
-        self._id = _id
+        self.system_annotations = sysan
+        self.node_id = node_id
         self.acl = acl
         self.label = label
         self.set_properties(properties)
@@ -84,66 +153,35 @@ class Node(Base):
 
     @hybrid_property
     def properties(self):
-        if not hasattr(self, '_properties'):
-            self._find_properties()
-        for k in self._properties:
-            getattr(self, k)
-        return {k: self.__dict__[k] for k in self._properties}
+        return PropertiesDict(self)
 
-    def set_sysan(self, sysan):
-        self.__sysan__ = sanitize(sysan)
+    @properties.setter
+    def properties(self, properties):
+        self.set_properties(properties)
 
     @hybrid_property
     def system_annotations(self):
-        return self.__sysan__
+        return SystemAnnotationDict(self)
 
     @system_annotations.setter
     def system_annotations(self, sysan):
-        self.set_sysan(sysan)
-
-    @system_annotations.setter
-    def _sysan(self, sysan):
-        self.set_sysan(sysan)
-
-    @hybrid_property
-    def acl(self):
-        return self._acl
-
-    @acl.setter
-    def acl(self, acl):
-        self._acl = acl
-
-    @hybrid_property
-    def label(self):
-        return self._label
-
-    @label.setter
-    def label(self, label):
-        self._label = label
-
-    @hybrid_property
-    def node_id(self):
-        return self._id
-
-    @node_id.setter
-    def node_id(self, node_id):
-        self._id = node_id
+        self._sysan = sanitize(sysan)
 
     @classmethod
-    def get_subclass(cls, _label):
+    def get_subclass(cls, label):
         for c in cls.__subclasses__():
-            c_label = getattr(c, '__mapper_args__', {}).get(
+            clabel = getattr(c, '__mapper_args__', {}).get(
                 'polymorphic_identity', None)
-            if c_label == _label:
+            if clabel == label:
                 return c
-        raise KeyError('Node has no subclass {}'.format(_label))
+        raise KeyError('Node has no subclass {}'.format(label))
 
     @classmethod
-    def get_subclass_table_names(_label):
+    def get_subclass_table_names(label):
         return [s.__tablename__ for s in Node.__subclasses__()]
 
     @classmethod
-    def get_subclasses(_label):
+    def get_subclasses(label):
         return [s for s in Node.__subclasses__()]
 
     def has_property(self, key):
@@ -159,6 +197,12 @@ class Node(Base):
                     type(self), key))
             setattr(self, key, value)
 
+    def set_property(self, key, val):
+        if not self.has_property(key):
+            raise AttributeError('{} has no attribute {}'.format(
+                type(self), key))
+        setattr(self, key, val)
+
     def get_name(self):
         return type(self).__name__
 
@@ -169,21 +213,21 @@ class Node(Base):
         return object_session(self)
 
     def __repr__(self):
-        return '<{}({node_id}, {_label})>'.format(
-            self.__class__.__name__, node_id=self._id, _label=self._label)
+        return '<{}({node_id}, {label})>'.format(
+            self.__class__.__name__, node_id=self.node_id, label=self.label)
 
     def __getitem__(self, prop):
         return getattr(self, prop)
 
     def __setitem__(self, prop, val):
-        setattr(self, prop, val)
+        self.set_property(prop, val)
 
     def copy(self):
         node = Node(
-            _id=self._id,
-            _acl=self.acl,
+            node_id=self.node_id,
+            acl=self.acl,
             _system_annotations=self.system_annotations,
-            _label=self.label,
+            label=self.label,
         )
         return node
 
@@ -200,14 +244,10 @@ class Node(Base):
             self.acl = acl
 
 
-def PolyNode(_id=None, label=None, acl=[], sysan={}, properties={},
-             node_id=None):
+def PolyNode(node_id=None, label=None, acl=[], sysan={}, properties={}):
     assert label, 'You cannot create a PolyNode without a label.'
-    if _id is None and node_id is not None:
-        _id = node_id
     Type = Node.get_subclass(label)
-
-    return Type(_id, label, acl, sysan, properties)
+    return Type(node_id, label, acl, sysan, properties)
 
 
 class PsqlNode(Node):
@@ -222,32 +262,32 @@ class VoidedNode(Base):
         primary_key=True,
     )
 
-    _id = Column(
+    node_id = Column(
         Text,
         nullable=False,
     )
 
-    _created = Column(
+    created = Column(
         DateTime(timezone=True),
         nullable=False,
     )
 
-    _voided = Column(
+    voided = Column(
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(),
     )
 
-    _acl = Column(
+    acl = Column(
         ARRAY(Text),
     )
 
-    _sysan = Column(
+    system_annotations = Column(
         JSONB,
         default={},
     )
 
-    _label = Column(
+    label = Column(
         Text,
         nullable=False,
     )
@@ -261,11 +301,11 @@ class VoidedNode(Base):
     __tablename__ = '_voided_nodes'
 
     def __init__(self, node):
-        self._created = node._created
-        self._id = node._id
-        self._acl = node._acl
-        self._label = node._label
-        self._sysan = node._sysan
+        self.created = node.created
+        self.node_id = node.node_id
+        self.acl = node.acl
+        self.label = node.label
+        self.system_annotations = node.system_annotations
         self.set_properties(node.properties)
 
     def set_properties(self, properties):

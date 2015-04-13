@@ -153,7 +153,7 @@ class Node(Base):
         self.system_annotations = sysan
         self.node_id = node_id
         self.acl = acl
-        self.label = label
+        self.label = label or self.__mapper_args__['polymorphic_identity']
         self.set_properties(properties)
 
     def _find_properties(self):

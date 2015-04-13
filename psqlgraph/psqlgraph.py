@@ -229,6 +229,8 @@ class PsqlGraphDriver(object):
             query = query.ids(node_id)
         if property_matches is not None:
             query = query.props(property_matches)
+        if system_annotation_matches is not None:
+            query = query.sysan(system_annotation_matches)
 
         return query
 
@@ -241,6 +243,7 @@ class PsqlGraphDriver(object):
     def node_lookup_by_matches(self, property_matches=None,
                                system_annotation_matches=None,
                                label=None, voided=False, session=None):
+
         pass
 
     @retryable

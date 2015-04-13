@@ -18,10 +18,10 @@ password = 'test'
 database = 'automated_test'
 
 
-from models import TestNode
-
-
 logging.basicConfig(level=logging.DEBUG)
+
+# We have to import models here, even if we don't use them
+from models import TestNode
 
 
 class PsqlEdge(object):
@@ -48,9 +48,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def _clear_tables(self):
         conn = self.driver.engine.connect()
         conn.execute('commit')
-        conn.execute('delete from nodes')
-        conn.execute('delete from voided_nodes')
-        conn.execute('delete from voided_edges')
+        for table in Node.get_subclass_table_names():
+            conn.execute('delete from {}'.format(table))
         conn.close()
 
     @unittest.skip('not implemented')
@@ -147,11 +146,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """
         tempid = str(uuid.uuid4())
         properties = {'key1': None, 'key2': 2, 'key3': datetime.now()}
-        with self.driver.session_scope():
-            self.driver.node_merge(node_id=tempid, label='test',
-                                   properties=properties)
+        with self.driver.session_scope() as local:
+            node = TestNode(properties=properties)
+            print node.properties
+            node.key1 = 'TESTING'
+            print node.properties
+            local.add(node)
+            # self.driver.node_merge(node)
+            # self.driver.node_merge(node_id=tempid, label='test',
+            #                        properties=properties)
         with self.driver.session_scope():
             node = self.driver.node_lookup_one(tempid)
+        print 'properties:', node.properties
         self.assertEqual(properties, node.properties)
 
     @unittest.skip('not implemented')

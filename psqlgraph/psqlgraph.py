@@ -175,9 +175,14 @@ class PsqlGraphDriver(object):
                    label=None, system_annotations={}, properties={},
                    session=None, max_retries=DEFAULT_RETRIES,
                    backoff=default_backoff):
-        node = Node(node_id, label, acl, system_annotations, properties)
+
+        if not node:
+            node = Node(node_id, label, acl, system_annotations, properties)
+
         with self.session_scope(must_inherit=True) as local:
             local.merge(node)
+            local.commit()
+        print type(node._id)
 
     def node_insert(self, node, session=None):
         pass

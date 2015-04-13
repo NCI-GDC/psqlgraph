@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError, EdgeCreationError
 
 from datetime import datetime
-from copy import deepcopy
+from copy import deepcopy, copy
 
 host = 'localhost'
 user = 'test'
@@ -74,7 +74,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             node = PolyNode(node_id=str(uuid.uuid4()),label="foo",
                             properties={"bar": 9223372036854775807})
             self.driver.node_insert(node=node)
-            loaded = self.driver.node_lookup(node_id=node._id).one()
+            loaded = self.driver.node_lookup(node_id=node.node_id).one()
             self.assertEqual(loaded["bar"], 9223372036854775807)
 
     def test_node_null_label_merge(self):
@@ -237,38 +237,70 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         node_id = str(uuid.uuid4())
 
-        a = random.random()
-        b = random.random()
-
         # Add first node
-        propertiesA = {'key1': str(a), 'key2': int(10*a)}
+        propertiesA = {'key1': 'first', 'key2': 5}
         node = self.driver.node_merge(node_id=node_id, label='test',
                                       properties=propertiesA)
-        propertiesA = node.properties
+        merged = node.properties
 
         # Add second node
-        propertiesB = {'key1': str(b), 'key2': int(10*b)}
+        propertiesB = {'key1': 'second', 'key2': 6}
         with self.driver.session_scope():
             node = self.driver.node_lookup_one(property_matches=propertiesA)
         self.driver.node_merge(node=node, label='test',
                                properties=propertiesB)
 
         # Merge properties
-        merged = deepcopy(propertiesA)
         merged.update(propertiesB)
 
         with self.driver.session_scope():
             node = self.driver.node_lookup_one(property_matches=propertiesB)
+            print merged
+            print node.properties
             self.assertEqual(merged, node.properties)
             node = self.driver.node_lookup_one(node_id=node_id)
             self.assertEqual(merged, node.properties)
 
         nodes = self.verify_node_count(4, node_id=node_id, voided=True)
-        self.assertEqual(propertiesA, nodes[1].properties)
-
+        self.assertEqual(merged, nodes[0].properties)
         return merged
 
-    # @unittest.skip('not implemented')
+    def test_node_update_sysan_items(self):
+        """Test updating node system annotations ID
+        """
+
+        node_id = str(uuid.uuid4())
+
+        system_annotationsA = sanitize({
+            'key1': None, 'key2': 2, 'key3': datetime.now()
+        })
+        node = self.driver.node_merge(node_id=node_id, label='test',
+                                      system_annotations=system_annotationsA)
+        test_string = 'This is a test'
+        node.system_annotations['key1'] = test_string
+        with self.driver.session_scope() as session:
+            session.merge(node)
+        with self.driver.session_scope():
+            node = self.driver.nodes().ids(node_id).one()
+            self.assertTrue(node.system_annotations['key1'], test_string)
+
+    def test_node_update_property_items(self):
+        """Test updating node system annotations ID
+        """
+
+        node_id = str(uuid.uuid4())
+
+        props = sanitize({'key1': None, 'key2': 2})
+        with self.driver.session_scope() as session:
+            node = PolyNode(node_id, 'test', properties=props)
+        test_string = 'This is a test'
+        node.properties['key1'] = test_string
+        with self.driver.session_scope() as session:
+            session.merge(node)
+        with self.driver.session_scope():
+            node = self.driver.nodes().ids(node_id).one()
+            self.assertTrue(node.properties['key1'], test_string)
+
     def test_node_update_system_annotations_id(self, given_id=None):
         """Test updating node system annotations ID
 
@@ -283,35 +315,34 @@ class TestPsqlGraphDriver(unittest.TestCase):
         node_id = str(uuid.uuid4()) if not given_id else given_id
 
         # Add first node
-        system_annotationsA = {
+        system_annotationsA = sanitize({
             'key1': None, 'key2': 2, 'key3': datetime.now()
-        }
+        })
         self.driver.node_merge(node_id=node_id, label='test',
                                system_annotations=system_annotationsA)
 
         # Add second node
-        system_annotationsB = {
+        system_annotationsB = sanitize({
             'key1': None, 'new_key': 2, 'timestamp': datetime.now()
-        }
+        })
         self.driver.node_merge(node_id=node_id, label='test',
                                system_annotations=system_annotationsB)
 
         # Merge system_annotations
         merged = deepcopy(system_annotationsA)
-        for key, val in system_annotationsB.iteritems():
-            merged[key] = val
+        merged.update(system_annotationsB)
 
         # if this is not part of another test, check the count
         if not given_id:
-            # Test that there is only 1 non-void node with node_id and property
-            # equality
             with self.driver.session_scope():
                 node = self.driver.node_lookup_one(node_id)
-            self.assertEqual(sanitize(merged),
-                             node.system_annotations)
+
+            print "merged:", sanitize(merged)
+            print 'node:', sanitize(node.system_annotations)
+            self.assertEqual(sanitize(merged), sanitize(node.system_annotations))
 
             nodes = list(self.verify_node_count(
-                2, node_id=node_id, voided=True))
+                3, node_id=node_id, voided=True))
             self.assertEqual(sanitize(system_annotationsA),
                              nodes[1].system_annotations)
 

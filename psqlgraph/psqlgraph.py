@@ -20,8 +20,7 @@ class PsqlGraphDriver(object):
                  node_validator=None, edge_validator=None):
         conn_str = 'postgresql://{user}:{password}@{host}/{database}'.format(
             user=user, password=password, host=host, database=database)
-        self.engine = create_engine(conn_str)
-
+        self.engine = create_engine(conn_str, encoding='latin1')
         self.context = xlocal()
 
     def _new_session(self):
@@ -204,9 +203,12 @@ class PsqlGraphDriver(object):
     def node_update(self, node, system_annotations={},
                     acl=None, properties={}, session=None):
         with self.session_scope() as local:
-            node._sysan.update(system_annotations)
+            for key, val in system_annotations.items():
+                node.system_annotations[key] = val
+
             if acl is not None:
-                node._acl = acl
+                node.acl = acl
+
             node.set_properties(properties)
             local.merge(node)
 

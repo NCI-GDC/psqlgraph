@@ -59,7 +59,7 @@ class GraphQuery(Query):
 
     def ids(self, ids):
         entity = self.entity()
-        _id = entity._id
+        _id = entity.node_id
         if hasattr(ids, '__iter__'):
             return self.filter(_id.in_(ids))
         else:

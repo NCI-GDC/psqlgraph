@@ -1,7 +1,7 @@
 import argparse
 import getpass
 import psqlgraph
-from psqlgraph import PsqlNode, Node, PsqlEdge, Edge
+from psqlgraph import Node, VoidedNode, PolyNode
 from sqlalchemy import func
 
 try:

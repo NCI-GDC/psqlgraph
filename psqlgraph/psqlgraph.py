@@ -6,10 +6,10 @@ import logging
 from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker
 from xlocal import xlocal
-from node import PolyNode, Node
+from node import PolyNode, Node, VoidedNode
 from util import retryable, default_backoff
 from query import GraphQuery
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 
 DEFAULT_RETRIES = 0
 
@@ -150,6 +150,13 @@ class PsqlGraphDriver(object):
             else:
                 return local.query(query)
 
+    def voided_nodes(self, query=VoidedNode):
+        with self.session_scope(must_inherit=True) as local:
+            if isinstance(query, list) or isinstance(query, tuple):
+                return local.query(*query)
+            else:
+                return local.query(query)
+
     def set_node_validator(self, node_validator):
         pass
 
@@ -175,20 +182,33 @@ class PsqlGraphDriver(object):
                    label=None, system_annotations={}, properties={},
                    session=None, max_retries=DEFAULT_RETRIES,
                    backoff=default_backoff):
-        if not node:
-            node = PolyNode(
-                node_id, label, acl, system_annotations, properties)
+        with self.session_scope() as local:
+            if not node:
+                node = self.nodes().ids(node_id).scalar()
 
-        with self.session_scope(must_inherit=True) as local:
+            if not node:
+                node = PolyNode(
+                    node_id, label, acl, system_annotations, properties)
+            else:
+                self.node_update(
+                    node, system_annotations, acl, properties, local)
+
             local.merge(node)
 
+        return node
+
     def node_insert(self, node, session=None):
-        with self.session_scope(must_inherit=True) as local:
+        with self.session_scope() as local:
             local.merge(node)
 
     def node_update(self, node, system_annotations={},
                     acl=None, properties={}, session=None):
-        pass
+        with self.session_scope() as local:
+            node._sysan.update(system_annotations)
+            if acl is not None:
+                node._acl = acl
+            node.set_properties(properties)
+            local.merge(node)
 
     def _node_void(self, node, session=None):
         pass
@@ -196,10 +216,14 @@ class PsqlGraphDriver(object):
     def node_lookup(self, node_id=None, property_matches=None,
                     label=None, system_annotation_matches=None,
                     voided=False, session=None):
-        query = self.nodes()
+        if voided:
+            query = self.voided_nodes()
+        else:
+            query = self.nodes()
+
         if node_id is not None:
             query = query.ids(node_id)
-            return query
+        return query
 
     def node_lookup_one(self, *args, **kwargs):
         return self.node_lookup(*args, **kwargs).scalar()

@@ -4,7 +4,7 @@ import logging
 import psqlgraph
 import random
 from psqlgraph import PsqlGraphDriver
-from psqlgraph.node import PsqlNode, Node, PolyNode, VoidedNode
+from psqlgraph.node import PsqlNode, Node, PolyNode, VoidedNode, sanitize
 from multiprocessing import Process
 from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError, EdgeCreationError
@@ -30,10 +30,6 @@ class PsqlEdge(object):
         pass
 
 
-def sanitize(d):
-    return d
-
-
 class TestPsqlGraphDriver(unittest.TestCase):
 
     def setUp(self):
@@ -51,10 +47,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
         for table in Node.get_subclass_table_names():
             if table != Node.__tablename__:
                 conn.execute('delete from {}'.format(table))
-        conn.execute('delete from {}'.format(Node.__tablename__))
+        conn.execute('delete from {}'.format('_nodes'))
+        conn.execute('delete from {}'.format('_voided_nodes'))
         conn.close()
 
-    # @unittest.skip('not implemented')
     def test_getitem(self):
         """Test that indexing nodes/edges accesses their properties"""
         node = PolyNode(node_id=str(uuid.uuid4()),label="foo", properties={"bar": 1})
@@ -210,25 +206,24 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 self.assertEqual(merged, node.properties)
                 voided_node = self.driver.node_lookup(
                     node_id, voided=True).first()
-                voided_props = VoidedNode.sanitize(propertiesA)
+                voided_props = sanitize(propertiesA)
                 self.assertEqual(voided_props, voided_node.properties)
             self.verify_node_count(3, node_id=node_id, voided=True)
 
         return merged
 
-    @unittest.skip('not implemented')
     def test_query_by_label(self, node_id=None):
         """Test ability to query for nodes by label"""
 
-        label = 'test_' + str(random.random())
-        for i in range(self.REPEAT_COUNT):
+        label = 'test'
+        repeat = 10
+        for i in range(repeat):
             self.driver.node_merge(
                 node_id=str(uuid.uuid4()), label=label)
         with self.driver.session_scope():
             nodes = list(self.driver.node_lookup(label=label))
-        self.assertEqual(len(nodes), self.REPEAT_COUNT)
+        self.assertEqual(len(nodes), repeat)
 
-    @unittest.skip('not implemented')
     def test_node_update_properties_by_matches(self):
         """Test updating node properties by matching properties
 
@@ -246,12 +241,13 @@ class TestPsqlGraphDriver(unittest.TestCase):
         b = random.random()
 
         # Add first node
-        propertiesA = {'key1': a, 'key2': str(a), 'key3': 12345}
-        self.driver.node_merge(node_id=node_id, label='test',
-                               properties=propertiesA)
+        propertiesA = {'key1': str(a), 'key2': int(10*a)}
+        node = self.driver.node_merge(node_id=node_id, label='test',
+                                      properties=propertiesA)
+        propertiesA = node.properties
 
         # Add second node
-        propertiesB = {'key1': b, 'key4': str(b)}
+        propertiesB = {'key1': str(b), 'key2': int(10*b)}
         with self.driver.session_scope():
             node = self.driver.node_lookup_one(property_matches=propertiesA)
         self.driver.node_merge(node=node, label='test',
@@ -259,8 +255,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         # Merge properties
         merged = deepcopy(propertiesA)
-        for key, val in propertiesB.iteritems():
-            merged[key] = val
+        merged.update(propertiesB)
 
         with self.driver.session_scope():
             node = self.driver.node_lookup_one(property_matches=propertiesB)
@@ -268,7 +263,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             node = self.driver.node_lookup_one(node_id=node_id)
             self.assertEqual(merged, node.properties)
 
-        nodes = self.verify_node_count(2, node_id=node_id, voided=True)
+        nodes = self.verify_node_count(4, node_id=node_id, voided=True)
         self.assertEqual(propertiesA, nodes[1].properties)
 
         return merged

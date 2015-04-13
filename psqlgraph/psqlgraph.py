@@ -223,6 +223,9 @@ class PsqlGraphDriver(object):
 
         if node_id is not None:
             query = query.ids(node_id)
+        if property_matches is not None:
+            query = query.props(property_matches)
+
         return query
 
     def node_lookup_one(self, *args, **kwargs):

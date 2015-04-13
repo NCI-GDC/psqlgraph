@@ -7,14 +7,25 @@ import copy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import event, ForeignKey
 from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.ext.hybrid import hybrid_property
 
 
 Base = declarative_base()
-basic_attributes = ['_id', '_created', '_acl', '_sysan', '_label']
+basic_attributes = ['_id', '_created', '_acl', '__sysan__', '_label']
 
 
 def node_load_listener(*args, **kwargs):
     print 'event', args, kwargs
+
+
+def sanitize(properties):
+    sanitized = {}
+    for key, value in properties.items():
+        if isinstance(value, (int, str, long, bool, type(None))):
+            sanitized[str(key)] = value
+        else:
+            sanitized[str(key)] = str(value)
+    return sanitized
 
 
 class Node(Base):
@@ -36,7 +47,8 @@ class Node(Base):
         ARRAY(Text),
     )
 
-    _sysan = Column(
+    __sysan__ = Column(
+        'system_annotations',
         JSONB,
         default={},
     )
@@ -60,8 +72,8 @@ class Node(Base):
         self._find_properties()
         self._sysan = sysan
         self._id = _id
-        self._acl = acl
-        self._label = label
+        self.acl = acl
+        self.label = label
         self.set_properties(properties)
 
     def _find_properties(self):
@@ -70,30 +82,52 @@ class Node(Base):
                             if type(v) == InstrumentedAttribute
                             and k not in basic_attributes]
 
-    def get_properties(self):
+    @hybrid_property
+    def properties(self):
         if not hasattr(self, '_properties'):
             self._find_properties()
         for k in self._properties:
             getattr(self, k)
         return {k: self.__dict__[k] for k in self._properties}
 
-    def __getattr__(self, key):
-        if key == 'properties':
-            return self.get_properties()
-        elif key in self.__dict__:
-            return self.__dict__[key]
-        elif key == 'acl':
-            return self.__dict__['_acl']
-        elif key == 'created':
-            return self.__dict__['_created']
-        elif key == 'system_annotations':
-            return self.__dict__['_sysan']
-        elif key == 'label':
-            return self.__dict__['_label']
-        elif key == 'node_id':
-            return self.__dict__['_id']
-        raise AttributeError('{} has no attribute {}'.format(
-            type(self), key))
+    def set_sysan(self, sysan):
+        self.__sysan__ = sanitize(sysan)
+
+    @hybrid_property
+    def system_annotations(self):
+        return self.__sysan__
+
+    @system_annotations.setter
+    def system_annotations(self, sysan):
+        self.set_sysan(sysan)
+
+    @system_annotations.setter
+    def _sysan(self, sysan):
+        self.set_sysan(sysan)
+
+    @hybrid_property
+    def acl(self):
+        return self._acl
+
+    @acl.setter
+    def acl(self, acl):
+        self._acl = acl
+
+    @hybrid_property
+    def label(self):
+        return self._label
+
+    @label.setter
+    def label(self, label):
+        self._label = label
+
+    @hybrid_property
+    def node_id(self):
+        return self._id
+
+    @node_id.setter
+    def node_id(self, node_id):
+        self._id = node_id
 
     @classmethod
     def get_subclass(cls, _label):
@@ -107,6 +141,10 @@ class Node(Base):
     @classmethod
     def get_subclass_table_names(_label):
         return [s.__tablename__ for s in Node.__subclasses__()]
+
+    @classmethod
+    def get_subclasses(_label):
+        return [s for s in Node.__subclasses__()]
 
     def has_property(self, key):
         cls = self.__class__
@@ -228,20 +266,10 @@ class VoidedNode(Base):
         self._acl = node._acl
         self._label = node._label
         self._sysan = node._sysan
-        self.set_properties(node.get_properties())
-
-    @classmethod
-    def sanitize(cls, properties):
-        sanitized = {}
-        for key, value in properties.items():
-            if isinstance(value, (int, str, long, bool, type(None))):
-                sanitized[str(key)] = value
-            else:
-                sanitized[str(key)] = str(value)
-        return sanitized
+        self.set_properties(node.properties)
 
     def set_properties(self, properties):
-        self.properties = self.sanitize(properties)
+        self.properties = sanitize(properties)
 
     def __getattr__(self, key):
         raise Exception()

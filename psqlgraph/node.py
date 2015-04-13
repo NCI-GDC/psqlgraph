@@ -244,10 +244,11 @@ class Node(Base):
             self.acl = acl
 
 
-def PolyNode(node_id=None, label=None, acl=[], sysan={}, properties={}):
+def PolyNode(node_id=None, label=None, acl=[], system_annotations={},
+             properties={}):
     assert label, 'You cannot create a PolyNode without a label.'
     Type = Node.get_subclass(label)
-    return Type(node_id, label, acl, sysan, properties)
+    return Type(node_id, label, acl, system_annotations, properties)
 
 
 class PsqlNode(Node):

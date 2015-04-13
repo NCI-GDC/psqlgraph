@@ -10,6 +10,7 @@ from node import PolyNode, Node, VoidedNode
 from util import retryable, default_backoff
 from query import GraphQuery
 from sqlalchemy import create_engine, event
+from exc import ProgrammingError, QueryError
 
 DEFAULT_RETRIES = 0
 
@@ -213,7 +214,8 @@ class PsqlGraphDriver(object):
             local.merge(node)
 
     def _node_void(self, node, session=None):
-        pass
+        if node is None:
+            raise ProgrammingError('Cannot void null node')
 
     def node_lookup(self, node_id=None, property_matches=None,
                     label=None, system_annotation_matches=None,
@@ -242,18 +244,27 @@ class PsqlGraphDriver(object):
         pass
 
     @retryable
-    def node_clobber(self, node_id=None, node=None, acl=[],
-                     system_annotations={}, properties={},
+    def node_clobber(self, node_id=None, node=None, acl=None,
+                     system_annotations=None, properties=None,
                      session=None, max_retries=DEFAULT_RETRIES,
                      backoff=default_backoff):
-        pass
+        with self.session_scope() as local:
+            if not node:
+                node = self.node_lookup().one()
+            if acl is not None:
+                node.acl = acl
+            if system_annotations is not None:
+                node.system_annotations = system_annotations
+            if properties is not None:
+                node.properties = properties
+            local.merge(node)
 
     @retryable
     def node_delete_property_keys(self, property_keys, node_id=None,
                                   node=None, session=None,
                                   max_retries=DEFAULT_RETRIES,
                                   backoff=default_backoff):
-        pass
+        raise NotImplementedError('deprecated.')
 
     @retryable
     def node_delete_system_annotation_keys(self,
@@ -262,13 +273,29 @@ class PsqlGraphDriver(object):
                                            session=None,
                                            max_retries=DEFAULT_RETRIES,
                                            backoff=default_backoff):
-        pass
+        with self.session_scope(session) as local:
+            if not node:
+                node = self.node_lookup_one(node_id=node_id)
+
+            if not node:
+                raise QueryError('Node not found')
+
+            self._node_void(node)
+            system_annotations = node.system_annotations
+            for key in system_annotation_keys:
+                system_annotations.pop(key)
+            node.system_annotations = {}
+            local.flush()
+            node.system_annotations = system_annotations
 
     @retryable
     def node_delete(self, node_id=None, node=None,
                     session=None, max_retries=DEFAULT_RETRIES,
                     backoff=default_backoff):
-        pass
+        with self.session_scope(session) as local:
+            if node is None:
+                node = self.node_lookup(node_id=node_id).one()
+            local.delete(node)
 
     def node_records(self, node_id):
         pass

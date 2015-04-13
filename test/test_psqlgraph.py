@@ -268,7 +268,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         return merged
 
-    @unittest.skip('not implemented')
+    # @unittest.skip('not implemented')
     def test_node_update_system_annotations_id(self, given_id=None):
         """Test updating node system annotations ID
 

@@ -4,7 +4,7 @@ import logging
 import psqlgraph
 import random
 from psqlgraph import PsqlGraphDriver
-from psqlgraph.node import PsqlNode
+from psqlgraph.node import PsqlNode, Node, PolyNode
 from multiprocessing import Process
 from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError, EdgeCreationError
@@ -40,16 +40,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.logger = logging.getLogger(__name__)
         self.driver = PsqlGraphDriver(host, user, password, database)
         self.REPEAT_COUNT = 200
+        self._clear_tables()
 
     def tearDown(self):
         self.driver.engine.dispose()
-        # self._clear_tables()
 
     def _clear_tables(self):
         conn = self.driver.engine.connect()
         conn.execute('commit')
         for table in Node.get_subclass_table_names():
-            conn.execute('delete from {}'.format(table))
+            if table != Node.__tablename__:
+                conn.execute('delete from {}'.format(table))
+        conn.execute('delete from {}'.format(Node.__tablename__))
         conn.close()
 
     @unittest.skip('not implemented')
@@ -70,28 +72,25 @@ class TestPsqlGraphDriver(unittest.TestCase):
         edge["bar"] = 2
         self.assertEqual(edge["bar"], 2)
 
-    @unittest.skip('not implemented')
     def test_long_ints_roundtrip(self):
         """Test that integers that only fit in 26 bits round trip correctly."""
         with self.driver.session_scope():
-            node = PsqlNode(node_id=str(uuid.uuid4()),label="foo",
+            node = PolyNode(node_id=str(uuid.uuid4()),label="foo",
                             properties={"bar": 9223372036854775808})
             self.driver.node_insert(node=node)
-            loaded = self.driver.node_lookup(node_id=node.node_id).one()
+            loaded = self.driver.node_lookup(node_id=node._id).one()
             self.assertEqual(loaded["bar"], 9223372036854775808)
 
-    @unittest.skip('not implemented')
     def test_node_null_label_merge(self):
         """Test merging of a non-existent node
 
         Verify the case where a user merges a single non-existent node
         """
         self.assertRaises(
-            IntegrityError,
+            KeyError,
             self.driver.node_merge,
             node_id=str(uuid.uuid4()))
 
-    @unittest.skip('not implemented')
     def test_node_null_query_one(self):
         """Test querying of a single non-existent node
 
@@ -102,7 +101,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
             node = self.driver.node_lookup_one(str(uuid.uuid4()))
             self.assertTrue(node is None)
 
-    @unittest.skip('not implemented')
     def test_node_null_query(self):
         """Test querying for any non-existent nodes
 
@@ -115,7 +113,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
             node = self.driver.node_lookup_one(str(uuid.uuid4()))
             self.assertTrue(node is None)
 
-    @unittest.skip('not implemented')
     def verify_node_count(self, count, node_id=None, matches=None,
                           voided=False):
         """Test querying for the count on a non-existent node
@@ -147,17 +144,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
         tempid = str(uuid.uuid4())
         properties = {'key1': None, 'key2': 2, 'key3': datetime.now()}
         with self.driver.session_scope() as local:
-            node = TestNode(properties=properties)
-            print node.properties
-            node.key1 = 'TESTING'
-            print node.properties
-            local.add(node)
-            # self.driver.node_merge(node)
-            # self.driver.node_merge(node_id=tempid, label='test',
-            #                        properties=properties)
+            self.driver.node_merge(node_id=tempid, label='test',
+                                   properties=properties)
         with self.driver.session_scope():
             node = self.driver.node_lookup_one(tempid)
-        print 'properties:', node.properties
         self.assertEqual(properties, node.properties)
 
     @unittest.skip('not implemented')

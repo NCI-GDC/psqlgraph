@@ -12,8 +12,7 @@ Base = declarative_base()
 
 
 def node_load_listener(target, context):
-    if target.is_inherited():
-        target._load_properties()
+    pass
 
 
 class Node(Base):
@@ -49,45 +48,37 @@ class Node(Base):
 
     __mapper_args__ = {
         'polymorphic_on': _label,
-        'polymorphic_identity': 'node',
+        'polymorphic_identity': '_node',
         'with_polymorphic': '*',
     }
 
-    def __init__(self, _id=_id, _label=None, acl=[],
-                 system_annotations={}, properties={}):
-        self.__class__ = self.get_subclass(_label)
-        self._label = _label if _label else self.__class__.__name__
-        self._sysan = system_annotations
+    def __init__(self, _id=None, label=None, acl=[],
+                 sysan={}, properties={}):
+        self._sysan = sysan
         self._id = _id
         self._acl = acl
-        self._label = _label
+        self._label = label
         self.set_properties(properties)
-        if self.is_inherited():
-            self._load_properties()
 
-    def get_subclass(self, _label):
-        if self.is_inherited():
-            return type(self)
-        for c in type(self).__subclasses__():
+    def __getattr__(self, key):
+        if key == 'properties':
+            assert hasattr(self, '_properties'),\
+                'Please add _properties key list to {}'.format(type(self))
+            return {k: self.__dict__[k] for k in self._properties}
+        else:
+            if not hasattr(self, key):
+                raise AttributeError('{} has no attribute {}'.format(
+                    type(self), key))
+            return self.__dict__[key]
+
+    @classmethod
+    def get_subclass(cls, _label):
+        for c in cls.__subclasses__():
             c_label = getattr(c, '__mapper_args__', {}).get(
                 'polymorphic_identity', None)
             if c_label == _label:
                 return c
         raise KeyError('Node has no subclass {}'.format(_label))
-
-    def _load_properties(self):
-        assert hasattr(self, '_properties'),\
-            'Please add _properties attribute to model {}'.format(
-                type(self).__name__)
-        self.__safe_set_attr__('properties', {
-            k: getattr(self, k) for k in self._properties})
-
-    def __safe_set_attr__(self, name, value):
-        self.__dict__[name] = value
-
-    def __setattr__(self, name, value):
-        self.__safe_set_attr__(name, value)
-        self._load_properties()
 
     @classmethod
     def get_subclass_table_names(_label):
@@ -136,6 +127,15 @@ class Node(Base):
 
         if acl is not None:
             self.acl = acl
+
+
+def PolyNode(_id=None, label=None, acl=[], sysan={}, properties={},
+             node_id=None):
+    if _id is None and node_id is not None:
+        _id = node_id
+    Type = Node.get_subclass(label)
+
+    return Type(_id, label, acl, sysan, properties)
 
 
 class PsqlNode(Node):

@@ -29,6 +29,10 @@ def sanitize(properties):
 
 
 class SystemAnnotationDict(dict):
+    """Transparent wrapper for system annotations so you can update it as
+    if it were a dict and the changes get pushed to the sqlalchemy object
+
+    """
 
     def __init__(self, source):
         self.source = source
@@ -44,6 +48,11 @@ class SystemAnnotationDict(dict):
 
 
 class PropertiesDict(object):
+    """Object that represents a sqlalchemy model's 'properties' which are
+    really just attributes now so you can update it as if it were a
+    dict and the changes get pushed to the sqlalchemy object
+
+    """
 
     def __init__(self, source):
         self.source = source
@@ -116,6 +125,8 @@ class Node(Base):
         default=list(),
     )
 
+    # System annotations are wrapped under a hybrid property so we can
+    # intercept interactions to allow correct setting and getting
     _sysan = Column(
         'system_annotations',
         JSONB,

@@ -6,7 +6,7 @@ import logging
 from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker
 from xlocal import xlocal
-from node import Node
+from node import PolyNode, Node
 from util import retryable, default_backoff
 from query import GraphQuery
 from sqlalchemy import create_engine
@@ -175,17 +175,16 @@ class PsqlGraphDriver(object):
                    label=None, system_annotations={}, properties={},
                    session=None, max_retries=DEFAULT_RETRIES,
                    backoff=default_backoff):
-
         if not node:
-            node = Node(node_id, label, acl, system_annotations, properties)
+            node = PolyNode(
+                node_id, label, acl, system_annotations, properties)
 
         with self.session_scope(must_inherit=True) as local:
             local.merge(node)
-            local.commit()
-        print type(node._id)
 
     def node_insert(self, node, session=None):
-        pass
+        with self.session_scope(must_inherit=True) as local:
+            local.merge(node)
 
     def node_update(self, node, system_annotations={},
                     acl=None, properties={}, session=None):
@@ -194,19 +193,16 @@ class PsqlGraphDriver(object):
     def _node_void(self, node, session=None):
         pass
 
-    def _node_lookup(self, node_id=None, property_matches=None,
-                     label=None, system_annotation_matches=None,
-                     voided=False, session=None):
+    def node_lookup(self, node_id=None, property_matches=None,
+                    label=None, system_annotation_matches=None,
+                    voided=False, session=None):
         query = self.nodes()
         if node_id is not None:
             query = query.ids(node_id)
-        return query
+            return query
 
     def node_lookup_one(self, *args, **kwargs):
-        return self._node_lookup(*args, **kwargs).scalar()
-
-    def node_lookup(self, *args, **kwargs):
-        return self._node_lookup(*args, **kwargs).all()
+        return self.node_lookup(*args, **kwargs).scalar()
 
     def node_lookup_by_id(self, node_id, voided=False, session=None):
         pass

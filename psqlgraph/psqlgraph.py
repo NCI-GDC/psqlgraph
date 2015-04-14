@@ -4,7 +4,7 @@
 # External modules
 import logging
 from contextlib import contextmanager
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, configure_mappers
 from xlocal import xlocal
 from node import PolyNode, Node, VoidedNode
 from util import retryable, default_backoff
@@ -144,11 +144,20 @@ class PsqlGraphDriver(object):
                 local.close()
 
     def nodes(self, query=Node):
+        self.configure_driver_mappers()
         with self.session_scope(must_inherit=True) as local:
             if isinstance(query, list) or isinstance(query, tuple):
                 return local.query(*query)
             else:
                 return local.query(query)
+
+    def configure_driver_mappers(self):
+        try:
+            configure_mappers()
+        except Exception as e:
+            raise type(e)(
+                '{}: '.format(str(e)) +
+                'Unable to configure mappers. Have you imported your models?')
 
     def voided_nodes(self, query=VoidedNode):
         with self.session_scope(must_inherit=True) as local:
@@ -210,7 +219,7 @@ class PsqlGraphDriver(object):
             if acl is not None:
                 node.acl = acl
 
-            node.set_properties(properties)
+            node.properties.update(properties)
             local.merge(node)
 
     def _node_void(self, node, session=None):

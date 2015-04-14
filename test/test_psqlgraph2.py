@@ -74,3 +74,17 @@ class TestPsqlGraphDriver(unittest.TestCase):
         with g.session_scope() as session:
             expected = _props(TestNode, new)
             self.assertEqual(g.nodes().ids(nid).one().properties, expected)
+
+    def test_attribute_set(self):
+        nid = str(uuid.uuid4())
+        node = TestNode(nid)
+        with g.session_scope() as session:
+            session.merge(node)
+        new = {'key1': 'first property'}
+        with g.session_scope() as session:
+            node.properties.update(new)
+            node.key1 = 'first property'
+            session.merge(node)
+        with g.session_scope() as session:
+            expected = _props(TestNode, new)
+            self.assertEqual(g.nodes().ids(nid).one().properties, expected)

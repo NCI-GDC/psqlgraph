@@ -199,7 +199,7 @@ class PsqlGraphDriver(object):
 
     def node_insert(self, node, session=None):
         with self.session_scope() as local:
-            local.merge(node)
+            local.add(node)
 
     def node_update(self, node, system_annotations={},
                     acl=None, properties={}, session=None):

@@ -141,7 +141,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         tempid = str(uuid.uuid4())
         properties = {'key1': None, 'key2': 2, 'key3': datetime.now(),
                       'timestamp': None, 'new_key': None}
-        with self.driver.session_scope() as local:
+        with self.driver.session_scope():
             self.driver.node_merge(node_id=tempid, label='test',
                                    properties=properties)
         with self.driver.session_scope():
@@ -927,15 +927,13 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 PsqlEdge(src_id=src_id, dst_id=dst_id, label='a')
             )
 
-    @unittest.skip('not implemented')
     def test_simple_automatic_session(self):
         idA = str(uuid.uuid4())
         with self.driver.session_scope():
-            self.driver.node_insert(PsqlNode(idA, 'label'))
+            self.driver.node_insert(PsqlNode(idA, 'test'))
         with self.driver.session_scope():
             self.driver.node_lookup(idA).one()
 
-    @unittest.skip('not implemented')
     def test_rollback_automatic_session(self):
         """test_rollback_automatic_session
 
@@ -947,12 +945,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
         nid = str(uuid.uuid4())
         with self.assertRaises(IntegrityError):
             with self.driver.session_scope():
-                self.driver.node_insert(PsqlNode(nid, 'label'))
-                self.driver.node_insert(PsqlNode(nid, 'label2'))
+                self.driver.node_insert(PsqlNode(nid, 'test'))
+                self.driver.node_insert(PsqlNode(nid, 'foo'))
         with self.driver.session_scope():
             self.assertEqual(len(list(self.driver.node_lookup(nid).all())), 0)
 
-    @unittest.skip('not implemented')
     def test_commit_automatic_session(self):
         """test_commit_automatic_session
 
@@ -963,16 +960,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         nid = str(uuid.uuid4())
-        self.driver.node_insert(PsqlNode(nid, 'label'))
+        self.driver.node_insert(PsqlNode(nid, 'test'))
         self.assertRaises(
             IntegrityError,
             self.driver.node_insert,
-            PsqlNode(nid, 'label2'))
+            PsqlNode(nid, 'foo'))
         with self.driver.session_scope():
-            self.assertEqual(self.driver.node_lookup(nid).one().label, 'label')
+            self.assertEqual(self.driver.node_lookup(nid).one().label, 'test')
         self.assertFalse(self.driver.has_session())
 
-    @unittest.skip('not implemented')
     def test_automatic_nested_session(self):
         """test_automatic_nested_session
 
@@ -983,15 +979,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
         nid = str(uuid.uuid4())
         with self.assertRaises(IntegrityError):
             with self.driver.session_scope():
-                self.driver.node_insert(PsqlNode(nid, 'label'))
+                self.driver.node_insert(PsqlNode(nid, 'test'))
                 with self.driver.session_scope(can_inherit=False):
-                    self.driver.node_insert(PsqlNode(nid, 'label2'))
+                    self.driver.node_insert(PsqlNode(nid, 'foo'))
         with self.driver.session_scope():
             self.assertEqual(
-                self.driver.node_lookup(nid).one().label, 'label2')
+                self.driver.node_lookup(nid).one().label, 'foo')
         self.assertFalse(self.driver.has_session())
 
-    @unittest.skip('not implemented')
     def test_automatic_nested_session2(self):
         """test_automatic_nested_session2
 
@@ -1002,17 +997,16 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """
         id1 = str(uuid.uuid4())
         id2 = str(uuid.uuid4())
-        self.driver.node_insert(PsqlNode(id1, 'label2'))
+        self.driver.node_insert(PsqlNode(id1, 'foo'))
         with self.driver.session_scope():
-            self.driver.node_insert(PsqlNode(id2, 'label'))
+            self.driver.node_insert(PsqlNode(id2, 'test'))
             with self.assertRaises(IntegrityError):
                 with self.driver.session_scope(can_inherit=False):
-                    self.driver.node_insert(PsqlNode(id1, 'label2'))
+                    self.driver.node_insert(PsqlNode(id1, 'foo'))
         with self.driver.session_scope():
-            self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
+            self.assertEqual(self.driver.node_lookup(id2).one().label, 'test')
         self.assertFalse(self.driver.has_session())
 
-    @unittest.skip('not implemented')
     def test_automatic_nested_session3(self):
         """test_automatic_nested_session3
 
@@ -1022,19 +1016,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
-        self.driver.node_insert(PsqlNode(id1, 'label2'))
+        self.driver.node_insert(PsqlNode(id1, 'foo'))
         with self.driver.session_scope():
-            self.driver.node_insert(PsqlNode(id2, 'label'))
+            self.driver.node_insert(PsqlNode(id2, 'test'))
             with self.assertRaises(IntegrityError):
                 with self.driver.session_scope(can_inherit=False):
-                    self.driver.node_insert(PsqlNode(id1, 'label2'))
-                    self.driver.node_insert(PsqlNode(id3, 'label2'))
+                    self.driver.node_insert(PsqlNode(id1, 'foo'))
+                    self.driver.node_insert(PsqlNode(id3, 'foo'))
         with self.driver.session_scope():
-            self.assertEqual(self.driver.node_lookup(id2).one().label, 'label')
+            self.assertEqual(self.driver.node_lookup(id2).one().label, 'test')
             self.assertEqual(self.driver.node_lookup(id3).count(), 0)
         self.assertFalse(self.driver.has_session())
 
-    @unittest.skip('not implemented')
     def test_automatic_nested_session_inherit_valid(self):
         """test_automatic_nested_session_inherit_valid
 
@@ -1044,16 +1037,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """
         id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
         with self.driver.session_scope():
-            self.driver.node_insert(PsqlNode(id1, 'label1'))
+            self.driver.node_insert(PsqlNode(id1, 'test'))
             with self.driver.session_scope():
-                    self.driver.node_insert(PsqlNode(id2, 'label2'))
+                    self.driver.node_insert(PsqlNode(id2, 'foo'))
             self.assertEqual(
-                self.driver.node_lookup(id1).one().label, 'label1')
+                self.driver.node_lookup(id1).one().label, 'test')
             self.assertEqual(
-                self.driver.node_lookup(id2).one().label, 'label2')
+                self.driver.node_lookup(id2).one().label, 'foo')
         self.assertFalse(self.driver.has_session())
 
-    @unittest.skip('not implemented')
     def test_automatic_nested_session_inherit_invalid(self):
         """test_automatic_nested_session_inherit_invalid
 
@@ -1063,17 +1055,16 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """
         id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
         with self.driver.session_scope() as outer:
-            self.driver.node_insert(PsqlNode(id1, 'label1'))
+            self.driver.node_insert(PsqlNode(id1, 'test'))
             with self.driver.session_scope() as inner:
                 self.assertEqual(inner, outer)
-                self.driver.node_insert(PsqlNode(id2, 'label2'))
+                self.driver.node_insert(PsqlNode(id2, 'foo'))
                 inner.rollback()
         with self.driver.session_scope():
             self.assertEqual(self.driver.node_lookup(id1).count(), 0)
             self.assertEqual(self.driver.node_lookup(id2).count(), 0)
         self.assertFalse(self.driver.has_session())
 
-    @unittest.skip('not implemented')
     def test_explicit_to_inherit_nested_session(self):
         """test_explicit_to_inherit_nested_session
 
@@ -1084,13 +1075,13 @@ class TestPsqlGraphDriver(unittest.TestCase):
         id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
         outer = self.driver._new_session()  # don't do this
         with self.driver.session_scope(outer):
-            self.driver.node_insert(PsqlNode(id1, 'label1'))
+            self.driver.node_insert(PsqlNode(id1, 'test'))
             with self.driver.session_scope() as inner:
                 self.assertEqual(inner, outer)
-                self.driver.node_insert(PsqlNode(id2, 'label2'))
+                self.driver.node_insert(PsqlNode(id2, 'foo'))
                 with self.driver.session_scope() as third:
                     self.assertEqual(third, outer)
-                    self.driver.node_insert(PsqlNode(id3, 'label2'))
+                    self.driver.node_insert(PsqlNode(id3, 'foo'))
         with self.driver.session_scope():
             self.assertEqual(self.driver.node_lookup(id2).count(), 0)
         outer.commit()
@@ -1100,7 +1091,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertEqual(self.driver.node_lookup(id3).count(), 1)
         self.assertFalse(self.driver.has_session())
 
-    @unittest.skip('not implemented')
     def test_explicit_to_inherit_nested_session_rollback(self):
         """test_explicit_to_inherit_nested_session_rollback
 
@@ -1111,13 +1101,13 @@ class TestPsqlGraphDriver(unittest.TestCase):
         id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
         outer = self.driver._new_session()  # don't do this
         with self.driver.session_scope(outer):
-            self.driver.node_insert(PsqlNode(id1, 'label1'))
+            self.driver.node_insert(PsqlNode(id1, 'test'))
             with self.driver.session_scope() as inner:
                 self.assertEqual(inner, outer)
-                self.driver.node_insert(PsqlNode(id2, 'label2'))
+                self.driver.node_insert(PsqlNode(id2, 'foo'))
                 with self.driver.session_scope() as third:
                     self.assertEqual(third, outer)
-                    self.driver.node_insert(PsqlNode(id3, 'label2'))
+                    self.driver.node_insert(PsqlNode(id3, 'foo'))
                     third.rollback()
         with self.driver.session_scope():
             self.assertEqual(self.driver.node_lookup(id1).count(), 0)
@@ -1125,7 +1115,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertEqual(self.driver.node_lookup(id3).count(), 0)
         self.assertFalse(self.driver.has_session())
 
-    @unittest.skip('not implemented')
     def test_mixed_session_inheritance(self):
         """test_mixed_session_inheritance
 
@@ -1141,7 +1130,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             with self.driver.session_scope(external) as inner:
                 self.assertEqual(inner, external)
                 self.assertNotEqual(inner, outer)
-                self.driver.node_insert(PsqlNode(id2, 'inserted'))
+                self.driver.node_insert(PsqlNode(id2, 'test'))
                 with self.driver.session_scope(outer) as third:
                     self.assertEqual(third, outer)
                     self.driver.node_insert(PsqlNode(id3, 'rollback'))
@@ -1155,7 +1144,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertEqual(self.driver.node_lookup(id3).count(), 0)
         self.assertFalse(self.driver.has_session())
 
-    @unittest.skip('not implemented')
     def test_explicit_session(self):
         """test_explicit_session
 
@@ -1164,22 +1152,21 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """
         id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
         with self.driver.session_scope() as session:
-            self.driver.node_insert(PsqlNode(id1, 'label2'))
-            self.driver.node_insert(PsqlNode(id2, 'label2'), session)
+            self.driver.node_insert(PsqlNode(id1, 'foo'))
+            self.driver.node_insert(PsqlNode(id2, 'foo'), session)
             session.rollback()
         with self.driver.session_scope():
             self.assertEqual(self.driver.node_lookup(id2).count(), 0)
             self.assertEqual(self.driver.node_lookup(id1).count(), 0)
         self.assertFalse(self.driver.has_session())
 
-    @unittest.skip('not implemented')
     def test_library_functions_use_session_implicitly(self):
         """Test that library functions use the session they're scoped in
 
         """
         id1 = str(uuid.uuid4())
         with self.driver.session_scope():
-            self.driver.node_insert(PsqlNode(id1, 'label'))
+            self.driver.node_insert(PsqlNode(id1, 'test'))
             self.driver.node_lookup(node_id=id1).one()
 
 

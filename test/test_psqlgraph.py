@@ -4,7 +4,8 @@ import logging
 import psqlgraph
 import random
 from psqlgraph import PsqlGraphDriver
-from psqlgraph.node import PsqlNode, Node, PolyNode, VoidedNode, sanitize
+from psqlgraph.node import Node, PolyNode, VoidedNode, sanitize
+from psqlgraph.node import PolyNode as PsqlNode
 from multiprocessing import Process
 from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError, EdgeCreationError
@@ -21,7 +22,11 @@ database = 'automated_test'
 logging.basicConfig(level=logging.DEBUG)
 
 # We have to import models here, even if we don't use them
-from models import TestNode, FooNode, FooEdge
+from models import Test, Foo
+
+
+def timestamp():
+    return str(datetime.now())
 
 
 class PsqlEdge(object):
@@ -47,17 +52,17 @@ class TestPsqlGraphDriver(unittest.TestCase):
         for table in Node.get_subclass_table_names():
             if table != Node.__tablename__:
                 conn.execute('delete from {}'.format(table))
-        conn.execute('delete from {}'.format('_nodes'))
-        conn.execute('delete from {}'.format('_voided_nodes'))
+        conn.execute('delete from _voided_nodes')
         conn.close()
 
     def test_getitem(self):
         """Test that indexing nodes/edges accesses their properties"""
-        node = PolyNode(node_id=str(uuid.uuid4()),label="foo", properties={"bar": 1})
+        node = PolyNode(node_id=str(uuid.uuid4()), label="foo", properties={"bar": 1})
         self.assertEqual(node["bar"], 1)
         # edge = Edge(src_id=None, dst_id=None, label="foo", properties={"bar": 1})
         # self.assertEqual(edge["bar"], 1)
 
+    @unittest.skip('not implemented')
     def test_setitem(self):
         """Test that indexing nodes/edges accesses their properties"""
         node = PolyNode(
@@ -71,11 +76,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_long_ints_roundtrip(self):
         """Test that integers that only fit in 26 bits round trip correctly."""
         with self.driver.session_scope():
-            node = PolyNode(node_id=str(uuid.uuid4()),label="foo",
-                            properties={"bar": 9223372036854775807})
+            node = PolyNode(node_id=str(uuid.uuid4()), label="foo",
+                            properties={"bar": 9223372036854775808})
             self.driver.node_insert(node=node)
             loaded = self.driver.node_lookup(node_id=node.node_id).one()
-            self.assertEqual(loaded["bar"], 9223372036854775807)
+            self.assertEqual(loaded["bar"], 9223372036854775808)
 
     def test_node_null_label_merge(self):
         """Test merging of a non-existent node
@@ -139,7 +144,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         query is correct
         """
         tempid = str(uuid.uuid4())
-        properties = {'key1': None, 'key2': 2, 'key3': datetime.now(),
+        properties = {'key1': None, 'key2': 2, 'key3': timestamp(),
                       'timestamp': None, 'new_key': None}
         with self.driver.session_scope():
             self.driver.node_merge(node_id=tempid, label='test',
@@ -148,7 +153,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             node = self.driver.node_lookup_one(tempid)
         self.assertEqual(properties, node.properties)
 
-    def test_node_update_updates_acls(self):
+    def test_node_update_acls(self):
         tempid = str(uuid.uuid4())
         with self.driver.session_scope():
             node = self.driver.node_merge(node_id=tempid, label='test')
@@ -181,15 +186,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         retries = 0 if not given_id else int(1e6)
         # Add first node
-        propertiesA = {'key1': None, 'key2': 1, 'key3': datetime.now(),
+        propertiesA = {'key1': None, 'key2': 1, 'key3': timestamp(),
                        'timestamp': None, 'new_key': None}
         self.driver.node_merge(node_id=node_id, properties=propertiesA,
                                label=label, max_retries=retries)
 
-
         # Add second node
         propertiesB = {'key1': u'2', 'new_key': u'n',
-                       'timestamp': datetime.now()}
+                       'timestamp': timestamp()}
         self.driver.node_merge(node_id=node_id, properties=propertiesB,
                                max_retries=retries)
 
@@ -272,7 +276,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         node_id = str(uuid.uuid4())
 
         system_annotationsA = sanitize({
-            'key1': None, 'key2': 2, 'key3': datetime.now()
+            'key1': None, 'key2': 2, 'key3': timestamp()
         })
         node = self.driver.node_merge(node_id=node_id, label='test',
                                       system_annotations=system_annotationsA)
@@ -316,14 +320,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         # Add first node
         system_annotationsA = sanitize({
-            'key1': None, 'key2': 2, 'key3': datetime.now()
+            'key1': None, 'key2': 2, 'key3': timestamp()
         })
         self.driver.node_merge(node_id=node_id, label='test',
                                system_annotations=system_annotationsA)
 
         # Add second node
         system_annotationsB = sanitize({
-            'key1': None, 'new_key': 2, 'timestamp': datetime.now()
+            'key1': None, 'new_key': 2, 'timestamp': timestamp()
         })
         self.driver.node_merge(node_id=node_id, label='test',
                                system_annotations=system_annotationsB)
@@ -336,7 +340,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
         if not given_id:
             with self.driver.session_scope():
                 node = self.driver.node_lookup_one(node_id)
-
             print "merged:", sanitize(merged)
             print 'node:', sanitize(node.system_annotations)
             self.assertEqual(sanitize(merged), sanitize(node.system_annotations))
@@ -363,20 +366,20 @@ class TestPsqlGraphDriver(unittest.TestCase):
         tempid = str(uuid.uuid4())
 
         # Add first node
-        propertiesA = {'key1': None, 'key2': 2, 'key3': datetime.now()}
+        propertiesA = {'key1': None, 'key2': 2, 'key3': timestamp()}
         self.driver.node_merge(node_id=tempid, label='test',
                                properties=propertiesA)
 
-        propertiesB = {'key1': None, 'key2': 2, 'key3': datetime.now()}
-        with self.assertRaises(AssertionError):
+        propertiesB = {'key1': None, 'key2': 2, 'key3': timestamp()}
+        with self.assertRaises(IntegrityError):
             bad_node = PolyNode(
                 node_id=tempid,
                 system_annotations={},
                 acl=[],
-                label=None,
+                label='test',
                 properties=propertiesB
             )
-
+            self.driver.node_insert(bad_node)
 
     def test_null_node_void(self):
         """Test voiding of a null node
@@ -457,7 +460,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 properties[node_id] = {
                     'key1': node_id,
                     'key2': 2,
-                    'key3': datetime.now(),
+                    'key3': timestamp(),
                     'new_key': None,
                     'timestamp': None
                 }
@@ -507,11 +510,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         tempid = str(uuid.uuid4())
 
-        propertiesA = {'key1':  None, 'key2':  2, 'key3':  datetime.now()}
+        propertiesA = {'key1':  None, 'key2':  2, 'key3':  timestamp()}
         self.driver.node_merge(node_id=tempid, label='test',
                                properties=propertiesA)
 
-        propertiesB = {'key1':  'second', 'key2':  0, 'key3':  datetime.now(),
+        propertiesB = {'key1':  'second', 'key2':  0, 'key3':  timestamp(),
                        'new_key': None, 'timestamp': None}
         self.driver.node_clobber(node_id=tempid, properties=propertiesB)
 
@@ -525,7 +528,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """Test the ability to remove property keys from nodes"""
 
         tempid = str(uuid.uuid4())
-        properties = {'key1':  None, 'key2':  2, 'key3':  datetime.now()}
+        properties = {'key1':  None, 'key2':  2, 'key3':  timestamp()}
         self.driver.node_merge(node_id=tempid, label='test',
                                properties=properties)
 
@@ -946,7 +949,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         with self.assertRaises(IntegrityError):
             with self.driver.session_scope():
                 self.driver.node_insert(PsqlNode(nid, 'test'))
-                self.driver.node_insert(PsqlNode(nid, 'foo'))
+                self.driver.node_insert(PsqlNode(nid, 'test'))
         with self.driver.session_scope():
             self.assertEqual(len(list(self.driver.node_lookup(nid).all())), 0)
 
@@ -964,7 +967,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.assertRaises(
             IntegrityError,
             self.driver.node_insert,
-            PsqlNode(nid, 'foo'))
+            PsqlNode(nid, 'test'))
         with self.driver.session_scope():
             self.assertEqual(self.driver.node_lookup(nid).one().label, 'test')
         self.assertFalse(self.driver.has_session())
@@ -981,10 +984,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
             with self.driver.session_scope():
                 self.driver.node_insert(PsqlNode(nid, 'test'))
                 with self.driver.session_scope(can_inherit=False):
-                    self.driver.node_insert(PsqlNode(nid, 'foo'))
+                    self.driver.node_insert(PsqlNode(nid, 'test'))
         with self.driver.session_scope():
             self.assertEqual(
-                self.driver.node_lookup(nid).one().label, 'foo')
+                self.driver.node_lookup(nid).one().label, 'test')
         self.assertFalse(self.driver.has_session())
 
     def test_automatic_nested_session2(self):
@@ -1126,14 +1129,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
         id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
         external = self.driver._new_session()
         with self.driver.session_scope() as outer:
-            self.driver.node_insert(PsqlNode(id1, 'rollback'))
+            self.driver.node_insert(PsqlNode(id1, 'foo'))
             with self.driver.session_scope(external) as inner:
                 self.assertEqual(inner, external)
                 self.assertNotEqual(inner, outer)
                 self.driver.node_insert(PsqlNode(id2, 'test'))
                 with self.driver.session_scope(outer) as third:
                     self.assertEqual(third, outer)
-                    self.driver.node_insert(PsqlNode(id3, 'rollback'))
+                    self.driver.node_insert(PsqlNode(id3, 'foo'))
                     third.rollback()
         with self.driver.session_scope():
             self.assertEqual(self.driver.node_lookup(id2).count(), 0)

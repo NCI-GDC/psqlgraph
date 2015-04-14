@@ -103,15 +103,7 @@ class GraphQuery(Query):
     # ======== Properties ========
     def props(self, props):
         assert isinstance(props, dict)
-        subclasses = Node.get_subclasses()
-        self = self.with_polymorphic(subclasses)
-        for key, val in props.items():
-            ors = []
-            for subclass in subclasses:
-                if hasattr(subclass, key):
-                    ors.append(getattr(subclass, key))
-            self = self.filter(or_(*(c == val for c in ors)))
-        return self
+        return self.filter(self.entity()._props.contains(props))
 
     def not_props(self, props):
         pass

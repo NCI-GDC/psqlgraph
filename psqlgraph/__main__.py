@@ -42,8 +42,8 @@ if __name__ == '__main__':
     g = psqlgraph.PsqlGraphDriver(**args.__dict__)
     ss = g.session_scope
 
-    with g.session_scope() as session:
-        rb = session.rollback
+    with g.session_scope() as s:
+        rb = s.rollback
         if ipython:
             IPython.embed()
         else:

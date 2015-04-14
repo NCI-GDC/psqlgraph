@@ -2,44 +2,58 @@ from sqlalchemy import Column, Text, BigInteger, Integer,\
     UniqueConstraint, ForeignKey, DateTime, Table
 from sqlalchemy.orm import relationship
 from psqlgraph.node import Node, Base, Edge
+from sqlalchemy.ext.hybrid import hybrid_property
 
 
-class TestNode(Node):
+class Test(Node):
 
-    __tablename__ = 'node_test'
-    __table_args__ = (UniqueConstraint('node_id', name='_test_id_uc'),)
-    __mapper_args__ = {'polymorphic_identity': 'test'}
-    node_id = Column(Text, ForeignKey('_nodes.node_id'), primary_key=True)
+    @hybrid_property
+    def key1(self):
+        return self.properties['key1']
 
-    key1 = Column(Text)
-    key2 = Column(Integer)
-    key3 = Column(DateTime)
-    new_key = Column(Text)
-    timestamp = Column(DateTime)
+    @key1.setter
+    def key1(self, value):
+        self.properties['key1'] = value
 
-    def __init__(self, *args, **kwargs):
-        super(TestNode, self).__init__(*args, **kwargs)
+    @hybrid_property
+    def key2(self):
+        return self.properties['key2']
+
+    @key2.setter
+    def key2(self, value):
+        self.properties['key2'] = value
+
+    @hybrid_property
+    def key3(self):
+        return self.properties['key3']
+
+    @key3.setter
+    def key3(self, value):
+        self.properties['key3'] = value
+
+    @hybrid_property
+    def new_key(self):
+        return self.properties['new_key']
+
+    @new_key.setter
+    def new_key(self, value):
+        self.properties['new_key'] = value
+
+    @hybrid_property
+    def timestamp(self):
+        return self.properties['timestamp']
+
+    @timestamp.setter
+    def timestamp(self, value):
+        self.properties['timestamp'] = value
 
 
-class FooEdge(Edge, Base):
-    __tablename__ = 'edge_foo'
-    src_id = Column(Text, ForeignKey('node_foo.node_id'), primary_key=True)
-    dst_id = Column(Text, ForeignKey('node_foo.node_id'), primary_key=True)
-    dst = relationship("FooNode")
+class Foo(Node):
 
-    def __init__(self, *args, **kwargs):
-        pass
+    @hybrid_property
+    def bar(self):
+        return self.properties['bar']
 
-
-class FooNode(Node):
-
-    __tablename__ = 'node_foo'
-    __table_args__ = (UniqueConstraint('node_id', name='_foo_id_uc'),)
-    __mapper_args__ = {'polymorphic_identity': 'foo'}
-    node_id = Column(Text, ForeignKey('_nodes.node_id'), primary_key=True)
-
-    foos = relationship('FooEdge')
-    bar = Column(BigInteger)
-
-    def __init__(self, *args, **kwargs):
-        super(FooNode, self).__init__(*args, **kwargs)
+    @bar.setter
+    def bar(self, value):
+        self.properties['bar'] = value

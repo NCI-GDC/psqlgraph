@@ -9,9 +9,11 @@ from sqlalchemy import event, ForeignKey
 from sqlalchemy.orm.attributes import InstrumentedAttribute
 from sqlalchemy.ext.hybrid import hybrid_property
 
+from sqlalchemy.ext.declarative import AbstractConcreteBase, \
+    ConcreteBase, declared_attr
+from sqlalchemy.dialects.postgresql.json import JSONElement
 
 Base = declarative_base()
-basic_attributes = ['node_id', 'created', 'acl', '_sysan', '_label']
 
 
 def node_load_listener(*args, **kwargs):
@@ -23,8 +25,11 @@ def sanitize(properties):
     for key, value in properties.items():
         if isinstance(value, (int, str, long, bool, type(None))):
             sanitized[str(key)] = value
-        else:
+        elif isinstance(value, (unicode)):
             sanitized[str(key)] = str(value)
+        else:
+            raise ValueError(
+                'Cannot serialize {} to JSONB property'.format(type(value)))
     return sanitized
 
 
@@ -39,75 +44,39 @@ class SystemAnnotationDict(dict):
         super(SystemAnnotationDict, self).__init__(source._sysan)
 
     def update(self, system_annotations):
+        system_annotations = sanitize(system_annotations)
         temp = sanitize({k: v for k, v in self.source._sysan.items()})
         temp.update(system_annotations)
         self.source._sysan = temp
+        super(SystemAnnotationDict, self).update(system_annotations)
 
     def __setitem__(self, key, val):
         self.update({key: val})
 
 
-class PropertiesDict(object):
-    """Object that represents a sqlalchemy model's 'properties' which are
-    really just attributes now so you can update it as if it were a
-    dict and the changes get pushed to the sqlalchemy object
-
-    """
+class PropertiesDict(dict):
 
     def __init__(self, source):
         self.source = source
-        self.properties = self.get_properties()
-
-    def get_properties(self):
-        if not hasattr(self.source, '_properties'):
-            self.source._find_properties()
-        return {k: getattr(self.source, k) for k in self.source._properties}
+        temp = {k: None for k in source.get_property_list()}
+        temp.update(source._props)
+        super(PropertiesDict, self).__init__(temp)
 
     def update(self, properties):
-        temp = self.get_properties()
+        properties = sanitize(properties)
+        temp = {k: None for k in self.source.get_property_list()}
+        current = sanitize({k: v for k, v in self.source._props.items()})
+        temp.update(current)
         temp.update(properties)
-        self.properties.update(properties)
-        self.source.set_properties(temp)
+        self.source._props = temp
+        super(PropertiesDict, self).update(temp)
 
     def __setitem__(self, key, val):
-        self.source.set_property(key, val)
-
-    def __getitem__(self, key):
-        return getattr(self.source, key)
-
-    def __copy__(self):
-        return copy(self.properties)
-
-    def items(self):
-        return self.properties.items()
-
-    def iteritems(self):
-        for item in self.properties.iteritems():
-            yield item
-
-    def __contains__(self, key):
-        return key in self.properties
-
-    def __eq__(self, other):
-        for k, v in other.items():
-            if k not in self.properties or \
-               self.properties[k] != v:
-                return False
-        for k, v in self.properties.items():
-            if k not in other or other[k] != v:
-                return False
-        return True
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def __repr__(self):
-        return str(self.properties)
+        self.update({key: val})
 
 
-class Node(Base):
+class Node(AbstractConcreteBase, Base):
 
-    # General node attributes
     node_id = Column(
         Text,
         primary_key=True,
@@ -128,44 +97,70 @@ class Node(Base):
     # System annotations are wrapped under a hybrid property so we can
     # intercept interactions to allow correct setting and getting
     _sysan = Column(
-        'system_annotations',
+        JSONB,
+        default={},
+    )
+
+    _props = Column(
         JSONB,
         default={},
     )
 
     _label = Column(
-        'label',
         Text,
         nullable=False,
     )
 
-    # Table properties
-    __tablename__ = '_nodes'
-    __table_args__ = (UniqueConstraint('node_id', name='_node_id_uc'),)
-    __mapper_args__ = {
-        'polymorphic_on': _label,
-        'polymorphic_identity': '_node',
-        'with_polymorphic': '*',
-    }
+    @declared_attr
+    def __tablename__(cls):
+        return cls.__name__.lower()
+
+    @declared_attr
+    def __mapper_args__(cls):
+        name = cls.__name__.lower()
+        if name == 'node':
+            return {
+                'polymorphic_on': cls._label,
+                'polymorphic_identity': 'node',
+                'with_polymorphic': '*',
+            }
+        else:
+            return {
+                'polymorphic_identity': name,
+                'concrete': True,
+            }
+
+    @declared_attr
+    def __table_args__(cls):
+        name = cls.__name__.lower()
+        if name == 'voidednode':
+            return tuple()
+        else:
+            return (UniqueConstraint(
+                'node_id', name='_{}_id_uc'.format(name)),)
 
     def __init__(self, node_id=None, label=None, acl=[],
-                 sysan={}, properties={}):
-        self._find_properties()
-        self.system_annotations = sysan
+                 system_annotations={}, properties={}):
+        self._props = {}
+        self.system_annotations = system_annotations
         self.node_id = node_id
         self.acl = acl
         self.label = label or self.__mapper_args__['polymorphic_identity']
-        self.set_properties(properties)
-
-    def _find_properties(self):
-        cls = self.__class__
-        self._properties = [k for k, v in cls.__dict__.items()
-                            if type(v) == InstrumentedAttribute
-                            and k not in basic_attributes]
+        self.properties = properties
 
     @hybrid_property
     def properties(self):
         return PropertiesDict(self)
+
+    @properties.setter
+    def properties(self, properties):
+        for key, val in sanitize(properties).items():
+            self.set_property(key, val)
+
+    def set_property(self, key, val):
+        if not self.has_property(key):
+            raise KeyError('{} has no property {}'.format(type(self), key))
+        self._props[key] = val
 
     @hybrid_property
     def label(self):
@@ -173,14 +168,10 @@ class Node(Base):
 
     @label.setter
     def label(self, label):
-        if self._label is not None and self._label != label:
-            raise AttributeError('Cannot change label from {} to {}'.format(
-                self._label, label))
+        # if self._label is not None and self._label != label:
+        #     raise AttributeError('Cannot change label from {} to {}'.format(
+        #         self._label, label))
         self._label = label
-
-    @properties.setter
-    def properties(self, properties):
-        self.set_properties(properties)
 
     @hybrid_property
     def system_annotations(self):
@@ -207,24 +198,14 @@ class Node(Base):
     def get_subclasses(label):
         return [s for s in Node.__subclasses__()]
 
+    @classmethod
+    def get_property_list(cls):
+        return [attr for attr in dir(cls)
+                if attr in cls.__dict__
+                and isinstance(cls.__dict__[attr], hybrid_property)]
+
     def has_property(self, key):
-        cls = self.__class__
-        return (hasattr(cls, key)
-                and type(getattr(cls, key)) == InstrumentedAttribute
-                and key not in basic_attributes)
-
-    def set_properties(self, properties):
-        for key, value in properties.items():
-            if not self.has_property(key):
-                raise AttributeError('{} has no attribute {}'.format(
-                    type(self), key))
-            setattr(self, key, value)
-
-    def set_property(self, key, val):
-        if not self.has_property(key):
-            raise AttributeError('{} has no attribute {}'.format(
-                type(self), key))
-        setattr(self, key, val)
+        return key in self.get_property_list()
 
     def get_name(self):
         return type(self).__name__
@@ -239,11 +220,11 @@ class Node(Base):
         return '<{}({node_id}, {label})>'.format(
             self.__class__.__name__, node_id=self.node_id, label=self.label)
 
-    def __getitem__(self, prop):
-        return getattr(self, prop)
+    def __getitem__(self, key):
+        return getattr(self, key)
 
-    def __setitem__(self, prop, val):
-        self.set_property(prop, val)
+    def __setitem__(self, key, val):
+        self.properties[key] = val
 
     def copy(self):
         node = Node(
@@ -274,16 +255,14 @@ def PolyNode(node_id=None, label=None, acl=[], system_annotations={},
     return Type(node_id, label, acl, system_annotations, properties)
 
 
-class PsqlNode(Node):
-    pass
-
-
 class VoidedNode(Base):
 
-    # General node attributes
-    _key = Column(
+    __tablename__ = '_voided_nodes'
+
+    key = Column(
         BigInteger,
         primary_key=True,
+        nullable=False
     )
 
     node_id = Column(
@@ -294,6 +273,7 @@ class VoidedNode(Base):
     created = Column(
         DateTime(timezone=True),
         nullable=False,
+        default=lambda: datetime.now(),
     )
 
     voided = Column(
@@ -304,9 +284,15 @@ class VoidedNode(Base):
 
     acl = Column(
         ARRAY(Text),
+        default=list(),
     )
 
     system_annotations = Column(
+        JSONB,
+        default={},
+    )
+
+    properties = Column(
         JSONB,
         default={},
     )
@@ -316,37 +302,13 @@ class VoidedNode(Base):
         nullable=False,
     )
 
-    properties = Column(
-        JSONB,
-        default={},
-    )
-
-    # Table properties
-    __tablename__ = '_voided_nodes'
-
     def __init__(self, node):
         self.created = node.created
         self.node_id = node.node_id
         self.acl = node.acl
         self.label = node.label
         self.system_annotations = node.system_annotations
-        self.set_properties(node.properties)
-
-    def set_properties(self, properties):
-        self.properties = sanitize(properties)
-
-    def __getattr__(self, key):
-        raise Exception()
-        if key not in self.__dict__:
-            raise AttributeError('{} has no attribute {}'.format(
-                type(self), key))
-        if key == 'properties':
-            return {str(k): v for k, v in self.__dict__['properties']}
-        else:
-            return self.__dict__[key]
-
-    def __getitem__(self, prop):
-        return getattr(self, prop)
+        self.properties = node.properties
 
 
 class Edge(object):

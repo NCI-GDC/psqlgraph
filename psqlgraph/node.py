@@ -11,7 +11,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 
 Base = declarative_base()
-basic_attributes = ['node_id', 'created', 'acl', '_sysan', 'label']
+basic_attributes = ['node_id', 'created', 'acl', '_sysan', '_label']
 
 
 def node_load_listener(*args, **kwargs):
@@ -133,7 +133,8 @@ class Node(Base):
         default={},
     )
 
-    label = Column(
+    _label = Column(
+        'label',
         Text,
         nullable=False,
     )
@@ -142,7 +143,7 @@ class Node(Base):
     __tablename__ = '_nodes'
     __table_args__ = (UniqueConstraint('node_id', name='_node_id_uc'),)
     __mapper_args__ = {
-        'polymorphic_on': label,
+        'polymorphic_on': _label,
         'polymorphic_identity': '_node',
         'with_polymorphic': '*',
     }
@@ -165,6 +166,17 @@ class Node(Base):
     @hybrid_property
     def properties(self):
         return PropertiesDict(self)
+
+    @hybrid_property
+    def label(self):
+        return self._label
+
+    @label.setter
+    def label(self, label):
+        if self._label is not None and self._label != label:
+            raise AttributeError('Cannot change label from {} to {}'.format(
+                self._label, label))
+        self._label = label
 
     @properties.setter
     def properties(self, properties):

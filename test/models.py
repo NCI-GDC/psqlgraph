@@ -25,6 +25,7 @@ class FooEdge(Edge, Base):
     __tablename__ = 'edge_foo'
     src_id = Column(Text, ForeignKey('node_foo.node_id'), primary_key=True)
     dst_id = Column(Text, ForeignKey('node_foo.node_id'), primary_key=True)
+    dst = relationship("FooNode")
 
     def __init__(self, *args, **kwargs):
         pass
@@ -37,6 +38,7 @@ class FooNode(Node):
     __mapper_args__ = {'polymorphic_identity': 'foo'}
     node_id = Column(Text, ForeignKey('_nodes.node_id'), primary_key=True)
 
+    foos = relationship('FooEdge')
     bar = Column(BigInteger)
 
     def __init__(self, *args, **kwargs):

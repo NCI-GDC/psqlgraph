@@ -1,5 +1,5 @@
 from psqlgraph import *
-import node
-from node import Node, PolyNode, sanitize
+from node import Node, PolyNode
+from util import sanitize
 from base import Base
 from voided_node import VoidedNode

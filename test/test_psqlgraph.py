@@ -49,7 +49,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def _clear_tables(self):
         conn = g.engine.connect()
         conn.execute('commit')
-        for table in Node.get_subclass_table_names():
+        for table in Node().get_subclass_table_names():
             if table != Node.__tablename__:
                 conn.execute('delete from {}'.format(table))
         conn.execute('delete from _voided_nodes')
@@ -258,6 +258,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
         merged.update(propertiesB)
 
         with g.session_scope():
+            nodes = g.nodes().props(propertiesB)
+            print nodes
             node = g.node_lookup_one(property_matches=propertiesB)
             print merged
             print node.properties
@@ -381,6 +383,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
             )
             g.node_insert(bad_node)
 
+
+    @unittest.skip('deprecated')
     def test_null_node_void(self):
         """Test voiding of a null node
 
@@ -522,7 +526,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             node = g.node_lookup(node_id=tempid).one()
         self.assertEqual(propertiesB, node.properties)
 
-    @unittest.skip('depricated')
+    @unittest.skip('deprecated')
     def test_node_delete_property_keys(self):
         """Test the ability to remove property keys from nodes"""
 

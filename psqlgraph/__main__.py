@@ -7,7 +7,8 @@ from sqlalchemy import func
 try:
     import IPython
     ipython = True
-except:
+except Exception as e:
+    print '{}, using standard interactiv console'.format(e)
     import code
     ipython = False
 

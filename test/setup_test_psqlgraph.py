@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 import logging
 
 
-from psqlgraph.node import Base
+from psqlgraph import Base
 from psqlgraph import PsqlGraphDriver
 from models import *
 

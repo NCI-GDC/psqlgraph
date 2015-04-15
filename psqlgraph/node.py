@@ -12,6 +12,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.declarative import AbstractConcreteBase, \
     ConcreteBase, declared_attr
 from sqlalchemy.dialects.postgresql.json import JSONElement
+from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
 
@@ -64,7 +65,7 @@ class PropertiesDict(dict):
 
     def update(self, properties):
         properties = sanitize(properties)
-        temp = {k: None for k in self.source.get_property_list()}
+        temp = self.source.property_template()
         current = sanitize({k: v for k, v in self.source._props.items()})
         temp.update(current)
         temp.update(properties)
@@ -141,7 +142,7 @@ class Node(AbstractConcreteBase, Base):
 
     def __init__(self, node_id=None, label=None, acl=[],
                  system_annotations={}, properties={}):
-        self._props = {}
+        self._props = self.property_template()
         self.system_annotations = system_annotations
         self.node_id = node_id
         self.acl = acl
@@ -161,6 +162,9 @@ class Node(AbstractConcreteBase, Base):
         if not self.has_property(key):
             raise KeyError('{} has no property {}'.format(type(self), key))
         self._props[key] = val
+
+    def property_template(self):
+        return {k: None for k in self.get_property_list()}
 
     @hybrid_property
     def label(self):
@@ -323,9 +327,34 @@ class Edge(object):
         getattr(self, key)
 
 
-@event.listens_for(Node, 'before_update', propagate=True)
-@event.listens_for(Node, 'after_insert', propagate=True)
-def node_update_listener(mapper, connection, target):
+def snapshot_node(target):
     session = target.get_session()
     voided_node = VoidedNode(target)
     session.add(voided_node)
+
+
+@event.listens_for(Node, 'after_insert', propagate=True)
+def node_insert_listener(mapper, connection, target):
+    snapshot_node(target)
+
+
+@event.listens_for(Node, 'before_update', propagate=True)
+def node_update_listener(mapper, connection, target):
+    return
+    # cls = type(target)
+    # existing = session.query(cls).filter(cls.node_id == target.node_id)\
+    #                              .one()._props
+    # print existing
+    # for key, val in target._props.iteritems():
+    #     print key, val
+    #     if val is not None:
+    #         existing[key] = val
+    # target.properties = existing
+    # print target.properties
+    snapshot_node(target)
+
+
+def receive_before_flush(session, flush_context, instances):
+    print 'flushing', session, flush_context, instances
+    # import ipdb
+    # ipdb.set_trace()

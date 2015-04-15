@@ -6,7 +6,7 @@ import logging
 from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker, configure_mappers
 from xlocal import xlocal
-from node import PolyNode, Node, VoidedNode
+from node import PolyNode, Node, VoidedNode, receive_before_flush
 from util import retryable, default_backoff
 from query import GraphQuery
 from sqlalchemy import create_engine, event
@@ -28,6 +28,7 @@ class PsqlGraphDriver(object):
         Session = sessionmaker(expire_on_commit=False)
         Session.configure(bind=self.engine, query_cls=GraphQuery)
         session = Session()
+        event.listen(session, 'before_flush', receive_before_flush)
         logging.debug('Created session {}'.format(session))
         return session
 

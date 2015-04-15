@@ -339,7 +339,9 @@ class PsqlGraphDriver(object):
         with self.session_scope(session) as local:
             for key, val in system_annotations.items():
                 edge.system_annotations[key] = val
+            print properties
             edge.properties.update(properties)
+            print edge.properties
             local.merge(edge)
         return edge
 

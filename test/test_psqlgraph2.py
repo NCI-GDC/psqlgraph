@@ -123,9 +123,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         src, dst = Test(src_id), Test(dst_id)
         edge = Edge1(src_id, dst_id)
         with g.session_scope() as session:
-            session.add(src)
-            session.add(dst)
-            session.commit()
+            session.add_all([src, dst])
+            session.flush()
             session.add(edge)
-            print g.nodes().ids([src_id, dst_id]).all()
-            print g.edges().filter(Edge1.src_id == src_id).one()
+            g.edges().filter(Edge1.src_id == src_id).one()

@@ -9,13 +9,14 @@ from xlocal import xlocal
 from sqlalchemy import create_engine, event
 
 # Custom modules
-from exc import QueryError, ProgrammingError
-from voided_node import VoidedNode
+from exc import QueryError
 from util import retryable, default_backoff
 from query import GraphQuery
 from node import PolyNode, Node
+from voided_node import VoidedNode
 from hooks import receive_before_flush
 from edge import Edge
+from voided_edge import VoidedEdge
 
 DEFAULT_RETRIES = 0
 
@@ -172,6 +173,13 @@ class PsqlGraphDriver(object):
             else:
                 return local.query(query)
 
+    def voided_edges(self, query=VoidedEdge):
+        with self.session_scope(must_inherit=True) as local:
+            if isinstance(query, list) or isinstance(query, tuple):
+                return local.query(*query)
+            else:
+                return local.query(query)
+
     def set_node_validator(self, node_validator):
         raise NotImplemented('Deprecated.')
 
@@ -313,6 +321,7 @@ class PsqlGraphDriver(object):
                     session=None, max_retries=DEFAULT_RETRIES,
                     backoff=default_backoff):
         with self.session_scope(session) as local:
+            local.flush()
             if node is None:
                 node = self.node_lookup(node_id=node_id).one()
             local.delete(node)
@@ -320,29 +329,55 @@ class PsqlGraphDriver(object):
     @retryable
     def edge_insert(self, edge, max_retries=DEFAULT_RETRIES,
                     backoff=default_backoff, session=None):
-        pass
+        with self.session_scope(session) as local:
+            local.flush()
+            local.add(edge)
+        return edge
 
     def edge_update(self, edge, system_annotations={}, properties={},
                     session=None):
-        pass
+        with self.session_scope(session) as local:
+            for key, val in system_annotations.items():
+                edge.system_annotations[key] = val
+            edge.properties.update(properties)
+            local.merge(edge)
+        return edge
 
     def edge_lookup_one(self, src_id=None, dst_id=None, label=None,
                         voided=False, session=None):
-        pass
+        return self.edge_lookup(src_id, dst_id, label, voided, session)\
+                   .scalar()
 
     def edge_lookup(self, src_id=None, dst_id=None, label=None,
                     voided=False, session=None):
-        pass
+        if voided:
+            query = self.voided_edges()
+        else:
+            query = self.edges()
+
+        if src_id is not None:
+            query = query.src_ids(src_id)
+        if dst_id is not None:
+            query = query.dst_ids(dst_id)
+        if label is not None:
+            query = query.filter(Edge.label == label)
+        return query
 
     def edge_lookup_voided(self, src_id=None, dst_id=None, label=None,
                            session=None):
-        pass
+        return self.edge_lookup(src_id, dst_id, label, True, session)\
+                   .scalar()
 
     def _edge_void(self, edge, session=None):
-        pass
+        raise NotImplemented('Deprecated.')
 
     def edge_delete(self, edge, session=None):
-        pass
+        with self.session_scope(session) as local:
+            local.delete(edge)
 
     def edge_delete_by_node_id(self, node_id, session=None):
-        pass
+        with self.session_scope(session) as local:
+            for edge in self.edges().filter(Edge.src_id == node_id):
+                local.delete(edge)
+            for edge in self.edges().filter(Edge.dst_id == node_id):
+                local.delete(edge)

@@ -53,7 +53,7 @@ class CommonBase(object):
 
     @declared_attr
     def __mapper_args__(cls):
-        name = cls.__name__.lower()
+        name = getattr(cls, '__label__', cls.__name__.lower())
         if name in abstract_classes:
             return {
                 'polymorphic_on': cls._label,

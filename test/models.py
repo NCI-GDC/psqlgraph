@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Text, BigInteger, Integer,\
     UniqueConstraint, ForeignKey, DateTime, Table
 from sqlalchemy.orm import relationship
-from psqlgraph import Node
+from psqlgraph import Node, Edge
 from sqlalchemy.ext.hybrid import hybrid_property
 
 
@@ -57,3 +57,13 @@ class Foo(Node):
     @bar.setter
     def bar(self, value):
         self.properties['bar'] = value
+
+
+class Edge1(Edge):
+    __src_label__ = 'test'
+    __dst_label__ = 'test'
+
+
+class Edge2(Edge):
+    __src_label__ = 'test'
+    __dst_label__ = 'foo'

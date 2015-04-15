@@ -13,7 +13,8 @@ from exc import QueryError, ProgrammingError
 from voided_node import VoidedNode
 from util import retryable, default_backoff
 from query import GraphQuery
-from node import PolyNode, Node, receive_before_flush
+from node import PolyNode, Node
+from hooks import receive_before_flush
 from edge import Edge
 
 DEFAULT_RETRIES = 0

@@ -8,7 +8,7 @@ from sqlalchemy import create_engine
 import logging
 
 
-from psqlgraph import Base
+from psqlgraph import create_all
 from psqlgraph import PsqlGraphDriver
 from models import *
 
@@ -75,7 +75,7 @@ def create_tables(host, user, password, database):
     print('Creating tables in test database')
 
     driver = PsqlGraphDriver(host, user, password, database)
-    Base.metadata.create_all(driver.engine)
+    create_all(driver.engine)
 
 
 def create_indexes(host, user, password, database):

@@ -434,7 +434,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         node with the correct properties
         """
 
-        REPEAT_COUNT = 200
+        REPEAT_COUNT = 20
         node_id = str(uuid.uuid4()) if not given_id else given_id
 
         for tally in range(REPEAT_COUNT):
@@ -490,7 +490,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         eventually
         """
 
-        process_count = 3
+        process_count = 2
         tempid = str(uuid.uuid4())
         processes = []
 

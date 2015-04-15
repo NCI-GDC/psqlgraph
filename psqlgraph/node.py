@@ -86,9 +86,32 @@ class Node(AbstractConcreteBase, ORMBase):
         return self.get_history(session)
 
     def get_history(self, session):
+        assert self.label, 'Specify label for node history'
         return session.query(VoidedNode)\
                       .filter(VoidedNode.node_id == self.node_id)\
+                      .filter(VoidedNode.label == self.label)\
                       .order_by(VoidedNode.voided.desc())
+
+    def snapshot_existing(self, session, existing):
+        voided_node = VoidedNode(existing)
+        session.add(voided_node)
+
+    def merge_onto_existing(self, session, existing):
+        if not existing:
+            self._props = self.properties
+        else:
+            temp = self.property_template()
+            temp.update(existing._props)
+            temp.update(self._props)
+            self._props = temp
+
+    def lookup_existing(self, session):
+        Clean = sessionmaker()
+        Clean.configure(bind=session.bind)
+        clean = Clean()
+        return clean.query(Node).filter(Node.node_id == self.node_id)\
+                                .filter(Node._label == self.label)\
+                                .scalar()
 
 
 def PolyNode(node_id=None, label=None, acl=[], system_annotations={},
@@ -107,34 +130,3 @@ def PolyNode(node_id=None, label=None, acl=[], system_annotations={},
 @event.listens_for(Node, 'before_insert', propagate=True)
 def receive_before_insert(mapper, connection, node):
     node._props = node.properties
-
-
-def snapshot_node(session, target):
-    if not target:
-        return
-    voided_node = VoidedNode(target)
-    session.add(voided_node)
-
-
-def lookup_existing_node(session, node_id):
-    Clean = sessionmaker()
-    Clean.configure(bind=session.bind)
-    clean = Clean()
-    return clean.query(Node).filter(Node.node_id == node_id).scalar()
-
-
-def merge_node_onto_existing_node(session, existing, node):
-    if not existing:
-        node._props = node.properties
-    else:
-        temp = node.property_template()
-        temp.update(existing._props)
-        temp.update(node._props)
-        node._props = temp
-
-
-def receive_before_flush(session, flush_context, instances):
-    for node in session.dirty:
-        existing = lookup_existing_node(session, node.node_id)
-        snapshot_node(session, existing)
-        merge_node_onto_existing_node(session, existing, node)

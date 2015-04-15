@@ -42,6 +42,11 @@ class CommonBase(object):
         nullable=False,
     )
 
+    _label = Column(
+        Text,
+        nullable=False,
+    )
+
     @declared_attr
     def __tablename__(cls):
         return cls.__name__.lower()
@@ -125,4 +130,10 @@ class CommonBase(object):
     def __setitem__(self, key, val):
         self.properties[key] = val
 
+
 ORMBase = declarative_base(cls=CommonBase)
+
+
+def create_all(engine):
+    ORMBase.metadata.create_all(engine)
+    Base.metadata.create_all(engine)

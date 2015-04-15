@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 # We have to import models here, even if we don't use them
-from models import Test, Foo
+from models import Test, Foo, Edge1
 
 
 def _props(target, updates):
@@ -117,3 +117,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
         with g.session_scope() as session:
             expected = _props(Test, new)
             self.assertEqual(g.nodes().ids(nid).one().properties, expected)
+
+    def test_add_edge(self):
+        src_id, dst_id = str(uuid.uuid4()), str(uuid.uuid4())
+        src, dst = Test(src_id), Test(dst_id)
+        edge = Edge1(src_id, dst_id)
+        with g.session_scope() as session:
+            session.add(src)
+            session.add(dst)
+            session.commit()
+            session.add(edge)
+            print g.nodes().ids([src_id, dst_id]).all()
+            print g.edges().filter(Edge1.src_id == src_id).one()

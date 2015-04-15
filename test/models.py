@@ -50,6 +50,8 @@ class Test(Node):
 
 class Foo(Node):
 
+    __label__ = 'foo'
+
     @hybrid_property
     def bar(self):
         return self.properties['bar']

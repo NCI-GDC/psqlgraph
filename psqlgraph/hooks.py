@@ -1,3 +1,7 @@
+"""
+Session hooks
+"""
+
 
 def receive_before_flush(session, flush_context, instances):
     for target in session.dirty:

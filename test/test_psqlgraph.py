@@ -5,6 +5,7 @@ import psqlgraph
 import random
 from psqlgraph import PsqlGraphDriver, Node, PolyNode, sanitize
 from psqlgraph import PolyNode as PsqlNode
+from psqlgraph import PolyEdge as PsqlEdge
 
 from multiprocessing import Process
 from sqlalchemy.exc import IntegrityError
@@ -28,12 +29,6 @@ from models import Test, Foo
 
 def timestamp():
     return str(datetime.now())
-
-
-class PsqlEdge(object):
-
-    def __init__(self, *args, **kwargs):
-        pass
 
 
 class TestPsqlGraphDriver(unittest.TestCase):
@@ -599,7 +594,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 self.assertIs(
                     g.node_lookup_one(node_id=node_id), None)
 
-    @unittest.skip('not implemented')
     def test_edge_insert_null_label(self):
         """Test merging of a null edge
 
@@ -607,7 +601,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """
 
         self.assertRaises(
-            EdgeCreationError,
+            AssertionError,
             PsqlEdge,
             str(uuid.uuid4()), str(uuid.uuid4), None,
         )
@@ -621,12 +615,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
         g.node_merge(node_id=dst_id, label='test')
 
         edge1 = g.edge_insert(PsqlEdge(
-            src_id=src_id, dst_id=dst_id, label='test1'))
+            src_id=src_id, dst_id=dst_id, label='edge1'))
         edge2 = g.edge_insert(PsqlEdge(
-            src_id=src_id, dst_id=dst_id, label='test2'))
+            src_id=src_id, dst_id=dst_id, label='edge2'))
         self.assertNotEqual(edge1.edge_id, edge2.edge_id)
 
-    @unittest.skip('not implemented')
     def test_edge_insert_and_lookup(self):
         """Test edge creation and lookup by dst_id, src_id, dst_id and src_id"""
         with g.session_scope():
@@ -636,7 +629,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             g.node_merge(node_id=dst_id, label='test')
 
             edge = g.edge_insert(PsqlEdge(
-                src_id=src_id, dst_id=dst_id, label='test'))
+                src_id=src_id, dst_id=dst_id, label='edge1'))
             g.edge_update(edge, properties={'test': None})
             g.edge_update(edge, properties={'test': 2})
 
@@ -656,7 +649,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertEqual(edge.dst_id, dst_id)
             self.assertEqual(edge.properties, props)
 
-    @unittest.skip('not implemented')
     def test_edge_snapshot(self):
         with g.session_scope():
             src_id = str(uuid.uuid4())
@@ -665,9 +657,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
             g.node_merge(node_id=dst_id, label='test')
 
             edge = g.edge_insert(PsqlEdge(
-                src_id=src_id, dst_id=dst_id, label='test'))
+                src_id=src_id, dst_id=dst_id, label='edge1'))
             g.edge_update(edge, properties={'test': 2})
-            voided_edge = g.edge_lookup(label='test', voided=True).one()
+        with g.session_scope():
+            voided_edge = g.edge_lookup(label='edge1', voided=True).one()
             self.assertEqual({}, voided_edge.properties)
 
     @unittest.skip('not implemented')

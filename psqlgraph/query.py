@@ -1,5 +1,6 @@
 # from edge import Edge, PsqlEdge, PsqlVoidedEdge
 from node import Node
+from edge import Edge
 from sqlalchemy.orm import Query, joinedload
 from sqlalchemy import or_, not_
 
@@ -64,6 +65,20 @@ class GraphQuery(Query):
             return self.filter(_id.in_(ids))
         else:
             return self.filter(_id == str(ids))
+
+    def src_ids(self, ids):
+        assert hasattr(Edge, 'src_id')
+        if hasattr(ids, '__iter__'):
+            return self.filter(Edge.src_id.in_(ids))
+        else:
+            return self.filter(Edge.src_id == str(ids))
+
+    def dst_ids(self, ids):
+        assert hasattr(Edge, 'src_id')
+        if hasattr(ids, '__iter__'):
+            return self.filter(Edge.dst_id.in_(ids))
+        else:
+            return self.filter(Edge.dst_id == str(ids))
 
     def neighbors(self):
         pass

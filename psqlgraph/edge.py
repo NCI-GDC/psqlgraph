@@ -73,8 +73,9 @@ class Edge(AbstractConcreteBase, ORMBase):
         return [s for s in cls.__subclasses__()]
 
     def snapshot_existing(self, session, existing):
-        voided_node = VoidedEdge(existing)
-        session.add(voided_node)
+        if existing:
+            voided_node = VoidedEdge(existing)
+            session.add(voided_node)
 
     def merge_onto_existing(self, session, existing):
         if not existing:

@@ -93,8 +93,9 @@ class Node(AbstractConcreteBase, ORMBase):
                       .order_by(VoidedNode.voided.desc())
 
     def snapshot_existing(self, session, existing):
-        voided_node = VoidedNode(existing)
-        session.add(voided_node)
+        if existing:
+            voided_node = VoidedNode(existing)
+            session.add(voided_node)
 
     def merge_onto_existing(self, session, existing):
         if not existing:

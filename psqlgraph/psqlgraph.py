@@ -6,12 +6,15 @@ import logging
 from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker, configure_mappers
 from xlocal import xlocal
-from node import PolyNode, Node, receive_before_flush
+from sqlalchemy import create_engine, event
+
+# Custom modules
+from exc import QueryError, ProgrammingError
 from voided_node import VoidedNode
 from util import retryable, default_backoff
 from query import GraphQuery
-from sqlalchemy import create_engine, event
-from exc import ProgrammingError, QueryError
+from node import PolyNode, Node, receive_before_flush
+from edge import Edge
 
 DEFAULT_RETRIES = 0
 
@@ -146,14 +149,14 @@ class PsqlGraphDriver(object):
                 local.close()
 
     def nodes(self, query=Node):
-        self.configure_driver_mappers()
+        self._configure_driver_mappers()
         with self.session_scope(must_inherit=True) as local:
             if isinstance(query, list) or isinstance(query, tuple):
                 return local.query(*query)
             else:
                 return local.query(query)
 
-    def configure_driver_mappers(self):
+    def _configure_driver_mappers(self):
         try:
             configure_mappers()
         except Exception as e:
@@ -169,25 +172,30 @@ class PsqlGraphDriver(object):
                 return local.query(query)
 
     def set_node_validator(self, node_validator):
-        pass
+        raise NotImplemented('Deprecated.')
 
     def set_edge_validator(self, edge_validator):
-        pass
+        raise NotImplemented('Deprecated.')
 
     def get_nodes(self, session=None, batch_size=1000):
-        pass
+        return self.nodes().yield_per(batch_size)
 
-    def edges(self, query=None):
-        pass
+    def edges(self, query=Edge):
+        self._configure_driver_mappers()
+        with self.session_scope(must_inherit=True) as local:
+            if isinstance(query, list) or isinstance(query, tuple):
+                return local.query(*query)
+            else:
+                return local.query(query)
 
     def get_edges(self, session=None, batch_size=1000):
-        pass
+        return self.edges().yield_per(batch_size)
 
     def get_node_count(self, session=None):
-        pass
+        return self.nodes().count()
 
     def get_edge_count(self, session=None):
-        pass
+        return self.edges().count()
 
     def node_merge(self, node_id=None, node=None, acl=None,
                    label=None, system_annotations={}, properties={},
@@ -225,8 +233,7 @@ class PsqlGraphDriver(object):
             local.merge(node)
 
     def _node_void(self, node, session=None):
-        if node is None:
-            raise ProgrammingError('Cannot void null node')
+        raise NotImplemented('Deprecated.')
 
     def node_lookup(self, node_id=None, property_matches=None,
                     label=None, system_annotation_matches=None,
@@ -242,20 +249,22 @@ class PsqlGraphDriver(object):
             query = query.props(property_matches)
         if system_annotation_matches is not None:
             query = query.sysan(system_annotation_matches)
-
         return query
 
     def node_lookup_one(self, *args, **kwargs):
         return self.node_lookup(*args, **kwargs).scalar()
 
     def node_lookup_by_id(self, node_id, voided=False, session=None):
-        pass
+        return self.node_lookup(
+            node_id=node_id, voided=voided, session=session)
 
     def node_lookup_by_matches(self, property_matches=None,
                                system_annotation_matches=None,
                                label=None, voided=False, session=None):
-
-        pass
+        return self.node_lookup(
+            property_matches=property_matches,
+            system_annotation_matches=system_annotation_matches,
+            voided=voided, session=session)
 
     @retryable
     def node_clobber(self, node_id=None, node=None, acl=None,
@@ -264,15 +273,13 @@ class PsqlGraphDriver(object):
                      backoff=default_backoff):
         with self.session_scope(session) as local:
             if not node:
-                node = self.node_lookup().one()
+                node = self.nodes().ids(node_id).one()
             if acl is not None:
                 node.acl = acl
             if system_annotations is not None:
                 node.system_annotations = system_annotations
             if properties is not None:
-                temp = node.property_template()
-                temp.update(properties)
-                node.properties = temp
+                node.properties = properties
             local.merge(node)
 
     @retryable
@@ -280,7 +287,7 @@ class PsqlGraphDriver(object):
                                   node=None, session=None,
                                   max_retries=DEFAULT_RETRIES,
                                   backoff=default_backoff):
-        raise NotImplementedError('deprecated.')
+        raise NotImplemented('Deprecated.')
 
     @retryable
     def node_delete_system_annotation_keys(self,
@@ -296,13 +303,9 @@ class PsqlGraphDriver(object):
             if not node:
                 raise QueryError('Node not found')
 
-            self._node_void(node)
-            system_annotations = node.system_annotations
             for key in system_annotation_keys:
-                system_annotations.pop(key)
-            node.system_annotations = {}
-            local.flush()
-            node.system_annotations = system_annotations
+                del node.system_annotations[key]
+            local.merge(node)
 
     @retryable
     def node_delete(self, node_id=None, node=None,
@@ -312,9 +315,6 @@ class PsqlGraphDriver(object):
             if node is None:
                 node = self.node_lookup(node_id=node_id).one()
             local.delete(node)
-
-    def node_records(self, node_id):
-        pass
 
     @retryable
     def edge_insert(self, edge, max_retries=DEFAULT_RETRIES,

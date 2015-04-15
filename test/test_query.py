@@ -2,6 +2,7 @@ import unittest
 import logging
 import uuid
 from psqlgraph import Node, Edge, PsqlGraphDriver
+from psqlgraph import PolyNode
 
 host = 'localhost'
 user = 'test'
@@ -11,6 +12,8 @@ g = PsqlGraphDriver(host, user, password, database)
 
 logging.basicConfig(level=logging.INFO)
 
+from models import Test
+
 
 class TestPsqlGraphDriver(unittest.TestCase):
 
@@ -18,10 +21,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self.logger = logging.getLogger(__name__)
         self.g = g
         self.parent_id = str(uuid.uuid4())
-        self.g.node_insert(Node(self.parent_id, 'test'))
+        self.g.node_insert(PolyNode(self.parent_id, 'test'))
         self._create_subtree(self.parent_id)
         self.lone_id = str(uuid.uuid4())
-        self.g.node_insert(Node(self.lone_id, 'test'))
+        self.g.node_insert(PolyNode(self.lone_id, 'test'))
 
     def _create_subtree(self, parent_id, level=0):
         for i in range(4):
@@ -31,7 +34,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 properties={
                     'level': i, 'isTest': True, 'null': None})
             self.g.edge_insert(Edge(
-                src_id=parent_id, dst_id=node_id, label='lonely'))
+                src_id=parent_id, dst_id=node_id, label='test'))
             if level < 2:
                 self._create_subtree(node_id, level+1)
 
@@ -71,8 +74,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_labels(self):
         with self.g.session_scope():
             for i in range(3):
-                label = 'test_{}'.format(i)
-                print label
+                label = 'test'
                 ns = self.g.nodes().labels(label).all()
                 self.assertTrue(ns != [])
                 for n in ns:
@@ -81,7 +83,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_not_labels(self):
         with self.g.session_scope():
             for i in range(3):
-                label = 'test_{}'.format(i)
+                label = 'test'
                 ns = self.g.nodes().not_labels(label).all()
                 self.assertTrue(ns != [])
                 for n in ns:

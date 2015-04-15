@@ -8,6 +8,19 @@ import logging
 DEFAULT_RETRIES = 0
 
 
+def sanitize(properties):
+    sanitized = {}
+    for key, value in properties.items():
+        if isinstance(value, (int, str, long, bool, type(None))):
+            sanitized[str(key)] = value
+        elif isinstance(value, unicode):
+            sanitized[str(key)] = str(value)
+        else:
+            raise ValueError(
+                'Cannot serialize {} to JSONB property'.format(type(value)))
+    return sanitized
+
+
 def default_backoff(retries, max_retries):
     """This is the default backoff function used in the case of a retry by
     and function wrapped with the ``@retryable`` decorator.

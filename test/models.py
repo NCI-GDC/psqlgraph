@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Text, BigInteger, Integer,\
     UniqueConstraint, ForeignKey, DateTime, Table
 from sqlalchemy.orm import relationship
-from psqlgraph.node import Node, Base, Edge
+from psqlgraph import Node
 from sqlalchemy.ext.hybrid import hybrid_property
 
 

@@ -3,20 +3,21 @@ import unittest
 import logging
 import psqlgraph
 import random
-from psqlgraph import PsqlGraphDriver
-from psqlgraph.node import Node, PolyNode, VoidedNode, sanitize
-from psqlgraph.node import PolyNode as PsqlNode
+from psqlgraph import PsqlGraphDriver, Node, PolyNode, sanitize
+from psqlgraph import PolyNode as PsqlNode
+
 from multiprocessing import Process
 from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError, EdgeCreationError
 
 from datetime import datetime
-from copy import deepcopy, copy
+from copy import deepcopy
 
 host = 'localhost'
 user = 'test'
 password = 'test'
 database = 'automated_test'
+g = PsqlGraphDriver(host, user, password, database)
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -39,15 +40,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def setUp(self):
         self.logger = logging.getLogger(__name__)
-        self.driver = PsqlGraphDriver(host, user, password, database)
-        self.REPEAT_COUNT = 200
+        self.REPEAT_COUNT = 20
         self._clear_tables()
 
     def tearDown(self):
-        self.driver.engine.dispose()
+        g.engine.dispose()
 
     def _clear_tables(self):
-        conn = self.driver.engine.connect()
+        conn = g.engine.connect()
         conn.execute('commit')
         for table in Node.get_subclass_table_names():
             if table != Node.__tablename__:
@@ -57,7 +57,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_getitem(self):
         """Test that indexing nodes/edges accesses their properties"""
-        node = PolyNode(node_id=str(uuid.uuid4()), label="foo", properties={"bar": 1})
+        node = PolyNode(
+            node_id=str(uuid.uuid4()), label="foo", properties={"bar": 1})
         self.assertEqual(node["bar"], 1)
         # edge = Edge(src_id=None, dst_id=None, label="foo", properties={"bar": 1})
         # self.assertEqual(edge["bar"], 1)
@@ -75,11 +76,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_long_ints_roundtrip(self):
         """Test that integers that only fit in 26 bits round trip correctly."""
-        with self.driver.session_scope():
+        with g.session_scope():
             node = PolyNode(node_id=str(uuid.uuid4()), label="foo",
                             properties={"bar": 9223372036854775808})
-            self.driver.node_insert(node=node)
-            loaded = self.driver.node_lookup(node_id=node.node_id).one()
+            g.node_insert(node=node)
+            loaded = g.node_lookup(node_id=node.node_id).one()
             self.assertEqual(loaded["bar"], 9223372036854775808)
 
     def test_node_null_label_merge(self):
@@ -87,10 +88,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         Verify the case where a user merges a single non-existent node
         """
-        with self.driver.session_scope():
+        with g.session_scope():
             self.assertRaises(
                 AssertionError,
-                self.driver.node_merge,
+                g.node_merge,
                 node_id=str(uuid.uuid4()))
 
     def test_node_null_query_one(self):
@@ -99,8 +100,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
         Verify the case where a user queries for a single non-existent node
         """
 
-        with self.driver.session_scope():
-            node = self.driver.node_lookup_one(str(uuid.uuid4()))
+        with g.session_scope():
+            node = g.node_lookup_one(str(uuid.uuid4()))
             self.assertTrue(node is None)
 
     def test_node_null_query(self):
@@ -109,10 +110,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
         Verify the case where a user queries for any non-existent nodes
         """
 
-        with self.driver.session_scope():
-            node = list(self.driver.node_lookup(str(uuid.uuid4())))
+        with g.session_scope():
+            node = list(g.node_lookup(str(uuid.uuid4())))
             self.assertEqual(node, [])
-            node = self.driver.node_lookup_one(str(uuid.uuid4()))
+            node = g.node_lookup_one(str(uuid.uuid4()))
             self.assertTrue(node is None)
 
     def verify_node_count(self, count, node_id=None, matches=None,
@@ -121,13 +122,13 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         Verify the case where a user queries a count for non-existent nodes
         """
-        with self.driver.session_scope():
-            nodes = list(self.driver.node_lookup(
+        with g.session_scope():
+            nodes = list(g.node_lookup(
                 node_id=node_id,
                 property_matches=matches,
                 voided=False))
             if voided:
-                voided_nodes = list(self.driver.node_lookup(
+                voided_nodes = list(g.node_lookup(
                     node_id=node_id,
                     property_matches=matches,
                     voided=True))
@@ -146,25 +147,24 @@ class TestPsqlGraphDriver(unittest.TestCase):
         tempid = str(uuid.uuid4())
         properties = {'key1': None, 'key2': 2, 'key3': timestamp(),
                       'timestamp': None, 'new_key': None}
-        with self.driver.session_scope():
-            self.driver.node_merge(node_id=tempid, label='test',
-                                   properties=properties)
-        with self.driver.session_scope():
-            node = self.driver.node_lookup_one(tempid)
+        with g.session_scope():
+            g.node_merge(node_id=tempid, label='test', properties=properties)
+        with g.session_scope():
+            node = g.node_lookup_one(tempid)
         self.assertEqual(properties, node.properties)
 
     def test_node_update_acls(self):
         tempid = str(uuid.uuid4())
-        with self.driver.session_scope():
-            node = self.driver.node_merge(node_id=tempid, label='test')
-            self.driver.node_update(node, acl=["somebody"])
-        with self.driver.session_scope():
-            node = self.driver.nodes().ids([tempid]).one()
+        with g.session_scope():
+            node = g.node_merge(node_id=tempid, label='test')
+            g.node_update(node, acl=["somebody"])
+        with g.session_scope():
+            node = g.nodes().ids([tempid]).one()
             self.assertEqual(node.acl, ["somebody"])
-        with self.driver.session_scope():
-            self.driver.node_merge(node_id=node.node_id, acl=[])
-        with self.driver.session_scope():
-            node = self.driver.nodes().ids([tempid]).one()
+        with g.session_scope():
+            g.node_merge(node_id=node.node_id, acl=[])
+        with g.session_scope():
+            node = g.nodes().ids([tempid]).one()
             self.assertEqual(node.acl, [])
 
     def test_node_update_properties_by_id(self, given_id=None, label=None):
@@ -188,14 +188,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
         # Add first node
         propertiesA = {'key1': None, 'key2': 1, 'key3': timestamp(),
                        'timestamp': None, 'new_key': None}
-        self.driver.node_merge(node_id=node_id, properties=propertiesA,
-                               label=label, max_retries=retries)
+        g.node_merge(node_id=node_id, properties=propertiesA,
+                     label=label, max_retries=retries)
 
         # Add second node
         propertiesB = {'key1': u'2', 'new_key': u'n',
                        'timestamp': timestamp()}
-        self.driver.node_merge(node_id=node_id, properties=propertiesB,
-                               max_retries=retries)
+        g.node_merge(node_id=node_id, properties=propertiesB,
+                     max_retries=retries)
 
         # Merge properties
         merged = deepcopy(propertiesA)
@@ -205,14 +205,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
             # Test that there is only 1 non-void node with node_id and property
             # equality
             # if this is not part of another test, check the count
-            with self.driver.session_scope():
-                node = self.driver.node_lookup_one(node_id)
+            with g.session_scope():
+                node = g.node_lookup_one(node_id)
                 self.assertEqual(merged, node.properties)
-                voided_node = self.driver.node_lookup(
+                voided_node = g.node_lookup(
                     node_id, voided=True).first()
                 voided_props = sanitize(propertiesA)
                 self.assertEqual(voided_props, voided_node.properties)
-            self.verify_node_count(3, node_id=node_id, voided=True)
+            self.verify_node_count(2, node_id=node_id, voided=True)
 
         return merged
 
@@ -222,10 +222,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
         label = 'test'
         repeat = 10
         for i in range(repeat):
-            self.driver.node_merge(
+            g.node_merge(
                 node_id=str(uuid.uuid4()), label=label)
-        with self.driver.session_scope():
-            nodes = list(self.driver.node_lookup(label=label))
+        with g.session_scope():
+            nodes = list(g.node_lookup(label=label))
         self.assertEqual(len(nodes), repeat)
 
     def test_node_update_properties_by_matches(self):
@@ -243,29 +243,29 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         # Add first node
         propertiesA = {'key1': 'first', 'key2': 5}
-        node = self.driver.node_merge(node_id=node_id, label='test',
-                                      properties=propertiesA)
+        node = g.node_merge(node_id=node_id, label='test',
+                            properties=propertiesA)
         merged = node.properties
 
         # Add second node
         propertiesB = {'key1': 'second', 'key2': 6}
-        with self.driver.session_scope():
-            node = self.driver.node_lookup_one(property_matches=propertiesA)
-        self.driver.node_merge(node=node, label='test',
-                               properties=propertiesB)
+        with g.session_scope():
+            node = g.node_lookup_one(property_matches=propertiesA)
+        g.node_merge(node=node, label='test',
+                     properties=propertiesB)
 
         # Merge properties
         merged.update(propertiesB)
 
-        with self.driver.session_scope():
-            node = self.driver.node_lookup_one(property_matches=propertiesB)
+        with g.session_scope():
+            node = g.node_lookup_one(property_matches=propertiesB)
             print merged
             print node.properties
             self.assertEqual(merged, node.properties)
-            node = self.driver.node_lookup_one(node_id=node_id)
+            node = g.node_lookup_one(node_id=node_id)
             self.assertEqual(merged, node.properties)
 
-        nodes = self.verify_node_count(4, node_id=node_id, voided=True)
+        nodes = self.verify_node_count(3, node_id=node_id, voided=True)
         self.assertEqual(merged, nodes[0].properties)
         return merged
 
@@ -278,14 +278,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
         system_annotationsA = sanitize({
             'key1': None, 'key2': 2, 'key3': timestamp()
         })
-        node = self.driver.node_merge(node_id=node_id, label='test',
-                                      system_annotations=system_annotationsA)
+        node = g.node_merge(node_id=node_id, label='test',
+                            system_annotations=system_annotationsA)
         test_string = 'This is a test'
         node.system_annotations['key1'] = test_string
-        with self.driver.session_scope() as session:
+        with g.session_scope() as session:
             session.merge(node)
-        with self.driver.session_scope():
-            node = self.driver.nodes().ids(node_id).one()
+        with g.session_scope():
+            node = g.nodes().ids(node_id).one()
             self.assertTrue(node.system_annotations['key1'], test_string)
 
     def test_node_update_property_items(self):
@@ -295,14 +295,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
         node_id = str(uuid.uuid4())
 
         props = sanitize({'key1': None, 'key2': 2})
-        with self.driver.session_scope() as session:
+        with g.session_scope() as session:
             node = PolyNode(node_id, 'test', properties=props)
         test_string = 'This is a test'
         node.properties['key1'] = test_string
-        with self.driver.session_scope() as session:
+        with g.session_scope() as session:
             session.merge(node)
-        with self.driver.session_scope():
-            node = self.driver.nodes().ids(node_id).one()
+        with g.session_scope():
+            node = g.nodes().ids(node_id).one()
             self.assertTrue(node.properties['key1'], test_string)
 
     def test_node_update_system_annotations_id(self, given_id=None):
@@ -322,15 +322,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
         system_annotationsA = sanitize({
             'key1': None, 'key2': 2, 'key3': timestamp()
         })
-        self.driver.node_merge(node_id=node_id, label='test',
-                               system_annotations=system_annotationsA)
+        g.node_merge(node_id=node_id, label='test',
+                     system_annotations=system_annotationsA)
 
         # Add second node
         system_annotationsB = sanitize({
             'key1': None, 'new_key': 2, 'timestamp': timestamp()
         })
-        self.driver.node_merge(node_id=node_id, label='test',
-                               system_annotations=system_annotationsB)
+        g.node_merge(node_id=node_id, label='test',
+                     system_annotations=system_annotationsB)
 
         # Merge system_annotations
         merged = deepcopy(system_annotationsA)
@@ -338,14 +338,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         # if this is not part of another test, check the count
         if not given_id:
-            with self.driver.session_scope():
-                node = self.driver.node_lookup_one(node_id)
+            with g.session_scope():
+                node = g.node_lookup_one(node_id)
             print "merged:", sanitize(merged)
             print 'node:', sanitize(node.system_annotations)
-            self.assertEqual(sanitize(merged), sanitize(node.system_annotations))
+            self.assertEqual(
+                sanitize(merged), sanitize(node.system_annotations))
 
             nodes = list(self.verify_node_count(
-                3, node_id=node_id, voided=True))
+                2, node_id=node_id, voided=True))
             self.assertEqual(sanitize(system_annotationsA),
                              nodes[1].system_annotations)
 
@@ -353,7 +354,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def _insert_node(self, node):
         """Test inserting a node"""
-        with self.driver.session_scope() as session:
+        with g.session_scope() as session:
             session.add(node)
 
     def test_node_unique_id_constraint(self):
@@ -367,8 +368,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         # Add first node
         propertiesA = {'key1': None, 'key2': 2, 'key3': timestamp()}
-        self.driver.node_merge(node_id=tempid, label='test',
-                               properties=propertiesA)
+        g.node_merge(node_id=tempid, label='test', properties=propertiesA)
 
         propertiesB = {'key1': None, 'key2': 2, 'key3': timestamp()}
         with self.assertRaises(IntegrityError):
@@ -379,7 +379,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 label='test',
                 properties=propertiesB
             )
-            self.driver.node_insert(bad_node)
+            g.node_insert(bad_node)
 
     def test_null_node_void(self):
         """Test voiding of a null node
@@ -389,7 +389,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         self.assertRaises(
             psqlgraph.ProgrammingError,
-            self.driver._node_void,
+            g._node_void,
             None
         )
 
@@ -398,7 +398,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         Verify that the library handles null nodes properly on merging
         """
-        self.assertRaises(AssertionError, self.driver.node_merge)
+        self.assertRaises(AssertionError, g.node_merge)
 
     def test_repeated_node_update_properties_by_id(self, given_id=None):
         """Test repeated node updating to properties by ID
@@ -414,10 +414,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
             props = self.test_node_update_properties_by_id(node_id)
 
         if not given_id:
-            self.verify_node_count(self.REPEAT_COUNT*2+1, node_id=node_id,
+            self.verify_node_count(self.REPEAT_COUNT*2, node_id=node_id,
                                    voided=True)
-            with self.driver.session_scope():
-                node = self.driver.node_lookup_one(node_id)
+            with g.session_scope():
+                node = g.node_lookup_one(node_id)
             self.assertEqual(props, node.properties)
 
     def test_repeated_node_update_system_annotations_by_id(
@@ -437,10 +437,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
             annotations = self.test_node_update_system_annotations_id(node_id)
 
         if not given_id:
-            self.verify_node_count(REPEAT_COUNT*2+1, node_id=node_id,
-                                   voided=True)
-            with self.driver.session_scope():
-                node = self.driver.node_lookup_one(node_id)
+            self.verify_node_count(
+                REPEAT_COUNT*2, node_id=node_id, voided=True)
+            with g.session_scope():
+                node = g.node_lookup_one(node_id)
             self.assertEqual(
                 sanitize(annotations), sanitize(node.system_annotations))
 
@@ -455,7 +455,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         label = str(uuid.uuid4())
         node_ids = [str(uuid.uuid4()) for i in range(self.REPEAT_COUNT)]
         properties = {}
-        with self.driver.session_scope() as session:
+        with g.session_scope() as session:
             for node_id in node_ids:
                 properties[node_id] = {
                     'key1': node_id,
@@ -465,13 +465,13 @@ class TestPsqlGraphDriver(unittest.TestCase):
                     'timestamp': None
                 }
 
-                self.driver.node_merge(
+                g.node_merge(
                     node_id=node_id,
                     label='test',
                     properties=properties[node_id],
                     session=session,
                 )
-            nodes = list(self.driver.node_lookup(label=label))
+            nodes = list(g.node_lookup(label=label))
 
         for node in nodes:
             self.assertEqual(
@@ -511,17 +511,16 @@ class TestPsqlGraphDriver(unittest.TestCase):
         tempid = str(uuid.uuid4())
 
         propertiesA = {'key1':  None, 'key2':  2, 'key3':  timestamp()}
-        self.driver.node_merge(node_id=tempid, label='test',
-                               properties=propertiesA)
+        g.node_merge(node_id=tempid, label='test',
+                     properties=propertiesA)
 
         propertiesB = {'key1':  'second', 'key2':  0, 'key3':  timestamp(),
                        'new_key': None, 'timestamp': None}
-        self.driver.node_clobber(node_id=tempid, properties=propertiesB)
+        g.node_clobber(node_id=tempid, properties=propertiesB)
 
-        with self.driver.session_scope():
-            nodes = list(self.driver.node_lookup(node_id=tempid))
-        self.assertEqual(len(nodes), 1)
-        self.assertEqual(propertiesB, nodes[0].properties)
+        with g.session_scope():
+            node = g.node_lookup(node_id=tempid).one()
+        self.assertEqual(propertiesB, node.properties)
 
     @unittest.skip('depricated')
     def test_node_delete_property_keys(self):
@@ -529,15 +528,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         tempid = str(uuid.uuid4())
         properties = {'key1':  None, 'key2':  2, 'key3':  timestamp()}
-        self.driver.node_merge(node_id=tempid, label='test',
-                               properties=properties)
+        g.node_merge(node_id=tempid, label='test',
+                     properties=properties)
 
-        self.driver.node_delete_property_keys(['key2', 'key3'], node_id=tempid)
+        g.node_delete_property_keys(['key2', 'key3'], node_id=tempid)
         properties.pop('key2')
         properties.pop('key3')
 
-        with self.driver.session_scope():
-            nodes = self.driver.node_lookup_one(node_id=tempid)
+        with g.session_scope():
+            nodes = g.node_lookup_one(node_id=tempid)
         self.assertEqual(properties, nodes.properties)
 
     def test_node_delete_system_annotation_keys(self):
@@ -545,17 +544,17 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         tempid = str(uuid.uuid4())
         annotations = {'key1':  None, 'key2':  2, 'key3':  'test'}
-        self.driver.node_merge(node_id=tempid, label='test',
-                               system_annotations=annotations)
+        g.node_merge(node_id=tempid, label='test',
+                     system_annotations=annotations)
 
-        self.driver.node_delete_system_annotation_keys(
+        g.node_delete_system_annotation_keys(
             ['key2', 'key3'], node_id=tempid)
 
         annotations.pop('key2')
         annotations.pop('key3')
 
-        with self.driver.session_scope():
-            nodes = list(self.driver.node_lookup(node_id=tempid))
+        with g.session_scope():
+            nodes = list(g.node_lookup(node_id=tempid))
         self.assertEqual(len(nodes), 1, 'Expected a single node to be found, '
                          'instead found {count}'.format(count=len(nodes)))
         self.assertEqual(annotations, nodes[0].system_annotations)
@@ -564,23 +563,23 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """Test node deletion"""
 
         tempid = str(uuid.uuid4())
-        self.driver.node_merge(node_id=tempid, label='test')
-        self.driver.node_delete(node_id=tempid)
+        g.node_merge(node_id=tempid, label='test')
+        g.node_delete(node_id=tempid)
 
-        with self.driver.session_scope():
-            nodes = list(self.driver.node_lookup(tempid))
+        with g.session_scope():
+            nodes = list(g.node_lookup(tempid))
         self.assertEqual(len(nodes), 0, 'Expected a no non-voided nodes '
                          'to be found, instead found {count}'.format(
                              count=len(nodes)))
 
     def test_query_then_node_delete(self):
         """Test querying for a node then deleting it."""
-        node1 = self.driver.node_merge(node_id=str(uuid.uuid4()), label='test')
-        with self.driver.session_scope():
-            for node in self.driver.node_lookup(label="test").all():
-                self.driver.node_delete(node=node)
-        with self.driver.session_scope():
-            nodes = self.driver.node_lookup(node1.node_id).all()
+        node1 = g.node_merge(node_id=str(uuid.uuid4()), label='test')
+        with g.session_scope():
+            for node in g.node_lookup(label="test").all():
+                g.node_delete(node=node)
+        with g.session_scope():
+            nodes = g.node_lookup(node1.node_id).all()
         self.assertEqual(len(nodes), 0, 'Expected a no non-voided nodes '
                          'to be found, instead found {count}'.format(
                              count=len(nodes)))
@@ -591,10 +590,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
         node_id = str(uuid.uuid4())
         for i in range(self.REPEAT_COUNT):
             self.test_node_update_properties_by_id(node_id)
-            self.driver.node_delete(node_id=node_id)
-            with self.driver.session_scope():
+            g.node_delete(node_id=node_id)
+            with g.session_scope():
                 self.assertIs(
-                    self.driver.node_lookup_one(node_id=node_id), None)
+                    g.node_lookup_one(node_id=node_id), None)
 
     @unittest.skip('not implemented')
     def test_edge_insert_null_label(self):
@@ -614,72 +613,72 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """Test that generated edge ids are unique"""
         src_id = str(uuid.uuid4())
         dst_id = str(uuid.uuid4())
-        self.driver.node_merge(node_id=src_id, label='test')
-        self.driver.node_merge(node_id=dst_id, label='test')
+        g.node_merge(node_id=src_id, label='test')
+        g.node_merge(node_id=dst_id, label='test')
 
-        edge1 = self.driver.edge_insert(PsqlEdge(
+        edge1 = g.edge_insert(PsqlEdge(
             src_id=src_id, dst_id=dst_id, label='test1'))
-        edge2 = self.driver.edge_insert(PsqlEdge(
+        edge2 = g.edge_insert(PsqlEdge(
             src_id=src_id, dst_id=dst_id, label='test2'))
         self.assertNotEqual(edge1.edge_id, edge2.edge_id)
 
     @unittest.skip('not implemented')
     def test_edge_insert_and_lookup(self):
         """Test edge creation and lookup by dst_id, src_id, dst_id and src_id"""
-        with self.driver.session_scope():
+        with g.session_scope():
             src_id = str(uuid.uuid4())
             dst_id = str(uuid.uuid4())
-            self.driver.node_merge(node_id=src_id, label='test')
-            self.driver.node_merge(node_id=dst_id, label='test')
+            g.node_merge(node_id=src_id, label='test')
+            g.node_merge(node_id=dst_id, label='test')
 
-            edge = self.driver.edge_insert(PsqlEdge(
+            edge = g.edge_insert(PsqlEdge(
                 src_id=src_id, dst_id=dst_id, label='test'))
-            self.driver.edge_update(edge, properties={'test': None})
-            self.driver.edge_update(edge, properties={'test': 2})
+            g.edge_update(edge, properties={'test': None})
+            g.edge_update(edge, properties={'test': 2})
 
             props = {'test': 2}
-            edge = self.driver.edge_lookup_one(dst_id=dst_id)
+            edge = g.edge_lookup_one(dst_id=dst_id)
             self.assertEqual(edge.src_id, src_id)
             self.assertEqual(edge.dst_id, dst_id)
             self.assertEqual(edge.properties, props)
 
-            edge = self.driver.edge_lookup_one(src_id=src_id)
+            edge = g.edge_lookup_one(src_id=src_id)
             self.assertEqual(edge.src_id, src_id)
             self.assertEqual(edge.dst_id, dst_id)
             self.assertEqual(edge.properties, props)
 
-            edge = self.driver.edge_lookup_one(src_id=src_id, dst_id=dst_id)
+            edge = g.edge_lookup_one(src_id=src_id, dst_id=dst_id)
             self.assertEqual(edge.src_id, src_id)
             self.assertEqual(edge.dst_id, dst_id)
             self.assertEqual(edge.properties, props)
 
     @unittest.skip('not implemented')
     def test_edge_snapshot(self):
-        with self.driver.session_scope():
+        with g.session_scope():
             src_id = str(uuid.uuid4())
             dst_id = str(uuid.uuid4())
-            self.driver.node_merge(node_id=src_id, label='test')
-            self.driver.node_merge(node_id=dst_id, label='test')
+            g.node_merge(node_id=src_id, label='test')
+            g.node_merge(node_id=dst_id, label='test')
 
-            edge = self.driver.edge_insert(PsqlEdge(
+            edge = g.edge_insert(PsqlEdge(
                 src_id=src_id, dst_id=dst_id, label='test'))
-            self.driver.edge_update(edge, properties={'test': 2})
-            voided_edge = self.driver.edge_lookup(label='test', voided=True).one()
+            g.edge_update(edge, properties={'test': 2})
+            voided_edge = g.edge_lookup(label='test', voided=True).one()
             self.assertEqual({}, voided_edge.properties)
 
     @unittest.skip('not implemented')
     def test_edge_insert_and_lookup_properties(self):
         """Test edge property merging"""
-        with self.driver.session_scope():
+        with g.session_scope():
             src_id = str(uuid.uuid4())
             dst_id = str(uuid.uuid4())
             props = {'key1': str(random.random()), 'key2': random.random()}
-            self.driver.node_merge(node_id=src_id, label='test')
-            self.driver.node_merge(node_id=dst_id, label='test')
-            self.driver.edge_insert(PsqlEdge(
+            g.node_merge(node_id=src_id, label='test')
+            g.node_merge(node_id=dst_id, label='test')
+            g.edge_insert(PsqlEdge(
                 src_id=src_id, dst_id=dst_id, properties=props, label='test'
             ))
-            edge = self.driver.edge_lookup_one(src_id=src_id, dst_id=dst_id)
+            edge = g.edge_lookup_one(src_id=src_id, dst_id=dst_id)
             self.assertEqual(edge.src_id, src_id)
             self.assertEqual(edge.dst_id, dst_id)
             self.assertEqual(edge.properties, props)
@@ -692,18 +691,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
         and that all nodes are attached
         """
 
-        with self.driver.session_scope():
+        with g.session_scope():
             leaf_count = 10
             src_id = str(uuid.uuid4())
-            self.driver.node_merge(node_id=src_id, label='test')
+            g.node_merge(node_id=src_id, label='test')
 
             dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
             for dst_id in dst_ids:
-                self.driver.node_merge(node_id=dst_id, label='test')
-                self.driver.edge_insert(PsqlEdge(
+                g.node_merge(node_id=dst_id, label='test')
+                g.edge_insert(PsqlEdge(
                     src_id=src_id, dst_id=dst_id, label='test'))
 
-            edge_ids = [e.dst_id for e in self.driver.edge_lookup(src_id=src_id)]
+            edge_ids = [e.dst_id for e in g.edge_lookup(src_id=src_id)]
             self.assertEqual(len(set(edge_ids)), leaf_count)
 
             for dst_id in dst_ids:
@@ -717,27 +716,27 @@ class TestPsqlGraphDriver(unittest.TestCase):
         in a single session
         """
 
-        with self.driver.session_scope():
+        with g.session_scope():
             leaf_count = 10
             src_id = str(uuid.uuid4())
             dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
-            self.driver.node_merge(node_id=src_id, label='test')
+            g.node_merge(node_id=src_id, label='test')
 
-            with self.driver.session_scope() as session:
+            with g.session_scope() as session:
                 for dst_id in dst_ids:
-                    self.driver.node_merge(
+                    g.node_merge(
                         node_id=dst_id, label='test', session=session)
 
-            with self.driver.session_scope() as session:
+            with g.session_scope() as session:
                 for dst_id in dst_ids:
-                    node = self.driver.node_lookup_one(
+                    node = g.node_lookup_one(
                         node_id=dst_id, session=session)
-                    self.driver.edge_insert(
+                    g.edge_insert(
                         PsqlEdge(src_id=src_id, dst_id=node.node_id, label='test'),
                         session=session
                     )
 
-            edge_ids = [e.dst_id for e in self.driver.edge_lookup(
+            edge_ids = [e.dst_id for e in g.edge_lookup(
                 src_id=src_id)]
             self.assertEqual(len(set(edge_ids)), leaf_count)
 
@@ -751,91 +750,91 @@ class TestPsqlGraphDriver(unittest.TestCase):
         Test path deletion and verify deletion is cascaded to edges
         """
 
-        with self.driver.session_scope():
+        with g.session_scope():
             leaf_count = 10
             src_id = str(uuid.uuid4())
             dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
-            self.driver.node_merge(node_id=src_id, label='test')
+            g.node_merge(node_id=src_id, label='test')
 
             # Create nodes and link them to source
             for dst_id in dst_ids:
-                self.driver.node_merge(node_id=dst_id, label='test')
-                self.driver.edge_insert(PsqlEdge(
+                g.node_merge(node_id=dst_id, label='test')
+                g.edge_insert(PsqlEdge(
                     src_id=src_id, dst_id=dst_id, label='test'))
 
             # Verify that the edges there are correct
             for dst_id in dst_ids:
-                edge = self.driver.edge_lookup_one(dst_id=dst_id)
+                edge = g.edge_lookup_one(dst_id=dst_id)
                 self.assertEqual(edge.src_id, src_id)
 
-                edges = [e.dst_id for e in self.driver.edge_lookup(src_id=src_id)]
+                edges = [e.dst_id for e in g.edge_lookup(src_id=src_id)]
                 for dst_id in dst_ids:
                     self.assertTrue(dst_id in set(edges))
 
             # Delete all dst nodes
             for dst_id in dst_ids:
-                self.driver.node_delete(node_id=dst_id)
+                g.node_delete(node_id=dst_id)
 
             # Make sure that there are no hanging edges
-            edges = [e.dst_id for e in self.driver.edge_lookup(src_id=src_id)]
+            edges = [e.dst_id for e in g.edge_lookup(src_id=src_id)]
             for dst_id in dst_ids:
                 self.assertTrue(dst_id not in set(edges))
             for dst_id in dst_ids:
-                self.assertIs(self.driver.edge_lookup_one(dst_id=dst_id), None)
+                self.assertIs(g.edge_lookup_one(dst_id=dst_id), None)
 
     @unittest.skip('not implemented')
     def test_node_validator_error(self):
         """Test node validator error"""
 
-        with self.driver.session_scope():
+        with g.session_scope():
             node_id = str(uuid.uuid4())
-            temp = self.driver.node_validator.validate
-            self.driver.node_validator.validate = lambda x: False
+            temp = g.node_validator.validate
+            g.node_validator.validate = lambda x: False
             try:
                 self.assertRaises(
                     ValidationError,
-                    self.driver.node_merge, node_id, label='test',
+                    g.node_merge, node_id, label='test',
                 )
             except:
-                self.driver.node_validator.validate = temp
+                g.node_validator.validate = temp
                 raise
 
     @unittest.skip('not implemented')
     def test_edge_validator_error(self):
         """Test edge validator error"""
 
-        with self.driver.session_scope():
+        with g.session_scope():
             src_id = str(uuid.uuid4())
             dst_id = str(uuid.uuid4())
-            temp = self.driver.edge_validator.validate
-            self.driver.edge_validator.validate = lambda x: False
-            self.driver.node_merge(src_id, label='test')
-            self.driver.node_merge(dst_id, label='test')
+            temp = g.edge_validator.validate
+            g.edge_validator.validate = lambda x: False
+            g.node_merge(src_id, label='test')
+            g.node_merge(dst_id, label='test')
 
             try:
                 self.assertRaises(
                     ValidationError,
-                    self.driver.edge_insert,
+                    g.edge_insert,
                     PsqlEdge(src_id=src_id, dst_id=dst_id, label='test'),
                 )
             except:
-                self.driver.edge_validator.validate = temp
+                g.edge_validator.validate = temp
                 raise
 
     @unittest.skip('not implemented')
     def test_get_nodes(self):
         """Test node get"""
 
-        with self.driver.session_scope():
+        with g.session_scope():
             self._clear_tables()
 
             ret_node_ids = []
             node_ids = [str(uuid.uuid4()) for i in range(self.REPEAT_COUNT*10)]
 
             for node_id in node_ids:
-                self.driver.node_merge(node_id, label='test')
+                g.node_merge(node_id, label='test')
 
-            nodes = self.driver.get_nodes()
+            nodes = g.get_nodes()
 
             for node in nodes:
                 self.assertTrue(node.node_id in node_ids)
@@ -848,7 +847,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_get_edges(self):
         """Test edge get"""
 
-        with self.driver.session_scope():
+        with g.session_scope():
             self._clear_tables()
 
             count = 10
@@ -856,15 +855,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
             dst_ids = [str(uuid.uuid4()) for i in range(count)]
 
             for src_id, dst_id in zip(src_ids, dst_ids):
-                self.driver.node_merge(src_id, label='test_src')
-                self.driver.node_merge(dst_id, label='test_dst')
-                self.driver.edge_insert(PsqlEdge(
+                g.node_merge(src_id, label='test_src')
+                g.node_merge(dst_id, label='test_dst')
+                g.edge_insert(PsqlEdge(
                     src_id=src_id,
                     dst_id=dst_id,
                     label='test_edge',
                 ))
 
-            edges = self.driver.get_edges()
+            edges = g.get_edges()
             ret_src_ids = []
             ret_dst_ids = []
             for edge in edges:
@@ -879,12 +878,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     @unittest.skip('not implemented')
     def _create_subtree(self, parent_id, level=0):
-        with self.driver.session_scope():
+        with g.session_scope():
             for i in range(5):
                 node_id = str(uuid.uuid4())
-                self.driver.node_merge(
+                g.node_merge(
                     node_id=node_id, label='test_{}'.format(level))
-                self.driver.edge_insert(PsqlEdge(
+                g.edge_insert(PsqlEdge(
                     src_id=parent_id, dst_id=node_id, label='test'
                 ))
                 if level < 2:
@@ -892,50 +891,50 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     @unittest.skip('not implemented')
     def _walk_tree(self, node, level=0):
-        with self.driver.session_scope():
+        with g.session_scope():
             for edge in node.edges_out:
                 print '+--'*level + '>', edge.dst
                 self._walk_tree(edge.dst, level+1)
 
     @unittest.skip('not implemented')
     def test_tree_walk(self):
-        with self.driver.session_scope():
+        with g.session_scope():
             node_id = str(uuid.uuid4())
-            self.driver.node_merge(node_id=node_id, label='test')
+            g.node_merge(node_id=node_id, label='test')
             self._create_subtree(node_id)
-            with self.driver.session_scope() as session:
-                node = self.driver.node_lookup_one(node_id, session=session)
+            with g.session_scope() as session:
+                node = g.node_lookup_one(node_id, session=session)
                 self._walk_tree(node)
 
     @unittest.skip('not implemented')
     def test_edge_multiplicity(self):
-        with self.driver.session_scope():
+        with g.session_scope():
             src_id = str(uuid.uuid4())
             dst_id = str(uuid.uuid4())
-            self.driver.node_merge(node_id=src_id, label='test')
-            self.driver.node_merge(node_id=dst_id, label='test')
-            self.driver.edge_insert(PsqlEdge(
+            g.node_merge(node_id=src_id, label='test')
+            g.node_merge(node_id=dst_id, label='test')
+            g.edge_insert(PsqlEdge(
                 src_id=src_id, dst_id=dst_id, label='a'))
-            self.driver.edge_insert(PsqlEdge(
+            g.edge_insert(PsqlEdge(
                 src_id=src_id, dst_id=dst_id, label='b'))
-            self.assertEqual(len(list(self.driver.edge_lookup(
+            self.assertEqual(len(list(g.edge_lookup(
                 src_id=src_id, dst_id=dst_id))), 2)
-            self.assertEqual(len(list(self.driver.edge_lookup(
+            self.assertEqual(len(list(g.edge_lookup(
                 src_id=src_id, dst_id=dst_id, label='a'))), 1)
-            self.assertEqual(len(list(self.driver.edge_lookup(
+            self.assertEqual(len(list(g.edge_lookup(
                 src_id=src_id, dst_id=dst_id, label='b'))), 1)
             self.assertRaises(
                 IntegrityError,
-                self.driver.edge_insert,
+                g.edge_insert,
                 PsqlEdge(src_id=src_id, dst_id=dst_id, label='a')
             )
 
     def test_simple_automatic_session(self):
         idA = str(uuid.uuid4())
-        with self.driver.session_scope():
-            self.driver.node_insert(PsqlNode(idA, 'test'))
-        with self.driver.session_scope():
-            self.driver.node_lookup(idA).one()
+        with g.session_scope():
+            g.node_insert(PsqlNode(idA, 'test'))
+        with g.session_scope():
+            g.node_lookup(idA).one()
 
     def test_rollback_automatic_session(self):
         """test_rollback_automatic_session
@@ -947,11 +946,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """
         nid = str(uuid.uuid4())
         with self.assertRaises(IntegrityError):
-            with self.driver.session_scope():
-                self.driver.node_insert(PsqlNode(nid, 'test'))
-                self.driver.node_insert(PsqlNode(nid, 'test'))
-        with self.driver.session_scope():
-            self.assertEqual(len(list(self.driver.node_lookup(nid).all())), 0)
+            with g.session_scope():
+                g.node_insert(PsqlNode(nid, 'test'))
+                g.node_insert(PsqlNode(nid, 'test'))
+        with g.session_scope():
+            self.assertEqual(len(list(g.node_lookup(nid).all())), 0)
 
     def test_commit_automatic_session(self):
         """test_commit_automatic_session
@@ -963,14 +962,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         nid = str(uuid.uuid4())
-        self.driver.node_insert(PsqlNode(nid, 'test'))
+        g.node_insert(PsqlNode(nid, 'test'))
         self.assertRaises(
             IntegrityError,
-            self.driver.node_insert,
+            g.node_insert,
             PsqlNode(nid, 'test'))
-        with self.driver.session_scope():
-            self.assertEqual(self.driver.node_lookup(nid).one().label, 'test')
-        self.assertFalse(self.driver.has_session())
+        with g.session_scope():
+            self.assertEqual(g.node_lookup(nid).one().label, 'test')
+        self.assertFalse(g.has_session())
 
     def test_automatic_nested_session(self):
         """test_automatic_nested_session
@@ -981,14 +980,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """
         nid = str(uuid.uuid4())
         with self.assertRaises(IntegrityError):
-            with self.driver.session_scope():
-                self.driver.node_insert(PsqlNode(nid, 'test'))
-                with self.driver.session_scope(can_inherit=False):
-                    self.driver.node_insert(PsqlNode(nid, 'test'))
-        with self.driver.session_scope():
+            with g.session_scope():
+                g.node_insert(PsqlNode(nid, 'test'))
+                with g.session_scope(can_inherit=False):
+                    g.node_insert(PsqlNode(nid, 'test'))
+        with g.session_scope():
             self.assertEqual(
-                self.driver.node_lookup(nid).one().label, 'test')
-        self.assertFalse(self.driver.has_session())
+                g.node_lookup(nid).one().label, 'test')
+        self.assertFalse(g.has_session())
 
     def test_automatic_nested_session2(self):
         """test_automatic_nested_session2
@@ -1000,15 +999,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """
         id1 = str(uuid.uuid4())
         id2 = str(uuid.uuid4())
-        self.driver.node_insert(PsqlNode(id1, 'foo'))
-        with self.driver.session_scope():
-            self.driver.node_insert(PsqlNode(id2, 'test'))
+        g.node_insert(PsqlNode(id1, 'foo'))
+        with g.session_scope():
+            g.node_insert(PsqlNode(id2, 'test'))
             with self.assertRaises(IntegrityError):
-                with self.driver.session_scope(can_inherit=False):
-                    self.driver.node_insert(PsqlNode(id1, 'foo'))
-        with self.driver.session_scope():
-            self.assertEqual(self.driver.node_lookup(id2).one().label, 'test')
-        self.assertFalse(self.driver.has_session())
+                with g.session_scope(can_inherit=False):
+                    g.node_insert(PsqlNode(id1, 'foo'))
+        with g.session_scope():
+            self.assertEqual(g.node_lookup(id2).one().label, 'test')
+        self.assertFalse(g.has_session())
 
     def test_automatic_nested_session3(self):
         """test_automatic_nested_session3
@@ -1019,17 +1018,17 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
-        self.driver.node_insert(PsqlNode(id1, 'foo'))
-        with self.driver.session_scope():
-            self.driver.node_insert(PsqlNode(id2, 'test'))
+        g.node_insert(PsqlNode(id1, 'foo'))
+        with g.session_scope():
+            g.node_insert(PsqlNode(id2, 'test'))
             with self.assertRaises(IntegrityError):
-                with self.driver.session_scope(can_inherit=False):
-                    self.driver.node_insert(PsqlNode(id1, 'foo'))
-                    self.driver.node_insert(PsqlNode(id3, 'foo'))
-        with self.driver.session_scope():
-            self.assertEqual(self.driver.node_lookup(id2).one().label, 'test')
-            self.assertEqual(self.driver.node_lookup(id3).count(), 0)
-        self.assertFalse(self.driver.has_session())
+                with g.session_scope(can_inherit=False):
+                    g.node_insert(PsqlNode(id1, 'foo'))
+                    g.node_insert(PsqlNode(id3, 'foo'))
+        with g.session_scope():
+            self.assertEqual(g.node_lookup(id2).one().label, 'test')
+            self.assertEqual(g.node_lookup(id3).count(), 0)
+        self.assertFalse(g.has_session())
 
     def test_automatic_nested_session_inherit_valid(self):
         """test_automatic_nested_session_inherit_valid
@@ -1039,15 +1038,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
-        with self.driver.session_scope():
-            self.driver.node_insert(PsqlNode(id1, 'test'))
-            with self.driver.session_scope():
-                    self.driver.node_insert(PsqlNode(id2, 'foo'))
+        with g.session_scope():
+            g.node_insert(PsqlNode(id1, 'test'))
+            with g.session_scope():
+                    g.node_insert(PsqlNode(id2, 'foo'))
             self.assertEqual(
-                self.driver.node_lookup(id1).one().label, 'test')
+                g.node_lookup(id1).one().label, 'test')
             self.assertEqual(
-                self.driver.node_lookup(id2).one().label, 'foo')
-        self.assertFalse(self.driver.has_session())
+                g.node_lookup(id2).one().label, 'foo')
+        self.assertFalse(g.has_session())
 
     def test_automatic_nested_session_inherit_invalid(self):
         """test_automatic_nested_session_inherit_invalid
@@ -1057,16 +1056,16 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
-        with self.driver.session_scope() as outer:
-            self.driver.node_insert(PsqlNode(id1, 'test'))
-            with self.driver.session_scope() as inner:
+        with g.session_scope() as outer:
+            g.node_insert(PsqlNode(id1, 'test'))
+            with g.session_scope() as inner:
                 self.assertEqual(inner, outer)
-                self.driver.node_insert(PsqlNode(id2, 'foo'))
+                g.node_insert(PsqlNode(id2, 'foo'))
                 inner.rollback()
-        with self.driver.session_scope():
-            self.assertEqual(self.driver.node_lookup(id1).count(), 0)
-            self.assertEqual(self.driver.node_lookup(id2).count(), 0)
-        self.assertFalse(self.driver.has_session())
+        with g.session_scope():
+            self.assertEqual(g.node_lookup(id1).count(), 0)
+            self.assertEqual(g.node_lookup(id2).count(), 0)
+        self.assertFalse(g.has_session())
 
     def test_explicit_to_inherit_nested_session(self):
         """test_explicit_to_inherit_nested_session
@@ -1076,23 +1075,23 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
-        outer = self.driver._new_session()  # don't do this
-        with self.driver.session_scope(outer):
-            self.driver.node_insert(PsqlNode(id1, 'test'))
-            with self.driver.session_scope() as inner:
+        outer = g._new_session()  # don't do this
+        with g.session_scope(outer):
+            g.node_insert(PsqlNode(id1, 'test'))
+            with g.session_scope() as inner:
                 self.assertEqual(inner, outer)
-                self.driver.node_insert(PsqlNode(id2, 'foo'))
-                with self.driver.session_scope() as third:
+                g.node_insert(PsqlNode(id2, 'foo'))
+                with g.session_scope() as third:
                     self.assertEqual(third, outer)
-                    self.driver.node_insert(PsqlNode(id3, 'foo'))
-        with self.driver.session_scope():
-            self.assertEqual(self.driver.node_lookup(id2).count(), 0)
+                    g.node_insert(PsqlNode(id3, 'foo'))
+        with g.session_scope():
+            self.assertEqual(g.node_lookup(id2).count(), 0)
         outer.commit()
-        with self.driver.session_scope():
-            self.assertEqual(self.driver.node_lookup(id1).count(), 1)
-            self.assertEqual(self.driver.node_lookup(id2).count(), 1)
-            self.assertEqual(self.driver.node_lookup(id3).count(), 1)
-        self.assertFalse(self.driver.has_session())
+        with g.session_scope():
+            self.assertEqual(g.node_lookup(id1).count(), 1)
+            self.assertEqual(g.node_lookup(id2).count(), 1)
+            self.assertEqual(g.node_lookup(id3).count(), 1)
+        self.assertFalse(g.has_session())
 
     def test_explicit_to_inherit_nested_session_rollback(self):
         """test_explicit_to_inherit_nested_session_rollback
@@ -1102,21 +1101,21 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
-        outer = self.driver._new_session()  # don't do this
-        with self.driver.session_scope(outer):
-            self.driver.node_insert(PsqlNode(id1, 'test'))
-            with self.driver.session_scope() as inner:
+        outer = g._new_session()  # don't do this
+        with g.session_scope(outer):
+            g.node_insert(PsqlNode(id1, 'test'))
+            with g.session_scope() as inner:
                 self.assertEqual(inner, outer)
-                self.driver.node_insert(PsqlNode(id2, 'foo'))
-                with self.driver.session_scope() as third:
+                g.node_insert(PsqlNode(id2, 'foo'))
+                with g.session_scope() as third:
                     self.assertEqual(third, outer)
-                    self.driver.node_insert(PsqlNode(id3, 'foo'))
+                    g.node_insert(PsqlNode(id3, 'foo'))
                     third.rollback()
-        with self.driver.session_scope():
-            self.assertEqual(self.driver.node_lookup(id1).count(), 0)
-            self.assertEqual(self.driver.node_lookup(id2).count(), 0)
-            self.assertEqual(self.driver.node_lookup(id3).count(), 0)
-        self.assertFalse(self.driver.has_session())
+        with g.session_scope():
+            self.assertEqual(g.node_lookup(id1).count(), 0)
+            self.assertEqual(g.node_lookup(id2).count(), 0)
+            self.assertEqual(g.node_lookup(id3).count(), 0)
+        self.assertFalse(g.has_session())
 
     def test_mixed_session_inheritance(self):
         """test_mixed_session_inheritance
@@ -1127,25 +1126,25 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
-        external = self.driver._new_session()
-        with self.driver.session_scope() as outer:
-            self.driver.node_insert(PsqlNode(id1, 'foo'))
-            with self.driver.session_scope(external) as inner:
+        external = g._new_session()
+        with g.session_scope() as outer:
+            g.node_insert(PsqlNode(id1, 'foo'))
+            with g.session_scope(external) as inner:
                 self.assertEqual(inner, external)
                 self.assertNotEqual(inner, outer)
-                self.driver.node_insert(PsqlNode(id2, 'test'))
-                with self.driver.session_scope(outer) as third:
+                g.node_insert(PsqlNode(id2, 'test'))
+                with g.session_scope(outer) as third:
                     self.assertEqual(third, outer)
-                    self.driver.node_insert(PsqlNode(id3, 'foo'))
+                    g.node_insert(PsqlNode(id3, 'foo'))
                     third.rollback()
-        with self.driver.session_scope():
-            self.assertEqual(self.driver.node_lookup(id2).count(), 0)
+        with g.session_scope():
+            self.assertEqual(g.node_lookup(id2).count(), 0)
         external.commit()
-        with self.driver.session_scope():
-            self.assertEqual(self.driver.node_lookup(id1).count(), 0)
-            self.assertEqual(self.driver.node_lookup(id2).count(), 1)
-            self.assertEqual(self.driver.node_lookup(id3).count(), 0)
-        self.assertFalse(self.driver.has_session())
+        with g.session_scope():
+            self.assertEqual(g.node_lookup(id1).count(), 0)
+            self.assertEqual(g.node_lookup(id2).count(), 1)
+            self.assertEqual(g.node_lookup(id3).count(), 0)
+        self.assertFalse(g.has_session())
 
     def test_explicit_session(self):
         """test_explicit_session
@@ -1154,23 +1153,23 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
         id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
-        with self.driver.session_scope() as session:
-            self.driver.node_insert(PsqlNode(id1, 'foo'))
-            self.driver.node_insert(PsqlNode(id2, 'foo'), session)
+        with g.session_scope() as session:
+            g.node_insert(PsqlNode(id1, 'foo'))
+            g.node_insert(PsqlNode(id2, 'foo'), session)
             session.rollback()
-        with self.driver.session_scope():
-            self.assertEqual(self.driver.node_lookup(id2).count(), 0)
-            self.assertEqual(self.driver.node_lookup(id1).count(), 0)
-        self.assertFalse(self.driver.has_session())
+        with g.session_scope():
+            self.assertEqual(g.node_lookup(id2).count(), 0)
+            self.assertEqual(g.node_lookup(id1).count(), 0)
+        self.assertFalse(g.has_session())
 
     def test_library_functions_use_session_implicitly(self):
         """Test that library functions use the session they're scoped in
 
         """
         id1 = str(uuid.uuid4())
-        with self.driver.session_scope():
-            self.driver.node_insert(PsqlNode(id1, 'test'))
-            self.driver.node_lookup(node_id=id1).one()
+        with g.session_scope():
+            g.node_insert(PsqlNode(id1, 'test'))
+            g.node_lookup(node_id=id1).one()
 
 
 if __name__ == '__main__':

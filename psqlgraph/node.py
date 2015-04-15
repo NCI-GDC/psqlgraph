@@ -1,24 +1,13 @@
-from sqlalchemy import UniqueConstraint
-from sqlalchemy.dialects.postgres import ARRAY, JSONB
-from sqlalchemy import Column, Text, DateTime, BigInteger
-from sqlalchemy.orm import object_session
 from datetime import datetime
-import copy
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import event, ForeignKey
-from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy import Column, Text, DateTime, UniqueConstraint, event
+from sqlalchemy.dialects.postgres import ARRAY, JSONB
+from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import object_session, sessionmaker
+import copy
 
-from sqlalchemy.ext.declarative import AbstractConcreteBase, \
-    ConcreteBase, declared_attr
-from sqlalchemy.dialects.postgresql.json import JSONElement
-from sqlalchemy.orm import sessionmaker
-
-Base = declarative_base()
-
-
-def node_load_listener(*args, **kwargs):
-    print 'event', args, kwargs
+from base import Base
+from voided_node import VoidedNode
 
 
 def sanitize(properties):
@@ -26,7 +15,7 @@ def sanitize(properties):
     for key, value in properties.items():
         if isinstance(value, (int, str, long, bool, type(None))):
             sanitized[str(key)] = value
-        elif isinstance(value, (unicode)):
+        elif isinstance(value, unicode):
             sanitized[str(key)] = str(value)
         else:
             raise ValueError(
@@ -46,7 +35,7 @@ class SystemAnnotationDict(dict):
 
     def update(self, system_annotations):
         system_annotations = sanitize(system_annotations)
-        temp = sanitize({k: v for k, v in self.source._sysan.items()})
+        temp = sanitize(self.source._sysan)
         temp.update(system_annotations)
         self.source._sysan = temp
         super(SystemAnnotationDict, self).update(system_annotations)
@@ -59,15 +48,12 @@ class PropertiesDict(dict):
 
     def __init__(self, source):
         self.source = source
-        temp = {k: None for k in source.get_property_list()}
-        temp.update(source._props)
-        super(PropertiesDict, self).__init__(temp)
+        super(PropertiesDict, self).__init__(
+            source.property_template(source._props))
 
     def update(self, properties):
         properties = sanitize(properties)
-        temp = self.source.property_template()
-        current = sanitize({k: v for k, v in self.source._props.items()})
-        temp.update(current)
+        temp = sanitize(self.source._props)
         temp.update(properties)
         self.source._props = temp
         super(PropertiesDict, self).update(temp)
@@ -95,8 +81,6 @@ class Node(AbstractConcreteBase, Base):
         default=list(),
     )
 
-    # System annotations are wrapped under a hybrid property so we can
-    # intercept interactions to allow correct setting and getting
     _sysan = Column(
         JSONB,
         default={},
@@ -135,14 +119,14 @@ class Node(AbstractConcreteBase, Base):
     def __table_args__(cls):
         name = cls.__name__.lower()
         if name == 'voidednode':
-            return tuple()
+            return ('extend_existing')
         else:
             return (UniqueConstraint(
                 'node_id', name='_{}_id_uc'.format(name)),)
 
-    def __init__(self, node_id=None, label=None, acl=[],
-                 system_annotations={}, properties={}):
-        self._props = self.property_template()
+    def __init__(self, node_id=None, properties={}, acl=[],
+                 system_annotations={}, label=None):
+        self._props = {}
         self.system_annotations = system_annotations
         self.node_id = node_id
         self.acl = acl
@@ -161,10 +145,12 @@ class Node(AbstractConcreteBase, Base):
     def set_property(self, key, val):
         if not self.has_property(key):
             raise KeyError('{} has no property {}'.format(type(self), key))
-        self._props[key] = val
+        self.properties[key] = val
 
-    def property_template(self):
-        return {k: None for k in self.get_property_list()}
+    def property_template(self, properties={}):
+        temp = {k: None for k in self.get_property_list()}
+        temp.update(properties)
+        return temp
 
     @hybrid_property
     def label(self):
@@ -172,9 +158,9 @@ class Node(AbstractConcreteBase, Base):
 
     @label.setter
     def label(self, label):
-        # if self._label is not None and self._label != label:
-        #     raise AttributeError('Cannot change label from {} to {}'.format(
-        #         self._label, label))
+        if self._label is not None and self._label != label:
+            raise AttributeError('Cannot change label from {} to {}'.format(
+                self._label, label))
         self._label = label
 
     @hybrid_property
@@ -251,68 +237,32 @@ class Node(AbstractConcreteBase, Base):
         if acl is not None:
             self.acl = acl
 
+    @property
+    def _history(self):
+        session = self.get_session()
+        if not session:
+            raise RuntimeError(
+                '{} not bound to a session. Try get_history(session).'.format(
+                    self))
+        return self.get_history(session)
+
+    def get_history(self, session):
+        return session.query(VoidedNode)\
+                      .filter(VoidedNode.node_id == self.node_id)\
+                      .order_by(VoidedNode.voided.desc())
+
 
 def PolyNode(node_id=None, label=None, acl=[], system_annotations={},
              properties={}):
     assert label, 'You cannot create a PolyNode without a label.'
     Type = Node.get_subclass(label)
-    return Type(node_id, label, acl, system_annotations, properties)
-
-
-class VoidedNode(Base):
-
-    __tablename__ = '_voided_nodes'
-
-    key = Column(
-        BigInteger,
-        primary_key=True,
-        nullable=False
+    return Type(
+        node_id=node_id,
+        properties=properties,
+        acl=acl,
+        system_annotations=system_annotations,
+        label=label
     )
-
-    node_id = Column(
-        Text,
-        nullable=False,
-    )
-
-    created = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(),
-    )
-
-    voided = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(),
-    )
-
-    acl = Column(
-        ARRAY(Text),
-        default=list(),
-    )
-
-    system_annotations = Column(
-        JSONB,
-        default={},
-    )
-
-    properties = Column(
-        JSONB,
-        default={},
-    )
-
-    label = Column(
-        Text,
-        nullable=False,
-    )
-
-    def __init__(self, node):
-        self.created = node.created
-        self.node_id = node.node_id
-        self.acl = node.acl
-        self.label = node.label
-        self.system_annotations = node.system_annotations
-        self.properties = node.properties
 
 
 class Edge(object):
@@ -327,34 +277,37 @@ class Edge(object):
         getattr(self, key)
 
 
-def snapshot_node(target):
-    session = target.get_session()
+@event.listens_for(Node, 'before_insert', propagate=True)
+def receive_before_insert(mapper, connection, node):
+    node._props = node.properties
+
+
+def snapshot_node(session, target):
+    if not target:
+        return
     voided_node = VoidedNode(target)
     session.add(voided_node)
 
 
-@event.listens_for(Node, 'after_insert', propagate=True)
-def node_insert_listener(mapper, connection, target):
-    snapshot_node(target)
+def lookup_existing_node(session, node_id):
+    Clean = sessionmaker()
+    Clean.configure(bind=session.bind)
+    clean = Clean()
+    return clean.query(Node).filter(Node.node_id == node_id).scalar()
 
 
-@event.listens_for(Node, 'before_update', propagate=True)
-def node_update_listener(mapper, connection, target):
-    return
-    # cls = type(target)
-    # existing = session.query(cls).filter(cls.node_id == target.node_id)\
-    #                              .one()._props
-    # print existing
-    # for key, val in target._props.iteritems():
-    #     print key, val
-    #     if val is not None:
-    #         existing[key] = val
-    # target.properties = existing
-    # print target.properties
-    snapshot_node(target)
+def merge_node_onto_existing_node(session, existing, node):
+    if not existing:
+        node._props = node.properties
+    else:
+        temp = node.property_template()
+        temp.update(existing._props)
+        temp.update(node._props)
+        node._props = temp
 
 
 def receive_before_flush(session, flush_context, instances):
-    print 'flushing', session, flush_context, instances
-    # import ipdb
-    # ipdb.set_trace()
+    for node in session.dirty:
+        existing = lookup_existing_node(session, node.node_id)
+        snapshot_node(session, existing)
+        merge_node_onto_existing_node(session, existing, node)

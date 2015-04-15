@@ -6,7 +6,8 @@ import logging
 from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker, configure_mappers
 from xlocal import xlocal
-from node import PolyNode, Node, VoidedNode, receive_before_flush
+from node import PolyNode, Node, receive_before_flush
+from voided_node import VoidedNode
 from util import retryable, default_backoff
 from query import GraphQuery
 from sqlalchemy import create_engine, event
@@ -261,7 +262,7 @@ class PsqlGraphDriver(object):
                      system_annotations=None, properties=None,
                      session=None, max_retries=DEFAULT_RETRIES,
                      backoff=default_backoff):
-        with self.session_scope() as local:
+        with self.session_scope(session) as local:
             if not node:
                 node = self.node_lookup().one()
             if acl is not None:
@@ -269,7 +270,9 @@ class PsqlGraphDriver(object):
             if system_annotations is not None:
                 node.system_annotations = system_annotations
             if properties is not None:
-                node.properties = properties
+                temp = node.property_template()
+                temp.update(properties)
+                node.properties = temp
             local.merge(node)
 
     @retryable

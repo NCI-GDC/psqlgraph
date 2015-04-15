@@ -73,7 +73,6 @@ class Edge(AbstractConcreteBase, ORMBase):
         return [s for s in cls.__subclasses__()]
 
     def snapshot_existing(self, session, existing):
-        print 'snapshotting:', existing
         if existing:
             voided_node = VoidedEdge(existing)
             session.add(voided_node)

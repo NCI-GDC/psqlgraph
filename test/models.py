@@ -65,6 +65,14 @@ class Edge1(Edge):
     __src_label__ = 'test'
     __dst_label__ = 'test'
 
+    @hybrid_property
+    def test(self):
+        return self.properties['test']
+
+    @test.setter
+    def test(self, value):
+        self.properties['test'] = value
+
 
 class Edge2(Edge):
     __src_label__ = 'test'

@@ -40,7 +40,11 @@ class PropertiesDict(dict):
     def update(self, properties={}):
         properties = sanitize(properties)
         temp = sanitize(self.source._props)
-        temp.update(properties)
+        for key, val in properties.iteritems():
+            if not self.source.has_property(key):
+                raise AttributeError('{} has no property {}'.format(
+                    self.source, key))
+            temp[key] = val
         self.source._props = temp
         super(PropertiesDict, self).update(temp)
 

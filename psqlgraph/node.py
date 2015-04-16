@@ -92,12 +92,12 @@ class Node(AbstractConcreteBase, ORMBase):
                       .filter(VoidedNode.label == self.label)\
                       .order_by(VoidedNode.voided.desc())
 
-    def snapshot_existing(self, session, existing):
+    def _snapshot_existing(self, session, existing):
         if existing:
             voided_node = VoidedNode(existing)
             session.add(voided_node)
 
-    def merge_onto_existing(self, session, existing):
+    def _merge_onto_existing(self, session, existing):
         if not existing:
             self._props = self.properties
         else:
@@ -106,7 +106,7 @@ class Node(AbstractConcreteBase, ORMBase):
             temp.update(self._props)
             self._props = temp
 
-    def lookup_existing(self, session):
+    def _lookup_existing(self, session):
         Clean = sessionmaker()
         Clean.configure(bind=session.bind)
         clean = Clean()
@@ -130,4 +130,5 @@ def PolyNode(node_id=None, label=None, acl=[], system_annotations={},
 
 @event.listens_for(Node, 'before_insert', propagate=True)
 def receive_before_insert(mapper, connection, node):
+    node._validate()
     node._props = node.properties

@@ -679,7 +679,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertEqual(edge.dst_id, dst_id)
             self.assertEqual(edge.properties, edge.property_template(props))
 
-    @unittest.skip('not implemented')
     def test_edge_lookup_leaves(self):
         """Test looking up the leaves on an edge
 
@@ -696,7 +695,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             for dst_id in dst_ids:
                 g.node_merge(node_id=dst_id, label='test')
                 g.edge_insert(PsqlEdge(
-                    src_id=src_id, dst_id=dst_id, label='test'))
+                    src_id=src_id, dst_id=dst_id, label='edge1'))
 
             edge_ids = [e.dst_id for e in g.edge_lookup(src_id=src_id)]
             self.assertEqual(len(set(edge_ids)), leaf_count)
@@ -704,7 +703,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
             for dst_id in dst_ids:
                 self.assertTrue(dst_id in set(edge_ids))
 
-    @unittest.skip('not implemented')
     def test_sessioned_path_insertion(self):
         """Test creation of a sessioned node path
 
@@ -728,7 +726,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                     node = g.node_lookup_one(
                         node_id=dst_id, session=session)
                     g.edge_insert(
-                        PsqlEdge(src_id=src_id, dst_id=node.node_id, label='test'),
+                        PsqlEdge(src_id=src_id, dst_id=node.node_id, label='edge1'),
                         session=session
                     )
 
@@ -739,7 +737,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
             for dst_id in dst_ids:
                 self.assertTrue(dst_id in set(edge_ids))
 
-    @unittest.skip('not implemented')
     def test_path_deletion(self):
         """Test path deletion
 
@@ -756,7 +753,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             for dst_id in dst_ids:
                 g.node_merge(node_id=dst_id, label='test')
                 g.edge_insert(PsqlEdge(
-                    src_id=src_id, dst_id=dst_id, label='test'))
+                    src_id=src_id, dst_id=dst_id, label='edge1'))
 
             # Verify that the edges there are correct
             for dst_id in dst_ids:
@@ -778,7 +775,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             for dst_id in dst_ids:
                 self.assertIs(g.edge_lookup_one(dst_id=dst_id), None)
 
-    @unittest.skip('not implemented')
+    @unittest.skip('deprecated')
     def test_node_validator_error(self):
         """Test node validator error"""
 
@@ -795,7 +792,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 g.node_validator.validate = temp
                 raise
 
-    @unittest.skip('not implemented')
+    @unittest.skip('deprecated')
     def test_edge_validator_error(self):
         """Test edge validator error"""
 
@@ -817,7 +814,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 g.edge_validator.validate = temp
                 raise
 
-    @unittest.skip('not implemented')
     def test_get_nodes(self):
         """Test node get"""
 
@@ -839,7 +835,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 self.assertTrue(node_id in ret_node_ids)
             self.assertEqual(len(node_ids), len(ret_node_ids))
 
-    @unittest.skip('not implemented')
     def test_get_edges(self):
         """Test edge get"""
 
@@ -851,12 +846,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
             dst_ids = [str(uuid.uuid4()) for i in range(count)]
 
             for src_id, dst_id in zip(src_ids, dst_ids):
-                g.node_merge(src_id, label='test_src')
-                g.node_merge(dst_id, label='test_dst')
+                g.node_merge(src_id, label='test')
+                g.node_merge(dst_id, label='test')
                 g.edge_insert(PsqlEdge(
                     src_id=src_id,
                     dst_id=dst_id,
-                    label='test_edge',
+                    label='edge1',
                 ))
 
             edges = g.get_edges()
@@ -872,20 +867,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
             for dst_id in dst_ids:
                 self.assertTrue(dst_id in ret_dst_ids)
 
-    @unittest.skip('not implemented')
     def _create_subtree(self, parent_id, level=0):
         with g.session_scope():
             for i in range(5):
                 node_id = str(uuid.uuid4())
                 g.node_merge(
-                    node_id=node_id, label='test_{}'.format(level))
+                    node_id=node_id, label='test'.format(level))
                 g.edge_insert(PsqlEdge(
-                    src_id=parent_id, dst_id=node_id, label='test'
+                    src_id=parent_id, dst_id=node_id, label='edge1'
                 ))
                 if level < 2:
                     self._create_subtree(node_id, level+1)
 
-    @unittest.skip('not implemented')
     def _walk_tree(self, node, level=0):
         with g.session_scope():
             for edge in node.edges_out:

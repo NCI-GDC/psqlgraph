@@ -48,13 +48,17 @@ class CommonBase(object):
         nullable=False,
     )
 
-    @declared_attr
-    def __tablename__(cls):
+    @classmethod
+    def get_label(cls):
         return getattr(cls, '__label__', cls.__name__.lower())
 
     @declared_attr
+    def __tablename__(cls):
+        return cls.get_label()
+
+    @declared_attr
     def __mapper_args__(cls):
-        name = cls.__tablename__
+        name = cls.get_label()
         if name in abstract_classes:
             return {
                 'polymorphic_on': cls._label,

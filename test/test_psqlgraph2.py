@@ -89,6 +89,23 @@ class TestPsqlGraphDriver(unittest.TestCase):
             expected = _props(Test, new)
             self.assertEqual(g.nodes().ids(nid).one().properties, expected)
 
+    def test_validate_property(self):
+        node = Test(str(uuid.uuid4()))
+        node._set_property('key1', 1)  # Should not raise
+        node.key1 = 'test'
+        node['key1'] = 'test'
+        node.properties['key1'] = 'test'
+        node._set_property('key1', 'test')
+        node.properties.update({'key1': 'test'})
+        with self.assertRaises(AssertionError):
+            node.key1 = 1
+        with self.assertRaises(AssertionError):
+            node['key1'] = 1
+        with self.assertRaises(AssertionError):
+            node.properties['key1'] = 1
+        with self.assertRaises(AssertionError):
+            node.properties.update({'key1': 1})
+
     def test_set_query_result_properties(self):
         nid = str(uuid.uuid4())
         new = {'key1': 'first property', 'key2': 'first pass'}

@@ -9,12 +9,15 @@ from psqlgraph.base import CommonBase
 
 class Test(Node):
 
+    # test = relationship("Edge1", foreign_keys=,backref='test')
+
     @hybrid_property
     def key1(self):
         return self._get_property('key1')
 
     @key1.setter
     def key1(self, value):
+        assert isinstance(value, (str, type(None)))
         self._set_property('key1', value)
 
     @hybrid_property
@@ -64,6 +67,7 @@ class Foo(Node):
 
 
 class Edge1(Edge):
+
     __src_label__ = 'test'
     __dst_label__ = 'test'
 
@@ -93,5 +97,7 @@ class Edge1(Edge):
 
 
 class Edge2(Edge):
+    __label__ = 'test_edge_2'
+
     __src_label__ = 'test'
     __dst_label__ = 'foo'

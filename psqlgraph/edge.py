@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import Column, Text, DateTime, UniqueConstraint, \
     event, ForeignKey
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
-from sqlalchemy.orm import object_session, sessionmaker
+from sqlalchemy.orm import object_session, sessionmaker, relationship
 
 from base import ORMBase
 from voided_edge import VoidedEdge
@@ -36,6 +36,22 @@ class Edge(AbstractConcreteBase, ORMBase):
     @declared_attr
     def dst_id(self):
         return self._node_id_column(self.__dst_label__)
+
+    __src_label__ = ''
+    __dst_label__ = ''
+
+    # @declared_attr
+    # def src(self):
+    #     src_class = getattr(self, '__src_class__', None)
+    #     if hasattr(self, '__src_label__') and self.__src_label__:
+    #         cls_name = src_class or self.__src_label__.title()
+    #         print cls_name
+    #         print self.src_id
+    #         return relationship(cls_name, foreign_keys=[self.src_id])
+
+    # @declared_attr
+    # def dst(self):
+    #     return relationship(self.__dst_label__, foreign_keys=[self.src_id])
 
     @declared_attr
     def __table_args__(cls):
@@ -76,12 +92,12 @@ class Edge(AbstractConcreteBase, ORMBase):
     def get_subclasses(cls, label):
         return [s for s in cls.__subclasses__()]
 
-    def snapshot_existing(self, session, existing):
+    def _snapshot_existing(self, session, existing):
         if existing:
             voided_node = VoidedEdge(existing)
             session.add(voided_node)
 
-    def merge_onto_existing(self, session, existing):
+    def _merge_onto_existing(self, session, existing):
         if not existing:
             self._props = self.properties
         else:
@@ -90,7 +106,7 @@ class Edge(AbstractConcreteBase, ORMBase):
             temp.update(self._props)
             self._props = temp
 
-    def lookup_existing(self, session):
+    def _lookup_existing(self, session):
         Clean = sessionmaker()
         Clean.configure(bind=session.bind)
         clean = Clean()
@@ -122,4 +138,5 @@ def PolyEdge(src_id=None, dst_id=None, label=None, acl=[],
 
 @event.listens_for(Edge, 'before_insert', propagate=True)
 def receive_before_insert(mapper, connection, edge):
+    edge._validate()
     edge._props = edge.properties

@@ -47,11 +47,12 @@ class PropertiesDict(dict):
             if not self.source.has_property(key):
                 raise AttributeError('{} has no property {}'.format(
                     self.source, key))
-            self.source._set_property(key, val)
+            setattr(self.source, key, val)
         super(PropertiesDict, self).update(self.source._props)
 
     def __setitem__(self, key, val):
-        self.update({key: val})
+        setattr(self.source, key, val)
+        super(PropertiesDict, self).__setitem__(key, val)
 
     def __delitem__(self, key):
         raise RuntimeError('You cannot delete ORM properties, only void them.')

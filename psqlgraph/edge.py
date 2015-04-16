@@ -41,6 +41,10 @@ class Edge(AbstractConcreteBase, ORMBase):
     def __table_args__(cls):
         return tuple()
 
+    @declared_attr
+    def __tablename__(cls):
+        return cls.__name__.lower()
+
     def __init__(self, src_id=None, dst_id=None, properties={}, acl=[],
                  system_annotations={}, label=None):
         self._props = {}

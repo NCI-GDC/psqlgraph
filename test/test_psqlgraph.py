@@ -48,6 +48,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             if table != Node.__tablename__:
                 conn.execute('delete from {}'.format(table))
         conn.execute('delete from _voided_nodes')
+        conn.execute('delete from _voided_edges')
         conn.close()
 
     def test_getitem(self):
@@ -240,26 +241,26 @@ class TestPsqlGraphDriver(unittest.TestCase):
         propertiesA = {'key1': 'first', 'key2': 5}
         node = g.node_merge(node_id=node_id, label='test',
                             properties=propertiesA)
-        merged = node.properties
+        merged = {k: v for k, v in node.properties.iteritems()}
 
         # Add second node
         propertiesB = {'key1': 'second', 'key2': 6}
         with g.session_scope():
             node = g.node_lookup_one(property_matches=propertiesA)
-        g.node_merge(node=node, label='test',
-                     properties=propertiesB)
+        g.node_merge(node=node, label='test', properties=propertiesB)
 
         # Merge properties
         merged.update(propertiesB)
 
         with g.session_scope():
-            nodes = g.nodes().props(propertiesB)
+            print propertiesB
+            nodes = g.nodes().props(propertiesB).all()
             print nodes
             node = g.node_lookup_one(property_matches=propertiesB)
             print merged
             print node.properties
             self.assertEqual(merged, node.properties)
-            node = g.node_lookup_one(node_id=node_id)
+            node = g.nodes().ids(node_id).one()
             self.assertEqual(merged, node.properties)
 
         nodes = self.verify_node_count(3, node_id=node_id, voided=True)
@@ -633,7 +634,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             g.edge_update(edge, properties={'test': None})
             g.edge_update(edge, properties={'test': 2})
 
-            props = {'test': 2}
+            props = edge.property_template({'test': 2})
             edge = g.edge_lookup_one(dst_id=dst_id)
             self.assertEqual(edge.src_id, src_id)
             self.assertEqual(edge.dst_id, dst_id)
@@ -655,15 +656,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
             dst_id = str(uuid.uuid4())
             g.node_merge(node_id=src_id, label='test')
             g.node_merge(node_id=dst_id, label='test')
-
             edge = g.edge_insert(PsqlEdge(
                 src_id=src_id, dst_id=dst_id, label='edge1'))
-            g.edge_update(edge, properties={'test': 2})
         with g.session_scope():
+            g.edge_update(edge, properties={'test': 3})
             voided_edge = g.edge_lookup(label='edge1', voided=True).one()
-            self.assertEqual({}, voided_edge.properties)
+            self.assertEqual(edge.property_template({'test': None}),
+                             voided_edge.properties)
 
-    @unittest.skip('not implemented')
     def test_edge_insert_and_lookup_properties(self):
         """Test edge property merging"""
         with g.session_scope():
@@ -673,12 +673,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
             g.node_merge(node_id=src_id, label='test')
             g.node_merge(node_id=dst_id, label='test')
             g.edge_insert(PsqlEdge(
-                src_id=src_id, dst_id=dst_id, properties=props, label='test'
-            ))
+                src_id=src_id, dst_id=dst_id, properties=props, label='edge1'))
             edge = g.edge_lookup_one(src_id=src_id, dst_id=dst_id)
             self.assertEqual(edge.src_id, src_id)
             self.assertEqual(edge.dst_id, dst_id)
-            self.assertEqual(edge.properties, props)
+            self.assertEqual(edge.properties, edge.property_template(props))
 
     @unittest.skip('not implemented')
     def test_edge_lookup_leaves(self):

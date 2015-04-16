@@ -91,7 +91,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_set_query_result_properties(self):
         nid = str(uuid.uuid4())
-        # node = Test(nid, {'key2': 'first pass'})
         new = {'key1': 'first property', 'key2': 'first pass'}
         node = Test(nid, dict(key2=new['key2']))
         with g.session_scope() as session:
@@ -99,6 +98,20 @@ class TestPsqlGraphDriver(unittest.TestCase):
         with g.session_scope() as session:
             queried = g.nodes().ids(nid).one()
             queried.properties = new
+            session.merge(queried)
+        with g.session_scope() as session:
+            expected = _props(Test, new)
+            self.assertEqual(g.nodes().ids(nid).one().properties, expected)
+
+    def test_update_query_result_properties(self):
+        nid = str(uuid.uuid4())
+        new = {'key1': 'first property', 'key2': 'first pass'}
+        node = Test(nid, dict(key2=new['key2']))
+        with g.session_scope() as session:
+            session.merge(node)
+        with g.session_scope() as session:
+            queried = g.nodes().ids(nid).one()
+            queried.properties.update(new)
             session.merge(queried)
         with g.session_scope() as session:
             expected = _props(Test, new)

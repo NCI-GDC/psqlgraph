@@ -15,7 +15,7 @@ from query import GraphQuery
 from node import PolyNode, Node
 from voided_node import VoidedNode
 from hooks import receive_before_flush
-from edge import Edge
+from edge import Edge, PolyEdge
 from voided_edge import VoidedEdge
 
 DEFAULT_RETRIES = 0
@@ -339,9 +339,7 @@ class PsqlGraphDriver(object):
         with self.session_scope(session) as local:
             for key, val in system_annotations.items():
                 edge.system_annotations[key] = val
-            print properties
             edge.properties.update(properties)
-            print edge.properties
             local.merge(edge)
         return edge
 

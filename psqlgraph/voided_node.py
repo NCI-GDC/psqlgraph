@@ -1,5 +1,5 @@
 from sqlalchemy.dialects.postgres import ARRAY, JSONB
-from sqlalchemy import Column, Text, DateTime, BigInteger
+from sqlalchemy import Column, Text, DateTime, BigInteger, text
 from datetime import datetime
 from base import Base
 
@@ -22,13 +22,13 @@ class VoidedNode(Base):
     created = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(),
+        server_default=text('now()'),
     )
 
     voided = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(),
+        server_default=text('now()'),
     )
 
     acl = Column(

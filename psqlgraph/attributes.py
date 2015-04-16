@@ -1,6 +1,10 @@
 from util import sanitize
 
 
+class PropertiesDictError(Exception):
+    pass
+
+
 class SystemAnnotationDict(dict):
     """Transparent wrapper for _sysan so you can update it as
     if it were a dict and the changes get pushed to the sqlalchemy object
@@ -39,14 +43,12 @@ class PropertiesDict(dict):
 
     def update(self, properties={}):
         properties = sanitize(properties)
-        temp = sanitize(self.source._props)
         for key, val in properties.iteritems():
             if not self.source.has_property(key):
                 raise AttributeError('{} has no property {}'.format(
                     self.source, key))
-            temp[key] = val
-        self.source._props = temp
-        super(PropertiesDict, self).update(temp)
+            self.source._set_property(key, val)
+        super(PropertiesDict, self).update(self.source._props)
 
     def __setitem__(self, key, val):
         self.update({key: val})

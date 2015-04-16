@@ -1,9 +1,10 @@
 from datetime import datetime
-from sqlalchemy import Column, Text, DateTime, UniqueConstraint, event
+from sqlalchemy import Column, Text, DateTime, UniqueConstraint, event, text
 from sqlalchemy.dialects.postgres import ARRAY, JSONB
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import object_session, sessionmaker
+import copy
 
 from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
@@ -19,7 +20,7 @@ class CommonBase(object):
     created = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(),
+        server_default=text('now()'),
     )
 
     acl = Column(
@@ -49,11 +50,11 @@ class CommonBase(object):
 
     @declared_attr
     def __tablename__(cls):
-        return cls.__name__.lower()
+        return getattr(cls, '__label__', cls.__name__.lower())
 
     @declared_attr
     def __mapper_args__(cls):
-        name = getattr(cls, '__label__', cls.__name__.lower())
+        name = cls.__tablename__
         if name in abstract_classes:
             return {
                 'polymorphic_on': cls._label,
@@ -76,12 +77,18 @@ class CommonBase(object):
     @properties.setter
     def properties(self, properties):
         for key, val in sanitize(properties).items():
-            self.set_property(key, val)
+            self._set_property(key, val)
 
-    def set_property(self, key, val):
+    def _set_property(self, key, val):
         if not self.has_property(key):
             raise KeyError('{} has no property {}'.format(type(self), key))
-        self.properties[key] = val
+        self._props = {k: v for k, v in self._props.iteritems()}
+        self._props[key] = val
+
+    def _get_property(self, key):
+        if not self.has_property(key):
+            raise KeyError('{} has no property {}'.format(type(self), key))
+        return self._props.get(key, None)
 
     def property_template(self, properties={}):
         temp = {k: None for k in self.get_property_list()}
@@ -128,7 +135,7 @@ class CommonBase(object):
         return getattr(self, key)
 
     def __setitem__(self, key, val):
-        self.properties[key] = val
+        setattr(self, key, val)
 
 
 ORMBase = declarative_base(cls=CommonBase)

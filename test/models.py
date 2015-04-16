@@ -26,7 +26,7 @@ class Test(Node):
 
     @key2.setter
     def key2(self, value):
-        self._set_property('key1', value)
+        self._set_property('key2', value)
 
     @hybrid_property
     def key3(self):

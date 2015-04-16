@@ -47,6 +47,7 @@ class PropertiesDict(dict):
             if not self.source.has_property(key):
                 raise AttributeError('{} has no property {}'.format(
                     self.source, key))
+            print 'update', key, val
             setattr(self.source, key, val)
         super(PropertiesDict, self).update(self.source._props)
 

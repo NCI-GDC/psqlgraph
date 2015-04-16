@@ -141,6 +141,13 @@ class CommonBase(object):
     def __setitem__(self, key, val):
         setattr(self, key, val)
 
+    def _get_clean_session(self, session=None):
+        if not session:
+            session = self.get_session()
+        Clean = sessionmaker()
+        Clean.configure(bind=session.bind)
+        return Clean()
+
     def _validate(self, session=None):
         for key in getattr(self, '__nonnull_properties__', []):
             assert self.properties[key] is not None,\

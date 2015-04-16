@@ -3,7 +3,7 @@ from sqlalchemy import Column, Text, DateTime, UniqueConstraint, event
 from sqlalchemy.dialects.postgres import ARRAY, JSONB
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import object_session, sessionmaker
+from sqlalchemy.orm import object_session, sessionmaker, relationship
 import copy
 
 from base import ORMBase
@@ -12,6 +12,14 @@ from util import sanitize
 
 
 class Node(AbstractConcreteBase, ORMBase):
+
+    @declared_attr
+    def _edges_in(cls):
+        return list()
+
+    @declared_attr
+    def _edges_out(cls):
+        return list()
 
     node_id = Column(
         Text,
@@ -24,6 +32,26 @@ class Node(AbstractConcreteBase, ORMBase):
         name = cls.__name__.lower()
         return (UniqueConstraint(
             'node_id', name='_{}_id_uc'.format(name)),)
+
+    @hybrid_property
+    def edges_out(self):
+        edges_out = []
+        for name in self._edges_out:
+            edges_out += getattr(self, name)
+        return edges_out
+
+    @hybrid_property
+    def edges_in(self):
+        edges_in = []
+        for name in self._edges_in:
+            edges_in += getattr(self, name)
+        return edges_in
+
+    def get_edges(self):
+        for edge_in in self.edges_in:
+            yield edge_in
+        for edge_out in self.edges_out:
+            yield edge_out
 
     def __init__(self, node_id=None, properties={}, acl=[],
                  system_annotations={}, label=None):
@@ -73,7 +101,7 @@ class Node(AbstractConcreteBase, ORMBase):
         return [s.__tablename__ for s in Node.__subclasses__()]
 
     @classmethod
-    def get_subclasses(cls, label):
+    def get_subclasses(cls):
         return [s for s in cls.__subclasses__()]
 
     @property
@@ -107,12 +135,24 @@ class Node(AbstractConcreteBase, ORMBase):
             self._props = temp
 
     def _lookup_existing(self, session):
-        Clean = sessionmaker()
-        Clean.configure(bind=session.bind)
-        clean = Clean()
+        clean = self._get_clean_session(session)
         return clean.query(Node).filter(Node.node_id == self.node_id)\
                                 .filter(Node._label == self.label)\
                                 .scalar()
+
+    def _check_unique(self):
+        clean = self._get_clean_session()
+        current = self.get_session()
+        others = clean.query(Node).filter(Node.node_id == self.node_id)\
+                                  .filter(Node._label != self.label)
+        assert others.count() == 0,\
+            'There is another node with id "{}" in the database'.format(
+                self.node_id)
+        others = current.query(Node).filter(Node.node_id == self.node_id)\
+                                    .filter(Node._label != self.label)
+        assert others.count() == 0,\
+            'There is another node with id "{}" in current session'.format(
+                self.node_id)
 
 
 def PolyNode(node_id=None, label=None, acl=[], system_annotations={},
@@ -130,5 +170,6 @@ def PolyNode(node_id=None, label=None, acl=[], system_annotations={},
 
 @event.listens_for(Node, 'before_insert', propagate=True)
 def receive_before_insert(mapper, connection, node):
+    # node._check_unique()
     node._validate()
     node._props = node.properties

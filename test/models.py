@@ -1,53 +1,15 @@
 from sqlalchemy import Column, Text, BigInteger, Integer,\
-    UniqueConstraint, ForeignKey, DateTime, Table
+    UniqueConstraint, ForeignKey, DateTime, Table, Text
 from sqlalchemy.orm import relationship, validates
-from psqlgraph import Node, Edge
+from psqlgraph import Node
+from psqlgraph.edge import Edge, IDColumn, edge_attributes
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from psqlgraph.base import CommonBase
-
-
-class Edge1(Edge):
-
-    __src_label__ = 'test'
-    __dst_label__ = 'test'
-
-    @hybrid_property
-    def test(self):
-        return self._get_property('test')
-
-    @test.setter
-    def test(self, value):
-        self._set_property('test', value)
-
-    @hybrid_property
-    def key1(self):
-        return self._get_property('key1')
-
-    @key1.setter
-    def key1(self, value):
-        self._set_property('key1', value)
-
-    @hybrid_property
-    def key2(self):
-        return self._get_property('key2')
-
-    @key2.setter
-    def key2(self, value):
-        self._set_property('key2', value)
-
-
-class Edge2(Edge):
-    __label__ = 'test_edge_2'
-
-    __src_label__ = 'test'
-    __dst_label__ = 'foo'
+from sqlalchemy.ext.associationproxy import association_proxy
 
 
 class Test(Node):
-
-    edges_out = relationship("Edge1", foreign_keys=[Edge1.src_id])
-    edges_in = relationship("Edge1", foreign_keys=[Edge1.dst_id])
 
     @hybrid_property
     def key1(self):
@@ -122,3 +84,45 @@ class FooBar(Node):
     @bar.setter
     def bar(self, value):
         self._set_property('bar', value)
+
+
+class Edge1(Edge):
+
+    __src__ = 'Test'
+    __dst__ = 'Test'
+
+    src_id, dst_id, src, dst = edge_attributes('edge1', __src__, __dst__)
+
+    @hybrid_property
+    def test(self):
+        return self._get_property('test')
+
+    @test.setter
+    def test(self, value):
+        self._set_property('test', value)
+
+    @hybrid_property
+    def key1(self):
+        return self._get_property('key1')
+
+    @key1.setter
+    def key1(self, value):
+        self._set_property('key1', value)
+
+    @hybrid_property
+    def key2(self):
+        return self._get_property('key2')
+
+    @key2.setter
+    def key2(self, value):
+        self._set_property('key2', value)
+
+
+class Edge2(Edge):
+
+    __label__ = 'test_edge_2'
+
+    __src__ = 'Test'
+    __dst__ = 'Foo'
+
+    src_id, dst_id, src, dst = edge_attributes('edge2', __src__, __dst__)

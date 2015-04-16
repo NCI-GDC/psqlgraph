@@ -3,9 +3,54 @@ from sqlalchemy import Column, Text, DateTime, UniqueConstraint, \
     event, ForeignKey
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.orm import object_session, sessionmaker, relationship
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from base import ORMBase
 from voided_edge import VoidedEdge
+from node import Node
+
+
+def IDColumn(tablename):
+    return Column(
+        Text, ForeignKey(
+            '{}.node_id'.format(tablename),
+            ondelete="CASCADE",
+            deferrable=True,
+            initially="DEFERRED",
+        ), primary_key=True, nullable=False)
+
+
+def inject_edge_in(edge_name, node_class_name):
+    for cls in Node.get_subclasses():
+        if cls.__name__ == node_class_name:
+            cls._edges_in.append(edge_name)
+
+
+def inject_edge_out(edge_name, node_class_name):
+    for cls in Node.get_subclasses():
+        if cls.__name__ == node_class_name:
+            cls._edges_out.append(edge_name)
+
+
+def edge_attributes(name, src_class, dst_class,
+                    src_table=None, dst_table=None):
+    src_table = src_table or src_class.lower()
+    dst_table = dst_table or dst_class.lower()
+    src_id = IDColumn(src_table)
+    dst_id = IDColumn(dst_table)
+    edge_out_name = '{}_out'.format(name)
+    edge_in_name = '{}_in'.format(name)
+    inject_edge_in(edge_in_name, dst_class)
+    inject_edge_out(edge_out_name, src_class)
+    src = relationship(
+        src_class, foreign_keys=[src_id],
+        backref=edge_out_name,
+    )
+    dst = relationship(
+        dst_class, foreign_keys=[dst_id],
+        backref=edge_in_name,
+    )
+    return (src_id, dst_id, src, dst)
 
 
 class Edge(AbstractConcreteBase, ORMBase):
@@ -15,43 +60,6 @@ class Edge(AbstractConcreteBase, ORMBase):
         nullable=False,
         primary_key=True,
     )
-
-    @classmethod
-    def _node_id_column(self, table):
-        if not table:
-            return None
-        return Column(
-            Text,
-            ForeignKey(
-                '{}.node_id'.format(table),
-                ondelete="CASCADE"),
-            primary_key=True,
-            nullable=False
-        )
-
-    @declared_attr
-    def src_id(self):
-        return self._node_id_column(self.__src_label__)
-
-    @declared_attr
-    def dst_id(self):
-        return self._node_id_column(self.__dst_label__)
-
-    __src_label__ = ''
-    __dst_label__ = ''
-
-    # @declared_attr
-    # def src(self):
-    #     src_class = getattr(self, '__src_class__', None)
-    #     if hasattr(self, '__src_label__') and self.__src_label__:
-    #         cls_name = src_class or self.__src_label__.title()
-    #         print cls_name
-    #         print self.src_id
-    #         return relationship(cls_name, foreign_keys=[self.src_id])
-
-    # @declared_attr
-    # def dst(self):
-    #     return relationship(self.__dst_label__, foreign_keys=[self.src_id])
 
     @declared_attr
     def __table_args__(cls):
@@ -75,6 +83,21 @@ class Edge(AbstractConcreteBase, ORMBase):
         return '<{}(({})-[{}]->({})>'.format(
             self.__class__.__name__, self.src_id, self.label, self.dst_id)
 
+    @declared_attr
+    def __mapper_args__(cls):
+        name = cls.get_label()
+        if isinstance(cls, Edge):
+            return {
+                'polymorphic_on': cls._label,
+                'polymorphic_identity': name,
+                'with_polymorphic': '*',
+            }
+        else:
+            return {
+                'polymorphic_identity': name,
+                'concrete': True,
+            }
+
     @classmethod
     def get_subclass(cls, label):
         for c in cls.__subclasses__():
@@ -89,7 +112,7 @@ class Edge(AbstractConcreteBase, ORMBase):
         return [s.__tablename__ for s in Edge.__subclasses__()]
 
     @classmethod
-    def get_subclasses(cls, label):
+    def get_subclasses(cls):
         return [s for s in cls.__subclasses__()]
 
     def _snapshot_existing(self, session, existing):
@@ -107,9 +130,7 @@ class Edge(AbstractConcreteBase, ORMBase):
             self._props = temp
 
     def _lookup_existing(self, session):
-        Clean = sessionmaker()
-        Clean.configure(bind=session.bind)
-        clean = Clean()
+        clean = self._get_clean_session(session)
         return clean.query(Edge).filter(Edge.src_id == self.src_id)\
                                 .filter(Edge.dst_id == self.dst_id)\
                                 .filter(Edge._label == self.label)\
@@ -118,8 +139,8 @@ class Edge(AbstractConcreteBase, ORMBase):
 
 class _PseudoEdge(Edge):
     """Necessary to have atleast one class inherit from abstract Edge"""
-    __src_label__ = None
-    __dst_label__ = None
+    __src__ = None
+    __dst__ = None
 
 
 def PolyEdge(src_id=None, dst_id=None, label=None, acl=[],

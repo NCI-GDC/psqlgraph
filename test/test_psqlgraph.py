@@ -253,12 +253,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
         merged.update(propertiesB)
 
         with g.session_scope():
-            print propertiesB
             nodes = g.nodes().props(propertiesB).all()
-            print nodes
             node = g.node_lookup_one(property_matches=propertiesB)
-            print merged
-            print node.properties
             self.assertEqual(merged, node.properties)
             node = g.nodes().ids(node_id).one()
             self.assertEqual(merged, node.properties)

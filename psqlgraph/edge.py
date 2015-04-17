@@ -7,7 +7,6 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 from base import ORMBase
 from voided_edge import VoidedEdge
-from node import Node
 
 
 def IDColumn(tablename):
@@ -20,36 +19,14 @@ def IDColumn(tablename):
         ), primary_key=True, nullable=False)
 
 
-def inject_edge_in(edge_name, node_class_name):
-    for cls in Node.get_subclasses():
-        if cls.__name__ == node_class_name:
-            cls._edges_in.append(edge_name)
-
-
-def inject_edge_out(edge_name, node_class_name):
-    for cls in Node.get_subclasses():
-        if cls.__name__ == node_class_name:
-            cls._edges_out.append(edge_name)
-
-
 def edge_attributes(name, src_class, dst_class,
                     src_table=None, dst_table=None):
     src_table = src_table or src_class.lower()
     dst_table = dst_table or dst_class.lower()
     src_id = IDColumn(src_table)
     dst_id = IDColumn(dst_table)
-    edge_out_name = '{}_out'.format(name)
-    edge_in_name = '{}_in'.format(name)
-    inject_edge_in(edge_in_name, dst_class)
-    inject_edge_out(edge_out_name, src_class)
-    src = relationship(
-        src_class, foreign_keys=[src_id],
-        backref=edge_out_name,
-    )
-    dst = relationship(
-        dst_class, foreign_keys=[dst_id],
-        backref=edge_in_name,
-    )
+    src = relationship(src_class, foreign_keys=[src_id])
+    dst = relationship(dst_class, foreign_keys=[dst_id])
     return (src_id, dst_id, src, dst)
 
 
@@ -60,6 +37,24 @@ class Edge(AbstractConcreteBase, ORMBase):
         nullable=False,
         primary_key=True,
     )
+
+    __src_class__ = None
+    __src_table__ = None
+    __dst_class__ = None
+    __dst_table__ = None
+
+    src_id, dst_id, src, dst = None, None, None, None
+
+    @classmethod
+    def __declare_last__(cls):
+        if cls == Edge:
+            return
+        src_table = cls.__src_table__ or cls.__src_class__.lower()
+        dst_table = cls.__dst_table__ or cls.__dst_class__.lower()
+        cls.src_id = IDColumn(src_table)
+        cls.dst_id = IDColumn(dst_table)
+        cls.src = relationship(cls.__src_class__, foreign_keys=[cls.src_id])
+        cls.dst = relationship(cls.__dst_class__, foreign_keys=[cls.dst_id])
 
     @declared_attr
     def __table_args__(cls):
@@ -135,12 +130,6 @@ class Edge(AbstractConcreteBase, ORMBase):
                                 .filter(Edge.dst_id == self.dst_id)\
                                 .filter(Edge._label == self.label)\
                                 .scalar()
-
-
-class _PseudoEdge(Edge):
-    """Necessary to have atleast one class inherit from abstract Edge"""
-    __src__ = None
-    __dst__ = None
 
 
 def PolyEdge(src_id=None, dst_id=None, label=None, acl=[],

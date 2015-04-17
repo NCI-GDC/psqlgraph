@@ -9,6 +9,43 @@ from psqlgraph.base import CommonBase
 from sqlalchemy.ext.associationproxy import association_proxy
 
 
+class Edge1(Edge):
+
+    __src_class__ = 'Test'
+    __dst_class__ = 'Test'
+
+    @hybrid_property
+    def test(self):
+        return self._get_property('test')
+
+    @test.setter
+    def test(self, value):
+        self._set_property('test', value)
+
+    @hybrid_property
+    def key1(self):
+        return self._get_property('key1')
+
+    @key1.setter
+    def key1(self, value):
+        self._set_property('key1', value)
+
+    @hybrid_property
+    def key2(self):
+        return self._get_property('key2')
+
+    @key2.setter
+    def key2(self, value):
+        self._set_property('key2', value)
+
+
+class Edge2(Edge):
+
+    __label__ = 'test_edge_2'
+    __src_class__ = 'Test'
+    __dst_class__ = 'Foo'
+
+
 class Test(Node):
 
     @hybrid_property
@@ -84,45 +121,3 @@ class FooBar(Node):
     @bar.setter
     def bar(self, value):
         self._set_property('bar', value)
-
-
-class Edge1(Edge):
-
-    __src__ = 'Test'
-    __dst__ = 'Test'
-
-    src_id, dst_id, src, dst = edge_attributes('edge1', __src__, __dst__)
-
-    @hybrid_property
-    def test(self):
-        return self._get_property('test')
-
-    @test.setter
-    def test(self, value):
-        self._set_property('test', value)
-
-    @hybrid_property
-    def key1(self):
-        return self._get_property('key1')
-
-    @key1.setter
-    def key1(self, value):
-        self._set_property('key1', value)
-
-    @hybrid_property
-    def key2(self):
-        return self._get_property('key2')
-
-    @key2.setter
-    def key2(self, value):
-        self._set_property('key2', value)
-
-
-class Edge2(Edge):
-
-    __label__ = 'test_edge_2'
-
-    __src__ = 'Test'
-    __dst__ = 'Foo'
-
-    src_id, dst_id, src, dst = edge_attributes('edge2', __src__, __dst__)

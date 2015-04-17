@@ -45,14 +45,26 @@ class Edge(AbstractConcreteBase, ORMBase):
 
     src_id, dst_id, src, dst = None, None, None, None
 
+    @declared_attr
+    def src_id(cls):
+        src_table = cls.__src_table__ or cls.__src_class__.lower()
+        src_id = IDColumn(src_table)
+        return src_id
+
+    @declared_attr
+    def dst_id(cls):
+        dst_table = cls.__dst_table__ or cls.__dst_class__.lower()
+        dst_id = IDColumn(dst_table)
+        return dst_id
+
     @classmethod
     def __declare_last__(cls):
         if cls == Edge:
             return
-        src_table = cls.__src_table__ or cls.__src_class__.lower()
-        dst_table = cls.__dst_table__ or cls.__dst_class__.lower()
-        cls.src_id = IDColumn(src_table)
-        cls.dst_id = IDColumn(dst_table)
+        assert hasattr(cls, '__src_class__'),\
+            'You must declare __src_class__ for {}'.format(cls)
+        assert hasattr(cls, '__dst_class__'),\
+            'You must declare __dst_class__ for {}'.format(cls)
         cls.src = relationship(cls.__src_class__, foreign_keys=[cls.src_id])
         cls.dst = relationship(cls.__dst_class__, foreign_keys=[cls.dst_id])
 

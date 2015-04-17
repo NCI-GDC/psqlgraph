@@ -46,7 +46,22 @@ class Edge2(Edge):
     __dst_class__ = 'Foo'
 
 
+class Edge3(Edge):
+
+    __src_class__ = 'Test'
+    __dst_class__ = 'Test'
+
+
 class Test(Node):
+
+    __children__ = {
+        'tests': 'Edge1',
+        'foos': 'Edge2',
+    }
+
+    __parents__ = {
+        '_tests': 'Edge1',
+    }
 
     @hybrid_property
     def key1(self):
@@ -99,6 +114,10 @@ class Test(Node):
 class Foo(Node):
 
     __label__ = 'foo'
+
+    __parents__ = {
+        'tests': 'Edge2',
+    }
 
     @hybrid_property
     def bar(self):

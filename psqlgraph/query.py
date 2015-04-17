@@ -19,48 +19,47 @@ class GraphQuery(Query):
 
     # ======== Edges ========
     def with_edge_to_node(self, edge_label, target_node):
-        pass
+        raise NotImplemented()
 
     def with_edge_from_node(self, edge_label, source_node):
-        pass
+        raise NotImplemented()
 
     def src(self, src_id):
-        pass
+        raise NotImplemented()
 
     def dst(self, dst_id):
-        pass
+        raise NotImplemented()
 
     # ====== Nodes ========
     def has_edges(self):
-        pass
+        raise NotImplemented()
 
     def has_no_edges(self):
-        pass
+        raise NotImplemented()
 
     def _path(self, labels, edges, node, reset=False):
-        pass
+        raise NotImplemented()
 
     def path_out(self, labels, reset=False):
-        pass
+        raise NotImplemented()
 
     def path_in(self, labels, reset=False):
-        pass
+        raise NotImplemented()
 
     def path_in_end(self, labels):
-        pass
+        raise NotImplemented()
 
     def path_out_end(self, labels):
-        pass
+        raise NotImplemented()
 
     def path_end(self, labels):
-        pass
+        raise NotImplemented()
 
     def ids_path_end(self, ids, labels):
-        pass
+        raise NotImplemented()
 
     def ids(self, ids):
-        entity = self.entity()
-        _id = entity.node_id
+        _id = self.entity().node_id
         if hasattr(ids, '__iter__'):
             return self.filter(_id.in_(ids))
         else:
@@ -81,39 +80,47 @@ class GraphQuery(Query):
             return self.filter(Edge.dst_id == str(ids))
 
     def neighbors(self):
-        pass
+        raise NotImplemented()
 
     def load_edges(self):
-        pass
+        raise NotImplemented()
 
     def load_neighbors(self):
-        pass
+        raise NotImplemented()
 
     def _flatten_tree(self, tree):
-        pass
+        raise NotImplemented()
 
     @staticmethod
     def _reconstruct_tree(node, nodes, doc, tree, visited):
-        pass
+        raise NotImplemented()
 
     def tree(self, root_id, tree):
-        pass
+        raise NotImplemented()
 
     def path_whole(self, path):
-        pass
+        raise NotImplemented()
 
     def path_linked(self, src_id, path):
-        pass
+        raise NotImplemented()
 
     def not_ids(self, ids):
-        pass
+        _id = self.entity().node_id
+        if hasattr(ids, '__iter__'):
+            return self.filter(not_(_id.in_(ids)))
+        else:
+            return self.filter(not_(_id == str(ids)))
 
     # ======== Labels ========
     def labels(self, labels):
-        pass
+        entity = self.entity()
+        if hasattr(labels, '__iter__'):
+            return self.filter(entity._label.in_(labels))
+        else:
+            return self.filter(entity._label == labels)
 
     def not_labels(self, labels):
-        pass
+        raise NotImplemented()
 
     # ======== Properties ========
     def props(self, props):
@@ -121,19 +128,19 @@ class GraphQuery(Query):
         return self.filter(self.entity()._props.contains(props))
 
     def not_props(self, props):
-        pass
+        raise NotImplemented()
 
     def prop_in(self, key, values):
-        pass
+        raise NotImplemented()
 
     def prop(self, key, value):
-        pass
+        raise NotImplemented()
 
     def has_props(self, keys):
-        pass
+        raise NotImplemented()
 
     def null_props(self, keys):
-        pass
+        raise NotImplemented()
 
     # ======== System Annotations ========
     def sysan(self, sysans):
@@ -141,10 +148,10 @@ class GraphQuery(Query):
         return self.filter(self.entity()._sysan.contains(sysans))
 
     def not_sysan(self, sysans):
-        pass
+        raise NotImplemented()
 
     def not_sysan_in(self, key, values):
-        pass
+        raise NotImplemented()
 
     def has_sysan(self, keys):
         if isinstance(keys, str):

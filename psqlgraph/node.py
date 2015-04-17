@@ -11,6 +11,14 @@ from voided_node import VoidedNode
 from util import sanitize
 from edge import Edge
 
+from sqlalchemy.ext.associationproxy import association_proxy
+
+
+def reverse_lookup(dictionary, search_val):
+    for key, val in dictionary.iteritems():
+        if val == search_val:
+            yield key
+
 
 class Node(AbstractConcreteBase, ORMBase):
 
@@ -42,22 +50,33 @@ class Node(AbstractConcreteBase, ORMBase):
     def edges_out(self):
         return [e for rel in self._edges_out for e in getattr(self, rel)]
 
+    __children__, __parents__ = {}, {}
+
     @classmethod
     def __declare_last__(cls):
+        src_ids, dst_ids = [], []
         for scls in Edge.get_subclasses():
             name = scls.__name__
+            name_in = '_{}_in'.format(name)
+            name_out = '_{}_out'.format(name)
             if scls.__dst_class__ == cls.__name__:
-                name_in = '_{}_in'.format(name)
                 edge_in = relationship(
                     name, foreign_keys=[scls.dst_id], viewonly=True)
                 setattr(cls, name_in, edge_in)
                 cls._edges_in.append(name_in)
+                dst_ids.append(scls.dst_id)
             if scls.__src_class__ == cls.__name__:
-                name_out = '_{}_out'.format(name)
                 edge_out = relationship(
                     name, foreign_keys=[scls.src_id], viewonly=True)
                 setattr(cls, name_out, edge_out)
                 cls._edges_out.append(name_out)
+                src_ids.append(scls.src_id)
+            for key in reverse_lookup(cls.__children__, name):
+                rel = association_proxy(name_out, 'dst')
+                setattr(cls, key, rel)
+            for key in reverse_lookup(cls.__parents__, name):
+                rel = association_proxy(name_in, 'src')
+                setattr(cls, key, rel)
 
     def get_edges(self):
         for edge_in in self.edges_in:

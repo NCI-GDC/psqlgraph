@@ -10,6 +10,7 @@ from psqlgraph import PolyEdge as PsqlEdge
 from multiprocessing import Process
 from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError, EdgeCreationError
+from sqlalchemy.orm.exc import FlushError
 
 from datetime import datetime
 from copy import deepcopy
@@ -24,7 +25,7 @@ g = PsqlGraphDriver(host, user, password, database)
 logging.basicConfig(level=logging.DEBUG)
 
 # We have to import models here, even if we don't use them
-from models import Test, Foo
+from models import Test, Foo, Edge1, Edge2, Edge3
 
 
 def timestamp():
@@ -59,16 +60,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
         # edge = Edge(src_id=None, dst_id=None, label="foo", properties={"bar": 1})
         # self.assertEqual(edge["bar"], 1)
 
-    @unittest.skip('not implemented')
     def test_setitem(self):
         """Test that indexing nodes/edges accesses their properties"""
         node = PolyNode(
             node_id=str(uuid.uuid4()), label="foo", properties={"bar": 1})
         node["bar"] = 2
         self.assertEqual(node["bar"], 2)
-        edge = FooEdge(src_id=None, dst_id=None, label="foo")
+        edge = Edge1(src_id=None, dst_id=None, label="foo")
         edge["bar"] = 2
-        # self.assertEqual(edge["bar"], 2)
+        self.assertEqual(edge["bar"], 2)
 
     def test_long_ints_roundtrip(self):
         """Test that integers that only fit in 26 bits round trip correctly."""
@@ -375,20 +375,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
             )
             g.node_insert(bad_node)
 
-
-    @unittest.skip('deprecated')
-    def test_null_node_void(self):
-        """Test voiding of a null node
-
-        Verify that the library handles null nodes properly on voiding
-        """
-
-        self.assertRaises(
-            psqlgraph.ProgrammingError,
-            g._node_void,
-            None
-        )
-
     def test_null_node_merge(self):
         """Test merging of a null node
 
@@ -517,23 +503,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
         with g.session_scope():
             node = g.node_lookup(node_id=tempid).one()
         self.assertEqual(propertiesB, node.properties)
-
-    @unittest.skip('deprecated')
-    def test_node_delete_property_keys(self):
-        """Test the ability to remove property keys from nodes"""
-
-        tempid = str(uuid.uuid4())
-        properties = {'key1':  None, 'key2':  2, 'key3':  timestamp()}
-        g.node_merge(node_id=tempid, label='test',
-                     properties=properties)
-
-        g.node_delete_property_keys(['key2', 'key3'], node_id=tempid)
-        properties.pop('key2')
-        properties.pop('key3')
-
-        with g.session_scope():
-            nodes = g.node_lookup_one(node_id=tempid)
-        self.assertEqual(properties, nodes.properties)
 
     def test_node_delete_system_annotation_keys(self):
         """Test the ability to remove system annotation keys from nodes"""
@@ -881,7 +850,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 print '+--'*level + '>', edge.dst
                 self._walk_tree(edge.dst, level+1)
 
-    @unittest.skip('not implemented')
     def test_tree_walk(self):
         with g.session_scope():
             node_id = str(uuid.uuid4())
@@ -891,7 +859,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 node = g.node_lookup_one(node_id, session=session)
                 self._walk_tree(node)
 
-    @unittest.skip('not implemented')
     def test_edge_multiplicity(self):
         with g.session_scope():
             src_id = str(uuid.uuid4())
@@ -899,19 +866,19 @@ class TestPsqlGraphDriver(unittest.TestCase):
             g.node_merge(node_id=src_id, label='test')
             g.node_merge(node_id=dst_id, label='test')
             g.edge_insert(PsqlEdge(
-                src_id=src_id, dst_id=dst_id, label='a'))
+                src_id=src_id, dst_id=dst_id, label='edge1'))
             g.edge_insert(PsqlEdge(
-                src_id=src_id, dst_id=dst_id, label='b'))
+                src_id=src_id, dst_id=dst_id, label='edge3'))
             self.assertEqual(len(list(g.edge_lookup(
                 src_id=src_id, dst_id=dst_id))), 2)
             self.assertEqual(len(list(g.edge_lookup(
-                src_id=src_id, dst_id=dst_id, label='a'))), 1)
+                src_id=src_id, dst_id=dst_id, label='edge1'))), 1)
             self.assertEqual(len(list(g.edge_lookup(
-                src_id=src_id, dst_id=dst_id, label='b'))), 1)
+                src_id=src_id, dst_id=dst_id, label='edge3'))), 1)
             self.assertRaises(
                 IntegrityError,
                 g.edge_insert,
-                PsqlEdge(src_id=src_id, dst_id=dst_id, label='a')
+                PsqlEdge(src_id=src_id, dst_id=dst_id, label='edge1')
             )
 
     def test_simple_automatic_session(self):

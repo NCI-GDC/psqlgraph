@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 # We have to import models here, even if we don't use them
-from models import Test, Foo, Edge1
+from models import Test, Foo, Edge1, Edge2
 
 
 def _props(target, updates):
@@ -25,7 +25,11 @@ def _props(target, updates):
 class TestPsqlGraphDriver(unittest.TestCase):
 
     def setUp(self):
+        self.nid = str(uuid.uuid4())
         self._clear_tables()
+        self.node = Test(self.nid)
+        with g.session_scope() as session:
+            session.add(self.node)
 
     def tearDown(self):
         g.engine.dispose()
@@ -40,54 +44,46 @@ class TestPsqlGraphDriver(unittest.TestCase):
         conn.close()
 
     def test_property_set(self):
-        nid = str(uuid.uuid4())
-        node = Test(nid)
         new = {'key1': 'first property'}
         with g.session_scope() as session:
-            node['key1'] = new['key1']
-            session.merge(node)
+            self.node['key1'] = new['key1']
+            session.merge(self.node)
         with g.session_scope() as session:
             expected = _props(Test, new)
-            self.assertEqual(g.nodes().ids(nid).one().properties, expected)
+            self.assertEqual(
+                g.nodes().ids(self.nid).one().properties, expected)
 
     def test_property_update(self):
-        nid = str(uuid.uuid4())
-        node = Test(nid)
         new = {'key1': 'first property'}
         with g.session_scope() as session:
-            session.merge(node)
-            session.commit()
-            node.properties.update(new)
-            session.merge(node)
+            self.node.properties.update(new)
+            session.merge(self.node)
             session.commit()
         with g.session_scope() as session:
             expected = _props(Test, new)
-            self.assertEqual(g.nodes().ids(nid).one().properties, expected)
+            self.assertEqual(
+                g.nodes().ids(self.nid).one().properties, expected)
 
     def test_attribute_set(self):
-        nid = str(uuid.uuid4())
-        node = Test(nid)
-        with g.session_scope() as session:
-            session.merge(node)
         new = {'key1': 'first property'}
         with g.session_scope() as session:
-            node.properties.update(new)
-            node.key1 = 'first property'
-            session.merge(node)
+            self.node.properties.update(new)
+            self.node.key1 = 'first property'
+            session.merge(self.node)
         with g.session_scope() as session:
             expected = _props(Test, new)
-            self.assertEqual(g.nodes().ids(nid).one().properties, expected)
+            self.assertEqual(
+                g.nodes().ids(self.nid).one().properties, expected)
 
     def test_set_properties(self):
-        nid = str(uuid.uuid4())
-        node = Test(nid)
         new = {'key1': 'first property'}
-        node.properties = new
+        self.node.properties = new
         with g.session_scope() as session:
-            session.merge(node)
+            session.merge(self.node)
         with g.session_scope() as session:
             expected = _props(Test, new)
-            self.assertEqual(g.nodes().ids(nid).one().properties, expected)
+            self.assertEqual(
+                g.nodes().ids(self.nid).one().properties, expected)
 
     def test_validate_property(self):
         node = Test(str(uuid.uuid4()))
@@ -107,46 +103,44 @@ class TestPsqlGraphDriver(unittest.TestCase):
             node.properties.update({'key1': 1})
 
     def test_set_query_result_properties(self):
-        nid = str(uuid.uuid4())
-        new = {'key1': 'first property', 'key2': 'first pass'}
-        node = Test(nid, dict(key2=new['key2']))
+        new = {'key1': 'first property'}
         with g.session_scope() as session:
-            session.merge(node)
-        with g.session_scope() as session:
-            queried = g.nodes().ids(nid).one()
+            queried = g.nodes().ids(self.nid).one()
             queried.properties = new
             session.merge(queried)
         with g.session_scope() as session:
             expected = _props(Test, new)
-            self.assertEqual(g.nodes().ids(nid).one().properties, expected)
+            self.assertEqual(
+                g.nodes().ids(self.nid).one().properties, expected)
 
     def test_update_query_result_properties(self):
-        nid = str(uuid.uuid4())
         new = {'key1': 'first property', 'key2': 'first pass'}
-        node = Test(nid, dict(key2=new['key2']))
+        self.node.key1 = new['key2']
         with g.session_scope() as session:
-            session.merge(node)
+            session.merge(self.node)
         with g.session_scope() as session:
-            queried = g.nodes().ids(nid).one()
+            queried = g.nodes().ids(self.nid).one()
             queried.properties.update(new)
             session.merge(queried)
         with g.session_scope() as session:
             expected = _props(Test, new)
-            self.assertEqual(g.nodes().ids(nid).one().properties, expected)
+            self.assertEqual(
+                g.nodes().ids(self.nid).one().properties, expected)
 
     def test_set_query_result_attribute(self):
-        nid = str(uuid.uuid4())
         new = {'key1': 'first property', 'key2': 'first pass'}
-        node = Test(nid, dict(key2=new['key2']))
+        node = Test(self.nid)
+        node.key2 = new['key2']
         with g.session_scope() as session:
             session.merge(node)
         with g.session_scope() as session:
-            queried = g.nodes().ids(nid).one()
+            queried = g.nodes().ids(self.nid).one()
             queried.key1 = new['key1']
             session.merge(queried)
         with g.session_scope() as session:
             expected = _props(Test, new)
-            self.assertEqual(g.nodes().ids(nid).one().properties, expected)
+            self.assertEqual(
+                g.nodes().ids(self.nid).one().properties, expected)
 
     def test_add_edge(self):
         src_id, dst_id = str(uuid.uuid4()), str(uuid.uuid4())
@@ -157,3 +151,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
             session.flush()
             session.add(edge)
             g.edges().filter(Edge1.src_id == src_id).one()
+
+    def test_edge_attributes(self):
+        foo = Foo('foonode')
+        edge = Edge2(self.nid, 'foonode')
+        with g.session_scope() as s:
+            s.add_all((edge, foo))
+        with g.session_scope() as s:
+            n = g.nodes().ids(self.nid).one()
+            self.assertEqual(n.foos[0].node_id, 'foonode')

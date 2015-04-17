@@ -332,6 +332,7 @@ class PsqlGraphDriver(object):
         with self.session_scope(session) as local:
             local.flush()
             local.add(edge)
+            local.flush()
         return edge
 
     def edge_update(self, edge, system_annotations={}, properties={},

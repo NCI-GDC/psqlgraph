@@ -112,7 +112,7 @@ class Edge(AbstractConcreteBase, ORMBase):
                 'polymorphic_identity', None)
             if clabel == label:
                 return c
-        raise KeyError('Node has no subclass {}'.format(label))
+        raise KeyError('Edge has no subclass {}'.format(label))
 
     @classmethod
     def get_subclass_table_names(label):

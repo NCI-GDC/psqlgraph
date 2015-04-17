@@ -43,18 +43,13 @@ class CommonBase(object):
         nullable=False,
     )
 
-    _label = Column(
-        Text,
-        nullable=False,
-    )
-
     @classmethod
     def get_label(cls):
         return getattr(cls, '__label__', cls.__name__.lower())
 
     @declared_attr
     def __tablename__(cls):
-        return cls.get_label()
+        return cls.__name__.lower()
 
     @declared_attr
     def __mapper_args__(cls):

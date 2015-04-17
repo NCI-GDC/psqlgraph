@@ -9,16 +9,17 @@ import copy
 from base import ORMBase
 from voided_node import VoidedNode
 from util import sanitize
+from edge import Edge
 
 
 class Node(AbstractConcreteBase, ORMBase):
 
     @declared_attr
-    def _edges_in(cls):
+    def _edges_out(self):
         return list()
 
     @declared_attr
-    def _edges_out(cls):
+    def _edges_in(self):
         return list()
 
     node_id = Column(
@@ -34,18 +35,29 @@ class Node(AbstractConcreteBase, ORMBase):
             'node_id', name='_{}_id_uc'.format(name)),)
 
     @hybrid_property
-    def edges_out(self):
-        edges_out = []
-        for name in self._edges_out:
-            edges_out += getattr(self, name)
-        return edges_out
+    def edges_in(self):
+        return [e for rel in self._edges_in for e in getattr(self, rel)]
 
     @hybrid_property
-    def edges_in(self):
-        edges_in = []
-        for name in self._edges_in:
-            edges_in += getattr(self, name)
-        return edges_in
+    def edges_out(self):
+        return [e for rel in self._edges_out for e in getattr(self, rel)]
+
+    @classmethod
+    def __declare_last__(cls):
+        for scls in Edge.get_subclasses():
+            name = scls.__name__
+            if scls.__dst_class__ == cls.__name__:
+                name_in = '_{}_in'.format(name)
+                edge_in = relationship(
+                    name, foreign_keys=[scls.dst_id], viewonly=True)
+                setattr(cls, name_in, edge_in)
+                cls._edges_in.append(name_in)
+            if scls.__src_class__ == cls.__name__:
+                name_out = '_{}_out'.format(name)
+                edge_out = relationship(
+                    name, foreign_keys=[scls.src_id], viewonly=True)
+                setattr(cls, name_out, edge_out)
+                cls._edges_out.append(name_out)
 
     def get_edges(self):
         for edge_in in self.edges_in:

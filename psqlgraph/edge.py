@@ -95,21 +95,6 @@ class Edge(AbstractConcreteBase, ORMBase):
         return '<{}(({})-[{}]->({})>'.format(
             self.__class__.__name__, self.src_id, self.label, self.dst_id)
 
-    @declared_attr
-    def __mapper_args__(cls):
-        name = cls.get_label()
-        if isinstance(cls, Edge):
-            return {
-                'polymorphic_on': cls._label,
-                'polymorphic_identity': name,
-                'with_polymorphic': '*',
-            }
-        else:
-            return {
-                'polymorphic_identity': name,
-                'concrete': True,
-            }
-
     @classmethod
     def get_subclass(cls, label):
         scls = cls._get_subclasses_labeled(label)
@@ -124,8 +109,7 @@ class Edge(AbstractConcreteBase, ORMBase):
     @classmethod
     def _get_subclasses_labeled(cls, label):
         return [c for c in cls.__subclasses__()
-                if getattr(c, '__mapper_args__', {}).get(
-                'polymorphic_identity', None) == label]
+                if c.get_label() == label]
 
     @classmethod
     def _get_edges_with_src(cls, src_class_name):
@@ -136,12 +120,6 @@ class Edge(AbstractConcreteBase, ORMBase):
     def _get_edges_with_dst(cls, dst_class_name):
         return [c for c in cls.__subclasses__()
                 if c.__dst_class__ == dst_class_name]
-
-    @classmethod
-    def _get_edges_between(cls, src_class_name, dst_class_name):
-        return [c for c in cls.__subclasses__()
-                if c.__dst_class__ == dst_class_name
-                and c.__src_class__ == src_class_name]
 
     @classmethod
     def get_subclass_table_names(label):
@@ -183,12 +161,11 @@ def PolyEdge(src_id=None, dst_id=None, label=None, acl=[],
     try:
         Type = Edge.get_subclass(label)
     except Exception as e:
-        print e
         assert src_label is not None and dst_label is not None, (
-            "Unable to determine edge type. If there are more than one "
+            "{}: Unable to determine edge type. If there are more than one "
             "edges with label {}, you need to specify src_label and dst_label"
             "but this isn't implemented yet, sorry."
-        ).format(label)
+        ).format(e, label)
 
     return Type(
         src_id=src_id,

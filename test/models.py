@@ -52,10 +52,10 @@ class Edge2(Edge):
 
 class Edge3(Edge):
 
-    __src_class__ = 'Test'
+    __src_class__ = 'Foo'
     __dst_class__ = 'FooBar'
     __src_dst_assoc__ = 'foobars'
-    __dst_src_assoc__ = '_tests'
+    __dst_src_assoc__ = 'foos'
 
 
 class Test(Node):

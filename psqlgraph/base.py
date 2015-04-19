@@ -145,8 +145,9 @@ class CommonBase(object):
 
     def _validate(self, session=None):
         for key in getattr(self, '__nonnull_properties__', []):
-            assert self.properties[key] is not None,\
-                'Key {} violates non-null constraint for {}'.format(key, self)
+            assert self.properties[key] is not None, (
+                "Null value in key '{}' violates non-null constraint for {}."
+            ).format(key, self)
 
 
 ORMBase = declarative_base(cls=CommonBase)

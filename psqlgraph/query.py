@@ -68,28 +68,11 @@ class GraphQuery(Query):
     def path_end(self, labels):
         return self
 
-    def path(self, *classes, **kwargs):
-        if not classes:
-            return self
-        last_entity = kwargs.pop('start', None)
-        if not last_entity:
-            last_entity = self.entity()
-        next_entity = classes[0]
-        self = self.with_entities(last_entity, next_entity)
-        edges = Edge._get_edges_between(
-            last_entity.__name__, next_entity.__name__)
-        if not edges:
-            raise RuntimeError('No edge between {} and {}'.format(
-                last_entity, next_entity))
-        edge = edges[0]
-        print last_entity, edge, next_entity
-        self = self.outerjoin(
-            edge, last_entity.node_id == edge.src_id,
-            from_joinpoint=True,
-        )
-        self = self.filter(edge.dst_id == next_entity.node_id)
-        self = self.with_entities(next_entity)
-        return self.path(*classes[1:], start=next_entity)
+    def path(self, *entities):
+        r = relationships[0]
+        entity = self.entity()
+        assert entity != Node, (
+            'Path walk not supported on generic node class')
 
     def path2(self, *classes, **kwargs):
         if not classes:

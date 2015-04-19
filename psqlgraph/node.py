@@ -14,6 +14,10 @@ from edge import Edge
 from sqlalchemy.ext.associationproxy import association_proxy
 
 
+DST_SRC_ASSOC = '__dst_src_assoc__'
+SRC_DST_ASSOC = '__src_dst_assoc__'
+
+
 def reverse_lookup(dictionary, search_val):
     for key, val in dictionary.iteritems():
         if val == search_val:
@@ -50,8 +54,6 @@ class Node(AbstractConcreteBase, ORMBase):
     def edges_out(self):
         return [e for rel in self._edges_out for e in getattr(self, rel)]
 
-    __children__, __parents__ = {}, {}
-
     @classmethod
     def __declare_last__(cls):
         src_ids, dst_ids = [], []
@@ -59,24 +61,40 @@ class Node(AbstractConcreteBase, ORMBase):
             name = scls.__name__
             name_in = '_{}_in'.format(name)
             name_out = '_{}_out'.format(name)
+            src_assoc = getattr(scls, SRC_DST_ASSOC)
+            dst_assoc = getattr(scls, DST_SRC_ASSOC)
             if scls.__dst_class__ == cls.__name__:
                 edge_in = relationship(
                     name, foreign_keys=[scls.dst_id], viewonly=True)
                 setattr(cls, name_in, edge_in)
                 cls._edges_in.append(name_in)
                 dst_ids.append(scls.dst_id)
+                cls._set_association_proxy(scls, name_in, dst_assoc, 'src')
             if scls.__src_class__ == cls.__name__:
                 edge_out = relationship(
                     name, foreign_keys=[scls.src_id], viewonly=True)
                 setattr(cls, name_out, edge_out)
                 cls._edges_out.append(name_out)
                 src_ids.append(scls.src_id)
-            for key in reverse_lookup(cls.__children__, name):
-                rel = association_proxy(name_out, 'dst')
-                setattr(cls, key, rel)
-            for key in reverse_lookup(cls.__parents__, name):
-                rel = association_proxy(name_in, 'src')
-                setattr(cls, key, rel)
+                cls._set_association_proxy(scls, name_out, src_assoc, 'dst')
+
+    @classmethod
+    def _set_association_proxy(cls, scls, edge_name, attr_name, direction):
+        if not attr_name:
+            return
+        if hasattr(cls, attr_name):
+            raise AttributeError((
+                "Attribute '{}' already exists on {}, cannot add "
+                "association proxy specified at {}.{} while attempting "
+                "to create relationship [{}.{} => {}]."
+            ).format(
+                attr_name, cls, scls.__name__,
+                DST_SRC_ASSOC if direction == 'dst' else SRC_DST_ASSOC,
+                cls.__name__, attr_name,
+                scls.__dst_class__ if direction == 'dst'
+                else scls.__src_class__))
+        rel = association_proxy(edge_name, direction)
+        setattr(cls, attr_name, rel)
 
     def get_edges(self):
         for edge_in in self.edges_in:
@@ -167,9 +185,12 @@ class Node(AbstractConcreteBase, ORMBase):
 
     def _lookup_existing(self, session):
         clean = self._get_clean_session(session)
-        return clean.query(Node).filter(Node.node_id == self.node_id)\
-                                .filter(Node._label == self.label)\
-                                .scalar()
+        res = clean.query(Node).filter(Node.node_id == self.node_id)\
+                               .filter(Node._label == self.label)\
+                               .scalar()
+        clean.expunge_all()
+        clean.close()
+        return res
 
     def _check_unique(self):
         clean = self._get_clean_session()
@@ -184,6 +205,8 @@ class Node(AbstractConcreteBase, ORMBase):
         assert others.count() == 0,\
             'There is another node with id "{}" in current session'.format(
                 self.node_id)
+        clean.expunge_all()
+        clean.close()
 
 
 def PolyNode(node_id=None, label=None, acl=[], system_annotations={},

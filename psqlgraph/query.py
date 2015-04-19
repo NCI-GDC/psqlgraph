@@ -19,10 +19,17 @@ class GraphQuery(Query):
 
     # ======== Edges ========
     def with_edge_to_node(self, edge_label, target_node):
-        raise NotImplemented()
+        return self.filter(Node.node_id == target_node.node_id)\
+                   .filter(Edge._label == edge_label)
 
     def with_edge_from_node(self, edge_label, source_node):
-        raise NotImplemented()
+        # first we construct a subquery for edges of the correct label
+        # to the target_node
+        session = self.session
+        sq = session.query(Edge).filter(Edge.label == edge_label)\
+                                .filter(Edge.src_id == source_node.node_id)\
+                                .subquery()
+        return self.filter(Node.node_id == sq.c.dst_id)
 
     def src(self, src_id):
         raise NotImplemented()
@@ -38,10 +45,16 @@ class GraphQuery(Query):
         raise NotImplemented()
 
     def _path(self, labels, edges, node, reset=False):
-        raise NotImplemented()
+        for label in self._iterable(labels):
+            self = self.outerjoin(
+                edges, node, aliased=True, from_joinpoint=True
+            ).filter(Node.label == label)
+            if reset:
+                self = self.reset_joinpoint()
+            return self
 
     def path_out(self, labels, reset=False):
-        raise NotImplemented()
+        return self._path(labels, 'edges_out', 'dst', reset)
 
     def path_in(self, labels, reset=False):
         raise NotImplemented()
@@ -53,7 +66,50 @@ class GraphQuery(Query):
         raise NotImplemented()
 
     def path_end(self, labels):
-        raise NotImplemented()
+        return self
+
+    def path(self, *classes, **kwargs):
+        if not classes:
+            return self
+        last_entity = kwargs.pop('start', None)
+        if not last_entity:
+            last_entity = self.entity()
+        next_entity = classes[0]
+        self = self.with_entities(last_entity, next_entity)
+        edges = Edge._get_edges_between(
+            last_entity.__name__, next_entity.__name__)
+        if not edges:
+            raise RuntimeError('No edge between {} and {}'.format(
+                last_entity, next_entity))
+        edge = edges[0]
+        print last_entity, edge, next_entity
+        self = self.outerjoin(
+            edge, last_entity.node_id == edge.src_id,
+            from_joinpoint=True,
+        )
+        self = self.filter(edge.dst_id == next_entity.node_id)
+        self = self.with_entities(next_entity)
+        return self.path(*classes[1:], start=next_entity)
+
+    def path2(self, *classes, **kwargs):
+        if not classes:
+            return self
+        last_entity = kwargs.pop('start', None)
+        if not last_entity:
+            last_entity = self.entity()
+        next_entity = classes[0]
+        edges = Edge._get_edges_between(
+            last_entity.__name__, next_entity.__name__)
+        if not edges:
+            raise RuntimeError('No edge between {} and {}'.format(
+                last_entity, next_entity))
+        edge = edges[0]
+
+        session = self.session
+        print last_entity, edge, next_entity
+        sq = session.query(edge).filter(edge.src_id == last_entity.node_id)\
+                                .subquery()
+        return self.filter(next_entity.node_id == sq.c.dst_id)
 
     def ids_path_end(self, ids, labels):
         raise NotImplemented()

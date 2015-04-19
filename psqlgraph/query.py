@@ -18,18 +18,17 @@ class GraphQuery(Query):
         return self._entity_zero().type
 
     # ======== Edges ========
-    def with_edge_to_node(self, edge_label, target_node):
-        return self.filter(Node.node_id == target_node.node_id)\
-                   .filter(Edge._label == edge_label)
-
-    def with_edge_from_node(self, edge_label, source_node):
-        # first we construct a subquery for edges of the correct label
-        # to the target_node
+    def with_edge_to_node(self, edge_type, target_node):
         session = self.session
-        sq = session.query(Edge).filter(Edge.label == edge_label)\
-                                .filter(Edge.src_id == source_node.node_id)\
-                                .subquery()
-        return self.filter(Node.node_id == sq.c.dst_id)
+        sq = session.query(edge_type).filter(
+            edge_type.dst_id == target_node.node_id).subquery()
+        return self.filter(self.entity().node_id == sq.c.src_id)
+
+    def with_edge_from_node(self, edge_type, source_node):
+        session = self.session
+        sq = session.query(edge_type).filter(
+            edge_type.src_id == source_node.node_id).subquery()
+        return self.filter(self.entity().node_id == sq.c.src_id)
 
     def src(self, src_id):
         raise NotImplemented()
@@ -69,10 +68,18 @@ class GraphQuery(Query):
         return self
 
     def path(self, *entities):
-        r = relationships[0]
-        entity = self.entity()
-        assert entity != Node, (
-            'Path walk not supported on generic node class')
+        for child in entities:
+            entity = self.entity()
+            assert entity != Node
+            edges = Edge._get_edges_between(entity.__name__, child.__name__)
+            edge = edges[0]
+            self = self.outerjoin(edge, or_(
+                entity.node_id == edge.src_id, entity.node_id == edge.dst_id), aliased=True,
+            ).outerjoin(entity, or_(
+                entity.node_id == edge.src_id, entity.node_id == edge.dst_id), aliased=True,
+            )
+            self = self.with_entities(child)
+        return self
 
     def path2(self, *classes, **kwargs):
         if not classes:

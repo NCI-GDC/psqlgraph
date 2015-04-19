@@ -12,7 +12,7 @@ Base = declarative_base()
 from attributes import PropertiesDict, SystemAnnotationDict
 from util import sanitize
 
-abstract_classes = ['node', 'edge', 'base']
+abstract_classes = ['Node', 'Edge', 'Base']
 
 
 class CommonBase(object):
@@ -43,6 +43,14 @@ class CommonBase(object):
         nullable=False,
     )
 
+    @declared_attr
+    def _type(cls):
+        return Column(
+            Text,
+            nullable=False,
+            default=cls.__name__,
+        )
+
     @classmethod
     def get_label(cls):
         return getattr(cls, '__label__', cls.__name__.lower())
@@ -53,10 +61,10 @@ class CommonBase(object):
 
     @declared_attr
     def __mapper_args__(cls):
-        name = cls.get_label()
+        name = cls.__name__
         if name in abstract_classes:
             return {
-                'polymorphic_on': cls._label,
+                'polymorphic_on': cls._type,
                 'polymorphic_identity': name,
                 'with_polymorphic': '*',
             }

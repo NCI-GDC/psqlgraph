@@ -126,7 +126,7 @@ class Node(AbstractConcreteBase, ORMBase):
         self._props = {}
         self.system_annotations = system_annotations
         self.acl = acl
-        self.label = label or self.__mapper_args__['polymorphic_identity']
+        self.label = label or self.get_label()
         self.properties = properties
         self.node_id = node_id
 
@@ -144,23 +144,17 @@ class Node(AbstractConcreteBase, ORMBase):
         return node
 
     def merge(self, acl=None, system_annotations={}, properties={}):
-
-        if system_annotations:
-            self.system_annotations = copy.deepcopy(self.system_annotations)
-            self.system_annotations.update(system_annotations)
-
+        if system_annotations is not None:
+            self._sysan.update(system_annotations)
         for key, value in properties.items():
             setattr(self, key, value)
-
         if acl is not None:
             self.acl = acl
 
     @classmethod
     def get_subclass(cls, label):
         for c in cls.__subclasses__():
-            clabel = getattr(c, '__mapper_args__', {}).get(
-                'polymorphic_identity', None)
-            if clabel == label:
+            if c.get_label() == label:
                 return c
         raise KeyError('Node has no subclass {}'.format(label))
 

@@ -384,3 +384,20 @@ class PsqlGraphDriver(object):
                 local.delete(edge)
             for edge in self.edges().filter(Edge.dst_id == node_id):
                 local.delete(edge)
+
+    def get_edge_by_labels(self, src_label, edge_label, dst_label):
+        src_classes = [n for n in Node.get_subclasses()
+                       if n.get_label() == src_label]
+        dst_classes = [n for n in Node.get_subclasses()
+                       if n.get_label() == dst_label]
+        assert len(src_classes) == 1,\
+            'No classes found with src_label {}'.format(src_label)
+        assert len(dst_classes) == 1,\
+            'No classes found with dst_label {}'.format(dst_label)
+        edges = [edge for edge in Edge.get_subclasses()
+                 if edge.__src_class__ == src_classes[0].__name__
+                 and edge.__dst_class__ == dst_classes[0].__name__
+                 and edge.get_label() == edge_label]
+        assert len(edges) == 1,\
+            'Expected 1 edge {}-{}->{}'.format(dst_label)
+        return edges[0]

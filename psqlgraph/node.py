@@ -143,14 +143,6 @@ class Node(AbstractConcreteBase, ORMBase):
         )
         return node
 
-    def merge(self, acl=None, system_annotations={}, properties={}):
-        if system_annotations is not None:
-            self._sysan.update(system_annotations)
-        for key, value in properties.items():
-            setattr(self, key, value)
-        if acl is not None:
-            self.acl = acl
-
     @classmethod
     def get_subclass(cls, label):
         for c in cls.__subclasses__():

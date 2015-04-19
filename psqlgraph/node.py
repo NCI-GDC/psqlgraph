@@ -69,31 +69,50 @@ class Node(AbstractConcreteBase, ORMBase):
                 setattr(cls, name_in, edge_in)
                 cls._edges_in.append(name_in)
                 dst_ids.append(scls.dst_id)
-                cls._set_association_proxy(scls, name_in, dst_assoc, 'src')
+                cls._set_association_proxy(scls, dst_assoc, 'src')
             if scls.__src_class__ == cls.__name__:
                 edge_out = relationship(
                     name, foreign_keys=[scls.src_id], viewonly=True)
                 setattr(cls, name_out, edge_out)
                 cls._edges_out.append(name_out)
                 src_ids.append(scls.src_id)
-                cls._set_association_proxy(scls, name_out, src_assoc, 'dst')
+                cls._set_association_proxy(scls, src_assoc, 'dst')
 
     @classmethod
-    def _set_association_proxy(cls, scls, edge_name, attr_name, direction):
+    def _set_association_proxy(cls, edge_cls, attr_name, direction):
         if not attr_name:
             return
+        src_cls = edge_cls.__src_class__
+        dst_cls = edge_cls.__dst_class__
+        edge_cls_name = edge_cls.__name__
+        edge_table = edge_cls.__table__
         if hasattr(cls, attr_name):
             raise AttributeError((
                 "Attribute '{}' already exists on {}, cannot add "
                 "association proxy specified at {}.{} while attempting "
                 "to create relationship [{}.{} => {}]."
             ).format(
-                attr_name, cls, scls.__name__,
+                attr_name, cls, edge_cls_name,
                 DST_SRC_ASSOC if direction == 'dst' else SRC_DST_ASSOC,
                 cls.__name__, attr_name,
-                scls.__dst_class__ if direction == 'dst'
-                else scls.__src_class__))
-        rel = association_proxy(edge_name, direction)
+                dst_cls if direction == 'dst' else src_cls))
+        if direction == 'src':
+            rel = relationship(
+                src_cls,
+                secondary=edge_table,
+                primaryjoin='({src}.node_id == {edge}.src_id)'.format(
+                    src=src_cls, edge=edge_cls_name),
+                foreign_keys=edge_cls.src_id,
+            )
+        else:
+            rel = relationship(
+                dst_cls,
+                secondary=edge_table,
+                primaryjoin='({dst}.node_id == {edge}.dst_id)'.format(
+                    dst=dst_cls, edge=edge_cls_name),
+                foreign_keys=edge_cls.dst_id,
+            )
+        # rel = association_proxy(edge_name, direction)
         setattr(cls, attr_name, rel)
 
     def get_edges(self):

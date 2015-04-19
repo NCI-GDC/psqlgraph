@@ -234,10 +234,8 @@ class PsqlGraphDriver(object):
         with self.session_scope() as local:
             for key, val in system_annotations.items():
                 node.system_annotations[key] = val
-
             if acl is not None:
                 node.acl = acl
-
             node.properties.update(properties)
             local.merge(node)
 

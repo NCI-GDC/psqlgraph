@@ -16,14 +16,18 @@ class SystemAnnotationDict(dict):
         super(SystemAnnotationDict, self).__init__(source._sysan)
 
     def update(self, system_annotations={}):
+        if system_annotations == self:
+            return
         system_annotations = sanitize(system_annotations)
         temp = sanitize(self.source._sysan)
         temp.update(system_annotations)
         self.source._sysan = temp
-        super(SystemAnnotationDict, self).update(system_annotations)
+        super(SystemAnnotationDict, self).update(self.source._sysan)
 
     def __setitem__(self, key, val):
-        self.update({key: val})
+        print 'setting', key, val
+        self.source._sysan[key] = val
+        super(SystemAnnotationDict, self).__setitem__(key, val)
 
     def __delitem__(self, key):
         del self.source._sysan[key]
@@ -42,6 +46,8 @@ class PropertiesDict(dict):
             source.property_template(source._props))
 
     def update(self, properties={}):
+        if properties == self:
+            return
         properties = sanitize(properties)
         for key, val in properties.iteritems():
             if not self.source.has_property(key):

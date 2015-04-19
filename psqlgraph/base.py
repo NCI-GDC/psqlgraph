@@ -138,6 +138,13 @@ class CommonBase(object):
     def get_session(self):
         return object_session(self)
 
+    def merge(self, acl=None, system_annotations={}, properties={}):
+        self.system_annotations.update(system_annotations)
+        for key, value in properties.items():
+            setattr(self, key, value)
+        if acl is not None:
+            self.acl = acl
+
     def __getitem__(self, key):
         return getattr(self, key)
 

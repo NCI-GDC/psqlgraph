@@ -258,6 +258,8 @@ class PsqlGraphDriver(object):
             query = query.props(property_matches)
         if system_annotation_matches is not None:
             query = query.sysan(system_annotation_matches)
+        if label is not None:
+            query = query.labels(label)
         return query
 
     def node_lookup_one(self, *args, **kwargs):

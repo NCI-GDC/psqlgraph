@@ -7,6 +7,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 from base import ORMBase
 from voided_edge import VoidedEdge
+import logging
 
 
 def IDColumn(tablename):
@@ -65,6 +66,10 @@ class Edge(AbstractConcreteBase, ORMBase):
             'You must declare __src_class__ for {}'.format(cls)
         assert hasattr(cls, '__dst_class__'),\
             'You must declare __dst_class__ for {}'.format(cls)
+        assert hasattr(cls, '__src_dst_assoc__'),\
+            'You must declare __src_dst_assoc__ for {}'.format(cls)
+        assert hasattr(cls, '__dst_src_assoc__'),\
+            'You must declare __dst_src_assoc__ for {}'.format(cls)
         cls.src = relationship(cls.__src_class__, foreign_keys=[cls.src_id])
         cls.dst = relationship(cls.__dst_class__, foreign_keys=[cls.dst_id])
 
@@ -107,12 +112,36 @@ class Edge(AbstractConcreteBase, ORMBase):
 
     @classmethod
     def get_subclass(cls, label):
-        for c in cls.__subclasses__():
-            clabel = getattr(c, '__mapper_args__', {}).get(
-                'polymorphic_identity', None)
-            if clabel == label:
-                return c
-        raise KeyError('Edge has no subclass {}'.format(label))
+        scls = cls._get_subclasses_labeled(label)
+        if len(scls) > 1:
+            raise KeyError(
+                'More than one Edge with label {} found: {}'.format(
+                    label, scls))
+        if not scls:
+            KeyError('Edge has no subclass {}'.format(label))
+        return scls[0]
+
+    @classmethod
+    def _get_subclasses_labeled(cls, label):
+        return [c for c in cls.__subclasses__()
+                if getattr(c, '__mapper_args__', {}).get(
+                'polymorphic_identity', None) == label]
+
+    @classmethod
+    def _get_edges_with_src(cls, src_class_name):
+        return [c for c in cls.__subclasses__()
+                if c.__src_class__ == src_class_name]
+
+    @classmethod
+    def _get_edges_with_dst(cls, dst_class_name):
+        return [c for c in cls.__subclasses__()
+                if c.__dst_class__ == dst_class_name]
+
+    @classmethod
+    def _get_edges_between(cls, src_class_name, dst_class_name):
+        return [c for c in cls.__subclasses__()
+                if c.__dst_class__ == dst_class_name
+                and c.__src_class__ == src_class_name]
 
     @classmethod
     def get_subclass_table_names(label):
@@ -138,16 +167,29 @@ class Edge(AbstractConcreteBase, ORMBase):
 
     def _lookup_existing(self, session):
         clean = self._get_clean_session(session)
-        return clean.query(Edge).filter(Edge.src_id == self.src_id)\
-                                .filter(Edge.dst_id == self.dst_id)\
-                                .filter(Edge._label == self.label)\
-                                .scalar()
+        res = clean.query(Edge).filter(Edge.src_id == self.src_id)\
+                               .filter(Edge.dst_id == self.dst_id)\
+                               .filter(Edge._label == self.label)\
+                               .scalar()
+        clean.expunge_all()
+        clean.close()
+        return res
 
 
 def PolyEdge(src_id=None, dst_id=None, label=None, acl=[],
-             system_annotations={}, properties={}):
+             system_annotations={}, properties={},
+             src_label=None, dst_label=None):
     assert label, 'You cannot create a PolyEdge without a label.'
-    Type = Edge.get_subclass(label)
+    try:
+        Type = Edge.get_subclass(label)
+    except Exception as e:
+        print e
+        assert src_label is not None and dst_label is not None, (
+            "Unable to determine edge type. If there are more than one "
+            "edges with label {}, you need to specify src_label and dst_label"
+            "but this isn't implemented yet, sorry."
+        ).format(label)
+
     return Type(
         src_id=src_id,
         dst_id=dst_id,

@@ -158,6 +158,9 @@ class PsqlGraphDriver(object):
             else:
                 return local.query(query)
 
+    def __call__(self, *args, **kwargs):
+        return self.nodes(*args, **kwargs)
+
     def _configure_driver_mappers(self):
         try:
             configure_mappers()
@@ -399,3 +402,13 @@ class PsqlGraphDriver(object):
         assert len(edges) == 1,\
             'Expected 1 edge {}-{}->{}'.format(dst_label)
         return edges[0]
+
+    def reload(self, *entities):
+        reloaded = []
+        for e in entities:
+            if isinstance(e, Edge):
+                reloaded.append(self.edges(type(e)).src_ids(e.src_id)
+                                .dst_ids(e.dst_id).one())
+            else:
+                reloaded.append(self.nodes(type(e)).ids(e.node_id).one())
+        return reloaded

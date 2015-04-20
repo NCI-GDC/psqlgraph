@@ -7,7 +7,6 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 from base import ORMBase
 from voided_edge import VoidedEdge
-import logging
 
 
 def IDColumn(tablename):

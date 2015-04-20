@@ -10,7 +10,6 @@ from base import ORMBase
 from voided_node import VoidedNode
 from util import sanitize
 from edge import Edge
-
 from sqlalchemy.ext.associationproxy import association_proxy
 
 
@@ -103,6 +102,7 @@ class Node(AbstractConcreteBase, ORMBase):
                 primaryjoin='({src}.node_id == {edge}.src_id)'.format(
                     src=src_cls, edge=edge_cls_name),
                 foreign_keys=edge_cls.src_id,
+                viewonly=True,
             )
         else:
             rel = relationship(
@@ -111,6 +111,7 @@ class Node(AbstractConcreteBase, ORMBase):
                 primaryjoin='({dst}.node_id == {edge}.dst_id)'.format(
                     dst=dst_cls, edge=edge_cls_name),
                 foreign_keys=edge_cls.dst_id,
+                viewonly=True,
             )
         # rel = association_proxy(edge_name, direction)
         setattr(cls, attr_name, rel)

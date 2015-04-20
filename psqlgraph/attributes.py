@@ -13,7 +13,7 @@ class SystemAnnotationDict(dict):
 
     def __init__(self, source):
         self.source = source
-        super(SystemAnnotationDict, self).__init__(source._sysan)
+        super(SystemAnnotationDict, self).__init__(sanitize(source._sysan))
 
     def update(self, system_annotations={}):
         if system_annotations == self:

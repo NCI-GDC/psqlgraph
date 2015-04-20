@@ -95,7 +95,9 @@ class CommonBase(object):
     def _get_property(self, key):
         if not self.has_property(key):
             raise KeyError('{} has no property {}'.format(type(self), key))
-        return self._props.get(key, None)
+        if key not in self._props:
+            return None
+        return self._props[key]
 
     def property_template(self, properties={}):
         temp = {k: None for k in self.get_property_list()}
@@ -129,8 +131,9 @@ class CommonBase(object):
                 if attr in cls.__dict__
                 and isinstance(cls.__dict__[attr], hybrid_property)]
 
-    def has_property(self, key):
-        return key in self.get_property_list()
+    @classmethod
+    def has_property(cls, key):
+        return key in cls.get_property_list()
 
     def get_name(self):
         return type(self).__name__

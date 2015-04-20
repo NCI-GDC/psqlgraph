@@ -137,6 +137,23 @@ class GraphQuery(Query):
     def _flatten_tree(self, tree):
         raise NotImplemented()
 
+    def _construct_any(self, path, final, props):
+        if len(path) == 0:
+            return final._props.contains(props)
+        return path[0].any(self._construct_any(path[1:], final, props))
+
+    def any(self, path, final, props):
+        return self.filter(self._construct_any(path, final, props))
+
+    def _construct_id(self, path, final, node_id):
+        if not path:
+            return (final.node_id == node_id)
+        print path[0]
+        return path[0].any(self._construct_id(path[1:], final, node_id))
+
+    def path_to(self, path, final, node_id):
+        return self.filter(self._construct_id(path, final, node_id))
+
     @staticmethod
     def _reconstruct_tree(node, nodes, doc, tree, visited):
         raise NotImplemented()
@@ -180,7 +197,7 @@ class GraphQuery(Query):
         raise NotImplemented()
 
     def prop(self, key, value):
-        raise NotImplemented()
+        return self.filter(self.entity()._props.contains({key: value}))
 
     def has_props(self, keys):
         raise NotImplemented()

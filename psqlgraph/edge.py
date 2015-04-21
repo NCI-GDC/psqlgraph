@@ -38,21 +38,23 @@ class Edge(AbstractConcreteBase, ORMBase):
         primary_key=True,
     )
 
-    __src_class__ = None
     __src_table__ = None
-    __dst_class__ = None
     __dst_table__ = None
 
     src_id, dst_id, src, dst = None, None, None, None
 
     @declared_attr
     def src_id(cls):
+        if cls.__name__ == 'Edge':
+            return
         src_table = cls.__src_table__ or cls.__src_class__.lower()
         src_id = IDColumn(src_table)
         return src_id
 
     @declared_attr
     def dst_id(cls):
+        if cls.__name__ == 'Edge':
+            return
         dst_table = cls.__dst_table__ or cls.__dst_class__.lower()
         dst_id = IDColumn(dst_table)
         return dst_id

@@ -65,41 +65,24 @@ class GraphQuery(Query):
         raise NotImplemented()
 
     def path_end(self, labels):
+        raise NotImplemented()
+
+    def spath(self, *entities):
+        """g.nodes(Participant).path('samples', 'aliquots').filter()"""
+        last = self.entity()
+        assert last != Node, 'Please narrow your search.'
+        for e in entities:
+            self = self.join(*getattr(last, e).attr)
+            last = self._join_entities[-1].class_
         return self
 
     def path(self, *entities):
-        for child in entities:
-            entity = self.entity()
-            assert entity != Node
-            edges = Edge._get_edges_between(entity.__name__, child.__name__)
-            edge = edges[0]
-            self = self.outerjoin(edge, or_(
-                entity.node_id == edge.src_id, entity.node_id == edge.dst_id), aliased=True,
-            ).outerjoin(entity, or_(
-                entity.node_id == edge.src_id, entity.node_id == edge.dst_id), aliased=True,
-            )
-            self = self.with_entities(child)
+        """ g.nodes(Participant).path(
+                Participant.samples, Sample.aliquots).filter()
+        """
+        for e in entities:
+            self = self.join(*e.attr)
         return self
-
-    def path2(self, *classes, **kwargs):
-        if not classes:
-            return self
-        last_entity = kwargs.pop('start', None)
-        if not last_entity:
-            last_entity = self.entity()
-        next_entity = classes[0]
-        edges = Edge._get_edges_between(
-            last_entity.__name__, next_entity.__name__)
-        if not edges:
-            raise RuntimeError('No edge between {} and {}'.format(
-                last_entity, next_entity))
-        edge = edges[0]
-
-        session = self.session
-        print last_entity, edge, next_entity
-        sq = session.query(edge).filter(edge.src_id == last_entity.node_id)\
-                                .subquery()
-        return self.filter(next_entity.node_id == sq.c.dst_id)
 
     def ids_path_end(self, ids, labels):
         raise NotImplemented()

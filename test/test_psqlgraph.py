@@ -1,8 +1,8 @@
 import uuid
 import unittest
 import logging
-import psqlgraph
 import random
+import psqlgraph
 from psqlgraph import PsqlGraphDriver, Node, PolyNode, sanitize
 from psqlgraph import PolyNode as PsqlNode
 from psqlgraph import PolyEdge as PsqlEdge
@@ -15,6 +15,10 @@ from sqlalchemy.orm.exc import FlushError
 from datetime import datetime
 from copy import deepcopy
 
+# We have to import models here, even if we don't use them
+from models import Test, Foo, Edge1, Edge2, Edge3
+
+
 host = 'localhost'
 user = 'test'
 password = 'test'
@@ -23,9 +27,6 @@ g = PsqlGraphDriver(host, user, password, database)
 
 
 logging.basicConfig(level=logging.DEBUG)
-
-# We have to import models here, even if we don't use them
-from models import Test, Foo, Edge1, Edge2, Edge3
 
 
 def timestamp():
@@ -40,7 +41,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         self._clear_tables()
 
     def tearDown(self):
-        g.engine.dispose()
+        self._clear_tables()
 
     def _clear_tables(self):
         conn = g.engine.connect()
@@ -504,6 +505,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             node = g.node_lookup(node_id=tempid).one()
         self.assertEqual(propertiesB, node.properties)
 
+    @unittest.skip('not implemented')
     def test_node_delete_system_annotation_keys(self):
         """Test the ability to remove system annotation keys from nodes"""
 
@@ -876,7 +878,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertEqual(len(list(g.edge_lookup(
                 src_id=src_id, dst_id=dst_id, label='edge3'))), 1)
             self.assertRaises(
-                IntegrityError,
+                FlushError,
                 g.edge_insert,
                 PsqlEdge(src_id=src_id, dst_id=dst_id, label='edge1')
             )

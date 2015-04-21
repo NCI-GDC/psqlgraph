@@ -25,7 +25,6 @@ class SystemAnnotationDict(dict):
         super(SystemAnnotationDict, self).update(self.source._sysan)
 
     def __setitem__(self, key, val):
-        print 'setting', key, val
         self.source._sysan[key] = val
         super(SystemAnnotationDict, self).__setitem__(key, val)
 

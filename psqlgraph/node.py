@@ -154,9 +154,7 @@ class Node(AbstractConcreteBase, ORMBase):
             temp.update(existing._props)
             temp.update(self._props)
             temp = existing._sysan
-            print '-- old', temp
             temp.update(self._sysan)
-            print '-- merged', temp
             self._sysan = temp
 
     def _lookup_existing(self, session):

@@ -29,6 +29,7 @@ class PsqlGraphDriver(object):
             user=user, password=password, host=host, database=database)
         self.engine = create_engine(conn_str, encoding='latin1')
         self.context = xlocal()
+        self._configure_driver_mappers()
 
     def _new_session(self):
         Session = sessionmaker(expire_on_commit=False)
@@ -235,8 +236,7 @@ class PsqlGraphDriver(object):
     def node_update(self, node, system_annotations={},
                     acl=None, properties={}, session=None):
         with self.session_scope() as local:
-            for key, val in system_annotations.items():
-                node.system_annotations[key] = val
+            node.system_annotations.update(system_annotations)
             if acl is not None:
                 node.acl = acl
             node.properties.update(properties)
@@ -308,6 +308,7 @@ class PsqlGraphDriver(object):
                                            session=None,
                                            max_retries=DEFAULT_RETRIES,
                                            backoff=default_backoff):
+        raise NotImplementedError()
         with self.session_scope(session) as local:
             if not node:
                 node = self.node_lookup_one(node_id=node_id)

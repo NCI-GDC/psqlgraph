@@ -4,6 +4,7 @@ from sqlalchemy.dialects.postgres import ARRAY, JSONB
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import object_session, sessionmaker
+from sqlalchemy.orm.util import polymorphic_union
 import copy
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -63,10 +64,13 @@ class CommonBase(object):
     def __mapper_args__(cls):
         name = cls.__name__
         if name in abstract_classes:
+            pjoin = polymorphic_union({
+                scls.__tablename__: scls.__table__ for scls in
+                cls.get_subclasses()}, 'type')
             return {
                 'polymorphic_on': cls._type,
                 'polymorphic_identity': name,
-                'with_polymorphic': '*',
+                'with_polymorphic': ('*', pjoin),
             }
         else:
             return {

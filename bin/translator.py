@@ -8,12 +8,10 @@ from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.orm import relationship, joinedload
 from datetime import datetime
 from psqlgraph import Base
-from cdisutils.log import get_logger
 from sqlalchemy import ForeignKey
 
 from psqlgraph import PsqlGraphDriver, Node, Edge, PolyNode, PolyEdge
 
-log = get_logger("translator")
 logging.root.setLevel(level=logging.ERROR)
 
 
@@ -72,9 +70,9 @@ def translate_nodes(src, dst):
                 session.merge(new)
                 print new
             except Exception as e:
-                log.error("unable to add {}, {}".format(
+                logging.error("unable to add {}, {}".format(
                     old.label, old.node_id))
-                log.error(e)
+                logging.error(e)
             count += 0
             if count % 1000:
                 session.commit()
@@ -101,9 +99,9 @@ def translate_edges(src, dst):
                 session.merge(new)
                 print new
             except Exception as e:
-                log.error("unable to add {}, {}".format(
+                logging.error("unable to add {}, {}".format(
                     old.label, old.src_id, old.dst_id))
-                log.error(e)
+                logging.error(e)
             count += 0
             if count % 1000:
                 session.commit()

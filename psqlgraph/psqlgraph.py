@@ -23,11 +23,12 @@ DEFAULT_RETRIES = 0
 
 class PsqlGraphDriver(object):
 
-    def __init__(self, host, user, password, database,
-                 node_validator=None, edge_validator=None):
+    def __init__(self, host, user, password, database, **kwargs):
+        kwargs.pop('node_validator', None)
+        kwargs.pop('edge_validator', None)
         conn_str = 'postgresql://{user}:{password}@{host}/{database}'.format(
             user=user, password=password, host=host, database=database)
-        self.engine = create_engine(conn_str, encoding='latin1')
+        self.engine = create_engine(conn_str, encoding='latin1', **kwargs)
         self.context = xlocal()
         self._configure_driver_mappers()
 
@@ -162,6 +163,14 @@ class PsqlGraphDriver(object):
     def __call__(self, *args, **kwargs):
         return self.nodes(*args, **kwargs)
 
+    def edges(self, query=Edge):
+        self._configure_driver_mappers()
+        with self.session_scope(must_inherit=True) as local:
+            if isinstance(query, list) or isinstance(query, tuple):
+                return local.query(*query)
+            else:
+                return local.query(query)
+
     def _configure_driver_mappers(self):
         try:
             configure_mappers()
@@ -192,14 +201,6 @@ class PsqlGraphDriver(object):
 
     def get_nodes(self, session=None, batch_size=1000):
         return self.nodes().yield_per(batch_size)
-
-    def edges(self, query=Edge):
-        self._configure_driver_mappers()
-        with self.session_scope(must_inherit=True) as local:
-            if isinstance(query, list) or isinstance(query, tuple):
-                return local.query(*query)
-            else:
-                return local.query(query)
 
     def get_edges(self, session=None, batch_size=1000):
         return self.edges().yield_per(batch_size)

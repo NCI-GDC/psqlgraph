@@ -156,16 +156,15 @@ class Edge(AbstractConcreteBase, ORMBase):
 
 
 def PolyEdge(src_id=None, dst_id=None, label=None, acl=[],
-             system_annotations={}, properties={},
-             src_label=None, dst_label=None):
+             system_annotations={}, properties={}):
     assert label, 'You cannot create a PolyEdge without a label.'
     try:
         Type = Edge.get_subclass(label)
     except Exception as e:
-        assert src_label is not None and dst_label is not None, (
+        raise RuntimeError(
             "{}: Unable to determine edge type. If there are more than one "
             "edges with label {}, you need to specify src_label and dst_label"
-            "but this isn't implemented yet, sorry."
+            "using the PsqlGraphDriver.get_PolyEdge())"
         ).format(e, label)
 
     return Type(

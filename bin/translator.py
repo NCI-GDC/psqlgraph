@@ -2,20 +2,21 @@
 import logging
 import argparse
 from gdcdatamodel import models
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, desc
 from sqlalchemy.dialects.postgres import ARRAY, JSONB
 from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.orm import relationship, joinedload
-from datetime import datetime
 from psqlgraph import Base
 from sqlalchemy import ForeignKey
 from multiprocessing import Pool
+import sys
 
-from psqlgraph import PsqlGraphDriver, Node, Edge, PolyNode, PolyEdge
+from psqlgraph import PsqlGraphDriver, Node, PolyNode
 
 logging.root.setLevel(level=logging.ERROR)
 
 BLOCK = 4096
+driver_kwargs = dict()
 
 
 class OldEdge(Base):
@@ -59,14 +60,17 @@ class OldNode(Base):
 
 def translate_node_range(_args):
     args, offset = _args
-    src = PsqlGraphDriver(args.host, args.user, args.password, args.source)
-    dst = PsqlGraphDriver(args.host, args.user, args.password, args.dest)
+    src = PsqlGraphDriver(
+        args.host, args.user, args.password, args.source, **driver_kwargs)
+    dst = PsqlGraphDriver(
+        args.host, args.user, args.password, args.dest, **driver_kwargs)
     with src.session_scope() as session:
         with dst.session_scope() as session:
             for old in src.nodes(OldNode).order_by(OldNode.node_id)\
                                          .offset(offset)\
                                          .limit(BLOCK)\
                                          .yield_per(BLOCK):
+
                 try:
                     new = PolyNode(
                         node_id=old.node_id,
@@ -77,11 +81,11 @@ def translate_node_range(_args):
                     )
                     new.created = old.created
                     session.merge(new)
-                    print new
                 except Exception as e:
                     logging.error("unable to add node {}, {}".format(
                         old.label, old.node_id))
                     logging.error(e)
+
             try:
                 session.commit()
             except Exception as e:
@@ -89,7 +93,8 @@ def translate_node_range(_args):
 
 
 def translate_nodes(args):
-    src = PsqlGraphDriver(args.host, args.user, args.password, args.source)
+    src = PsqlGraphDriver(
+        args.host, args.user, args.password, args.source, **driver_kwargs)
     with src.session_scope():
         count = src.nodes(OldNode).count()
     offsets = [i*BLOCK for i in range(count/BLOCK+1)]
@@ -100,22 +105,26 @@ def translate_nodes(args):
 
 def translate_edge_range(_args):
     args, offset = _args
-    src = PsqlGraphDriver(args.host, args.user, args.password, args.source)
-    dst = PsqlGraphDriver(args.host, args.user, args.password, args.dest)
+    src = PsqlGraphDriver(
+        args.host, args.user, args.password, args.source, **driver_kwargs)
+    dst = PsqlGraphDriver(
+        args.host, args.user, args.password, args.dest, **driver_kwargs)
+    print '{}-{}'.format(offset, offset+BLOCK)
+    sys.stdout.flush()
     with src.session_scope() as session:
         with dst.session_scope() as session:
             for old in src.edges(OldEdge)\
-                          .order_by(OldEdge.src_id,
-                                    OldEdge.dst_id,
-                                    OldEdge.label)\
+                          .order_by((OldEdge.src_id),
+                                    (OldEdge.dst_id),
+                                    (OldEdge.label))\
                           .options(joinedload(OldEdge.src))\
                           .options(joinedload(OldEdge.dst))\
                           .offset(offset)\
-                          .limit(BLOCK)\
-                          .yield_per(BLOCK):
+                          .limit(BLOCK).all():
                 try:
                     Type = dst.get_edge_by_labels(
                         old.src.label, old.label, old.dst.label)
+                    print Type.__name__
                     new = Type(
                         src_id=old.src_id,
                         dst_id=old.dst_id,
@@ -125,11 +134,11 @@ def translate_edge_range(_args):
                     )
                     new.created = old.created
                     session.merge(new)
-                    print new
                 except Exception as e:
                     logging.error("unable to add edge {}, {}".format(
                         old.label, old.src_id, old.dst_id))
                     logging.error(e)
+
             try:
                 session.commit()
             except Exception as e:
@@ -137,9 +146,11 @@ def translate_edge_range(_args):
 
 
 def translate_edges(args):
-    src = PsqlGraphDriver(args.host, args.user, args.password, args.source)
+    src = PsqlGraphDriver(
+        args.host, args.user, args.password, args.source, **driver_kwargs)
     with src.session_scope():
         count = src.nodes(OldEdge).count()
+    src.engine.dispose()
     offsets = [i*BLOCK for i in range(count/BLOCK+1)]
     pool = Pool(args.nprocs)
     args = [(args, offset) for offset in offsets]
@@ -161,5 +172,5 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--nprocs', default=16, type=int,
                         help='number of processes')
     args = parser.parse_args()
-    translate_nodes(args)
+    # translate_nodes(args)
     translate_edges(args)

@@ -30,25 +30,29 @@ class GraphQuery(Query):
 
     # ======== Edges ========
     def with_edge_to_node(self, edge_type, target_node):
+        assert isinstance(edge_type, Edge),\
+            'Argument edge_type must be of type Edge.'
         session = self.session
         sq = session.query(edge_type).filter(
             edge_type.dst_id == target_node.node_id).subquery()
         return self.filter(self.entity().node_id == sq.c.src_id)
 
     def with_edge_from_node(self, edge_type, source_node):
+        assert isinstance(edge_type, Edge),\
+            'Argument edge_type must be of type Edge.'
         session = self.session
         sq = session.query(edge_type).filter(
             edge_type.src_id == source_node.node_id).subquery()
         return self.filter(self.entity().node_id == sq.c.src_id)
 
-    def src_ids(self, ids):
+    def src(self, ids):
         assert hasattr(self.entity(), 'src_id')
         if hasattr(ids, '__iter__'):
             return self.filter(Edge.src_id.in_(ids))
         else:
             return self.filter(Edge.src_id == str(ids))
 
-    def dst_ids(self, ids):
+    def dst(self, ids):
         assert hasattr(self.entity(), 'dst_id')
         if hasattr(ids, '__iter__'):
             return self.filter(Edge.dst_id.in_(ids))

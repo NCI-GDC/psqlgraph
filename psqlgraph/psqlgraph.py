@@ -405,6 +405,19 @@ class PsqlGraphDriver(object):
             'Expected 1 edge {}-{}->{}'.format(dst_label)
         return edges[0]
 
+    def get_PsqlEdge(self, src_id=None, dst_id=None, label=None,
+                     acl=[], system_annotations={}, properties={},
+                     src_label=None, dst_label=None):
+        Type = self.get_edge_by_labels(src_label, label, dst_label)
+        return Type(
+            src_id=src_id,
+            dst_id=dst_id,
+            properties=properties,
+            acl=acl,
+            system_annotations=system_annotations,
+            label=label
+        )
+
     def reload(self, *entities):
         reloaded = []
         for e in entities:

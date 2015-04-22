@@ -362,9 +362,9 @@ class PsqlGraphDriver(object):
             query = self.edges()
 
         if src_id is not None:
-            query = query.src_ids(src_id)
+            query = query.src(src_id)
         if dst_id is not None:
-            query = query.dst_ids(dst_id)
+            query = query.dst(dst_id)
         if label is not None:
             query = query.filter(Edge.label == label)
         return query
@@ -422,8 +422,8 @@ class PsqlGraphDriver(object):
         reloaded = []
         for e in entities:
             if isinstance(e, Edge):
-                reloaded.append(self.edges(type(e)).src_ids(e.src_id)
-                                .dst_ids(e.dst_id).one())
+                reloaded.append(self.edges(type(e)).src(e.src_id)
+                                .dst(e.dst_id).one())
             else:
                 reloaded.append(self.nodes(type(e)).ids(e.node_id).one())
         return reloaded

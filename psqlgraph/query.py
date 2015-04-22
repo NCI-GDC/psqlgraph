@@ -30,16 +30,12 @@ class GraphQuery(Query):
 
     # ======== Edges ========
     def with_edge_to_node(self, edge_type, target_node):
-        assert isinstance(edge_type, Edge),\
-            'Argument edge_type must be of type Edge.'
         session = self.session
         sq = session.query(edge_type).filter(
             edge_type.dst_id == target_node.node_id).subquery()
         return self.filter(self.entity().node_id == sq.c.src_id)
 
     def with_edge_from_node(self, edge_type, source_node):
-        assert isinstance(edge_type, Edge),\
-            'Argument edge_type must be of type Edge.'
         session = self.session
         sq = session.query(edge_type).filter(
             edge_type.src_id == source_node.node_id).subquery()
@@ -107,13 +103,13 @@ class GraphQuery(Query):
     # ======== Properties ========
     def props(self, props={}, **kwargs):
         assert isinstance(props, dict)
-        props.update(kwargs)
-        return self.filter(self.entity()._props.contains(props))
+        kwargs.update(props)
+        return self.filter(self.entity()._props.contains(kwargs))
 
     def not_props(self, props={}, **kwargs):
         assert isinstance(props, dict)
-        props.update(kwargs)
-        return self.filter(not_(self.entity().properties.contains(props)))
+        kwargs.update(props)
+        return self.filter(not_(self.entity().properties.contains(kwargs)))
 
     def prop_in(self, key, values):
         assert isinstance(key, str) and isinstance(values, list)
@@ -126,14 +122,14 @@ class GraphQuery(Query):
     # ======== System Annotations ========
     def sysan(self, sysans={}, **kwargs):
         assert isinstance(sysans, dict)
-        sysans.update(kwargs)
-        return self.filter(self.entity()._sysan.contains(sysans))
+        kwargs.update(sysans)
+        return self.filter(self.entity()._sysan.contains(kwargs))
 
-    def not_sysan(self, sysans={}, **kwargs):
+    def not_sysan(self, sysans=lambda: {}, **kwargs):
         assert isinstance(sysans, dict)
-        sysans.update(kwargs)
+        kwargs.update(sysans)
         return self.filter(
-            not_(self.entity().system_annotations.contains(sysans)))
+            not_(self.entity().system_annotations.contains(kwargs)))
 
     def has_sysan(self, keys):
         if isinstance(keys, str):

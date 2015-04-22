@@ -3,6 +3,7 @@ from functools import wraps
 import time
 import random
 import logging
+import unicodedata
 
 #  PsqlNode modules
 DEFAULT_RETRIES = 0
@@ -14,7 +15,7 @@ def sanitize(properties):
         if isinstance(value, (int, str, long, bool, float, type(None))):
             sanitized[str(key)] = value
         elif isinstance(value, unicode):
-            sanitized[str(key)] = str(value)
+            sanitized[str(key)] = value.encode('ascii', 'ignore')
         else:
             raise ValueError(
                 'Cannot serialize {} to JSONB property'.format(type(value)))

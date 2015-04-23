@@ -29,11 +29,17 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def _create_subtree(self, parent_id, level=0):
         for i in range(4):
             node_id = str(uuid.uuid4())
+            foo_id = str(uuid.uuid4())
             self.g.node_merge(
                 node_id=node_id, label='test',
                 properties={'key2': i, 'key3': None})
+            self.g.node_merge(
+                node_id=foo_id, label='foo',
+                properties={'bar': i})
             self.g.edge_insert(PolyEdge(
                 src_id=parent_id, dst_id=node_id, label='edge1'))
+            self.g.edge_insert(PolyEdge(
+                src_id=parent_id, dst_id=foo_id, label='test_edge_2'))
             if level < 2:
                 self._create_subtree(node_id, level+1)
 
@@ -85,8 +91,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_not_props(self):
         with self.g.session_scope():
             for i in range(3):
-                ns = self.g.nodes().not_props({'key2': i, 'key3': None})\
-                                   .all()
+                ns = self.g.nodes(Test).not_props({'key2': i, 'key3': None})\
+                                       .all()
                 self.assertNotEqual(ns, [])
                 for n in ns:
                     self.assertNotEqual(n['key2'], i)
@@ -96,19 +102,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
         with self.g.session_scope():
             self.assertEqual(self.g.nodes(Test)
                              .ids(self.parent_id)
-                             .path('tests')
-                             .props(key2=1)
+                             .path('foos')
+                             .props(bar=1)
                              .count(), 1)
-            self.assertEqual(self.g.nodes(Test)
-                             .ids(self.parent_id)
-                             .path('tests.tests')
-                             .props(key2=1)
-                             .count(), 4)
-            self.assertEqual(len(self.g.nodes(Test)
-                                 .path('tests.tests')
-                                 .props(key2=1)
-                                 .all()), 21)
-            self.assertEqual(len(self.g.nodes(Test)
-                                 .path('tests.tests.tests')
-                                 .props(key2=1)
-                                 .all()), 21)

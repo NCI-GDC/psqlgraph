@@ -119,13 +119,13 @@ class Test_psql2neo(unittest.TestCase):
         self._clear_tables()
         node_id = str(uuid.uuid4())
         timestamp = str(datetime.now())
-        props = {'time': timestamp}
+        props = {'key2': timestamp}
         test_props = {
-            'id': node_id, 'time': timestamp
+            'key1': node_id, 'key2': timestamp
         }
         self.psqlDriver.node_merge(node_id, label='test', properties=props)
         node_properties = [{'name': 'test_properties',
-                            'fields': [{'name': 'time', 'type': 'long'}]}]
+                            'fields': [{'name': 'key2', 'type': 'str'}]}]
 
         self.driver.export(self.get_csv_dir(), node_properties)
         self.batch_import()

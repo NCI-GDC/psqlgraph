@@ -408,7 +408,8 @@ class PsqlGraphDriver(object):
                  and edge.__dst_class__ == dst_classes[0].__name__
                  and edge.get_label() == edge_label]
         assert len(edges) == 1,\
-            'Expected 1 edge {}-{}->{}'.format(dst_label)
+            'Expected 1 edge {}-{}->{}, found {}'.format(
+                src_label, edge_label, dst_label, len(edges))
         return edges[0]
 
     def get_PsqlEdge(self, src_id=None, dst_id=None, label=None,

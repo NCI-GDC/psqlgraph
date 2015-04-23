@@ -31,10 +31,9 @@ class GraphQuery(Query):
 
         """
 
-        if root:
+        if root or not hasattr(self._joinpoint_zero(), 'entity'):
             return self._entity_zero().type
-        else:
-            return self._joinpoint_zero().entity
+        return self._joinpoint_zero().entity
 
     # ======== Edges ========
     def with_edge_to_node(self, edge_type, target_node):
@@ -216,7 +215,7 @@ class GraphQuery(Query):
         assert self.entity() != Node,\
             'Please narrow your search by specifying a node subclass'
         for e in entities:
-            self = self.join(*getattr(self.entity(), e).attr)
+            self = self.join(*getattr(self.entity(), e).attr, aliased=True)
         return self
 
     def path2(self, *entities):
@@ -315,7 +314,7 @@ class GraphQuery(Query):
 
         assert isinstance(props, dict)
         kwargs.update(props)
-        return self.filter(not_(self.entity().properties.contains(kwargs)))
+        return self.filter(not_(self.entity()._props.contains(kwargs)))
 
     def prop_in(self, key, values):
         """Filter on entities that have a value corresponding to `key` that is
@@ -335,7 +334,7 @@ class GraphQuery(Query):
         """
 
         assert isinstance(key, str) and isinstance(values, list)
-        return self.filter(self.entity().properties[key].astext.in_([
+        return self.filter(self.entity()._props[key].astext.in_([
             str(v) for v in values]))
 
     def prop(self, key, value):

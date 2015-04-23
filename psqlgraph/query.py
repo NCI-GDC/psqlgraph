@@ -30,16 +30,20 @@ class GraphQuery(Query):
 
     # ======== Edges ========
     def with_edge_to_node(self, edge_type, target_node):
+        assert not isinstance(edge_type, str),\
+            'Argument edge_type must be a subclass of Edge not a string'
         session = self.session
         sq = session.query(edge_type).filter(
             edge_type.dst_id == target_node.node_id).subquery()
         return self.filter(self.entity().node_id == sq.c.src_id)
 
     def with_edge_from_node(self, edge_type, source_node):
+        assert not isinstance(edge_type, str),\
+            'Argument edge_type must be a subclass of Edge not a string'
         session = self.session
         sq = session.query(edge_type).filter(
             edge_type.src_id == source_node.node_id).subquery()
-        return self.filter(self.entity().node_id == sq.c.src_id)
+        return self.filter(self.entity().node_id == sq.c.dst_id)
 
     def src(self, ids):
         assert hasattr(self.entity(), 'src_id')

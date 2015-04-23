@@ -59,44 +59,46 @@ class PsqlGraphDriver(object):
             properties:
 
         1. Driver calls within the session scope will, by default,
-        inherit the scope's session.
+           inherit the scope's session.
 
-        2. Explicitly passing a session as `session` will cause driver
-        calls within the session scope to use the explicitly passed
-        session.
+        2. Explicitly passing a session as ``session`` will cause driver
+           calls within the session scope to use the explicitly passed
+           session.
 
-        3. Setting `can_inherit` to false will have no effect
+        3. Setting ``can_inherit`` to false will have no effect
 
-        4. Setting `must_inherit` to will raise a RuntimeError
+        4. Setting ``must_inherit`` to will raise a RuntimeError
 
         .. note::
             A session scope that is nested has the following
-            properties given `driver` is a PsqlGraphDriver instance:
+            properties given ``driver`` is a PsqlGraphDriver instance:
 
-        .. code-block:: python
-            driver.session_scope() as A:
+        Example::
+
+            with driver.session_scope() as A:
                 driver.node_insert()  # uses session A
-                driver.session_scope(A) as B:
+                with driver.session_scope(A) as B:
                     B == A  # is True
-                driver.session_scope() as C:
+                with driver.session_scope() as C:
                     C == A  # is True
-                driver.session_scope():
+                with driver.session_scope():
                     driver.node_insert()  # uses session A still
-                driver.session_scope(can_inherit=False):
+                with driver.session_scope(can_inherit=False):
                     driver.node_insert()  # uses new session D
-                driver.session_scope(can_inherit=False) as D:
+                with driver.session_scope(can_inherit=False) as D:
                     D != A  # is True
-                driver.session_scope() as E:
+                with driver.session_scope() as E:
                     E.rollback()  # rolls back session A
-                driver.session_scope(can_inherit=False) as F:
+                with driver.session_scope(can_inherit=False) as F:
                     F.rollback()  # does not roll back session A
-                driver.session_scope(can_inherit=False) as G:
+                with driver.session_scope(can_inherit=False) as G:
                     G != A  # is True
                     driver.node_insert()  # uses session G
-                    driver.session_scope(A) as H:
-                        H == A; H != G  # are true
+                    with driver.session_scope(A) as H:
+                        H == A  # true
+                        H != G  # true
                         H.rollback()  # rolls back A but not G
-                    driver.session_scope(A):
+                    with driver.session_scope(A):
                         driver.node_insert()  # uses session A
 
         :param session:
@@ -153,6 +155,9 @@ class PsqlGraphDriver(object):
                 local.close()
 
     def nodes(self, query=Node):
+        """.. _nodes:
+
+        """
         self._configure_driver_mappers()
         with self.session_scope(must_inherit=True) as local:
             if isinstance(query, list) or isinstance(query, tuple):

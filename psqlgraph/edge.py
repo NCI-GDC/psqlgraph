@@ -161,11 +161,11 @@ def PolyEdge(src_id=None, dst_id=None, label=None, acl=[],
     try:
         Type = Edge.get_subclass(label)
     except Exception as e:
-        raise RuntimeError(
+        raise RuntimeError((
             "{}: Unable to determine edge type. If there are more than one "
             "edges with label {}, you need to specify src_label and dst_label"
             "using the PsqlGraphDriver.get_PolyEdge())"
-        ).format(e, label)
+        ).format(e, label))
 
     return Type(
         src_id=src_id,

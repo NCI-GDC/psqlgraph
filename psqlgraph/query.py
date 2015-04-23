@@ -22,7 +22,7 @@ class GraphQuery(Query):
         else:
             return (val,)
 
-    def entity(self, root=False):
+    def entity(self):
         """It is useful for us to be able to get the last entity in a chained
         join.  Therfore, if there are _join_entities on the query, the
         entity will be the last one in the chain.  If there is noo
@@ -31,8 +31,6 @@ class GraphQuery(Query):
 
         """
 
-        if root or not hasattr(self._joinpoint_zero(), 'entity'):
-            return self._entity_zero().type
         return self._joinpoint_zero().entity
 
     # ======== Edges ========
@@ -215,7 +213,7 @@ class GraphQuery(Query):
         assert self.entity() != Node,\
             'Please narrow your search by specifying a node subclass'
         for e in entities:
-            self = self.join(*getattr(self.entity(), e).attr, aliased=True)
+            self = self.join(*getattr(self.entity(), e).attr)
         return self
 
     def path2(self, *entities):

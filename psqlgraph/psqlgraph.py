@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker, configure_mappers
 from xlocal import xlocal
 from sqlalchemy import create_engine, event
-
+import psqlgraph2neo4j
 # Custom modules
 from exc import QueryError
 from util import retryable, default_backoff

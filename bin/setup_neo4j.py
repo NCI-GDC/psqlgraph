@@ -5,17 +5,19 @@ import re
 import os
 
 default_neo4j_url = 'http://neo4j.com/artifact.php?name=neo4j-community-2.1.6-unix.tar.gz'
-p_tar = re.compile('(http://neo4j.com/)(.*)')
+p_tar = re.compile('(.*)\?name=(.*)')
 p_dir = re.compile('(.*)\?name=(.*)(-unix\.tar\.gz)')
 
 
 def download_and_extract(url):
     tar_path = p_tar.match(url).group(2)
     dir_path = p_dir.match(url).group(2)
+    print 'tar_path', tar_path
+    print 'dir_path', dir_path
     if not os.path.exists(tar_path):
-        call(['wget', url])
+        call(['wget','-O',tar_path, url])
     if not os.path.exists(dir_path):
-        call(['tar', '-zxf', url.split('/')[-1]])
+        call(['tar', '-zxf', tar_path])
 
 
 def start_neo4j(url):

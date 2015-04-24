@@ -122,6 +122,9 @@ class Test_psql2neo(unittest.TestCase):
             subprocess.call([self.get_neo4j_script(), 'start-no-wait'])
             time.sleep(20)
 
+        else:
+            time.sleep(1)
+
     def test_neo_single_node(self):
         self._clear_tables()
         node_id = str(uuid.uuid4())

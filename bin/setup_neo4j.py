@@ -22,7 +22,7 @@ def start_neo4j(url):
     dir_path = p_dir.match(url).group(2)
     conf = os.path.join(dir_path, 'conf', 'neo4j.properties')
     call(['sed','-i','s/^#allow/allow/g', conf])
-    call(['bash',os.path.join(dir_path,'bin','neo4j'),'start'])
+    #call(['bash',os.path.join(dir_path,'bin','neo4j'),'start'])
 
 if __name__ == '__main__':
 

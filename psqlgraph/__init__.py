@@ -5,3 +5,4 @@ from util import sanitize
 from base import Base, create_all
 from voided_node import VoidedNode
 from voided_edge import VoidedEdge
+import psqlgraph2neo4j

@@ -45,7 +45,7 @@ class Test_psql2neo(unittest.TestCase):
         try:
             shutil.rmtree(
                 os.path.join(dirname(dirname(__file__)), 'batch_importer'))
-        except Exception:
+        except:
             pass
 
     def setUp(self):

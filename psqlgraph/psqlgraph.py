@@ -23,12 +23,14 @@ DEFAULT_RETRIES = 0
 
 class PsqlGraphDriver(object):
 
-    def __init__(self, host, user, password, database,
-                 node_validator=None, edge_validator=None):
+    def __init__(self, host, user, password, database, **kwargs):
+        kwargs.pop('node_validator', None)
+        kwargs.pop('edge_validator', None)
         conn_str = 'postgresql://{user}:{password}@{host}/{database}'.format(
             user=user, password=password, host=host, database=database)
-        self.engine = create_engine(conn_str, encoding='latin1')
+        self.engine = create_engine(conn_str, encoding='latin1', **kwargs)
         self.context = xlocal()
+        self._configure_driver_mappers()
 
     def _new_session(self):
         Session = sessionmaker(expire_on_commit=False)
@@ -57,44 +59,46 @@ class PsqlGraphDriver(object):
             properties:
 
         1. Driver calls within the session scope will, by default,
-        inherit the scope's session.
+           inherit the scope's session.
 
-        2. Explicitly passing a session as `session` will cause driver
-        calls within the session scope to use the explicitly passed
-        session.
+        2. Explicitly passing a session as ``session`` will cause driver
+           calls within the session scope to use the explicitly passed
+           session.
 
-        3. Setting `can_inherit` to false will have no effect
+        3. Setting ``can_inherit`` to false will have no effect
 
-        4. Setting `must_inherit` to will raise a RuntimeError
+        4. Setting ``must_inherit`` to will raise a RuntimeError
 
         .. note::
             A session scope that is nested has the following
-            properties given `driver` is a PsqlGraphDriver instance:
+            properties given ``driver`` is a PsqlGraphDriver instance:
 
-        .. code-block:: python
-            driver.session_scope() as A:
+        Example::
+
+            with driver.session_scope() as A:
                 driver.node_insert()  # uses session A
-                driver.session_scope(A) as B:
+                with driver.session_scope(A) as B:
                     B == A  # is True
-                driver.session_scope() as C:
+                with driver.session_scope() as C:
                     C == A  # is True
-                driver.session_scope():
+                with driver.session_scope():
                     driver.node_insert()  # uses session A still
-                driver.session_scope(can_inherit=False):
+                with driver.session_scope(can_inherit=False):
                     driver.node_insert()  # uses new session D
-                driver.session_scope(can_inherit=False) as D:
+                with driver.session_scope(can_inherit=False) as D:
                     D != A  # is True
-                driver.session_scope() as E:
+                with driver.session_scope() as E:
                     E.rollback()  # rolls back session A
-                driver.session_scope(can_inherit=False) as F:
+                with driver.session_scope(can_inherit=False) as F:
                     F.rollback()  # does not roll back session A
-                driver.session_scope(can_inherit=False) as G:
+                with driver.session_scope(can_inherit=False) as G:
                     G != A  # is True
                     driver.node_insert()  # uses session G
-                    driver.session_scope(A) as H:
-                        H == A; H != G  # are true
+                    with driver.session_scope(A) as H:
+                        H == A  # true
+                        H != G  # true
                         H.rollback()  # rolls back A but not G
-                    driver.session_scope(A):
+                    with driver.session_scope(A):
                         driver.node_insert()  # uses session A
 
         :param session:
@@ -151,6 +155,20 @@ class PsqlGraphDriver(object):
                 local.close()
 
     def nodes(self, query=Node):
+        """.. _nodes:
+
+        """
+        self._configure_driver_mappers()
+        with self.session_scope(must_inherit=True) as local:
+            if isinstance(query, list) or isinstance(query, tuple):
+                return local.query(*query)
+            else:
+                return local.query(query)
+
+    def __call__(self, *args, **kwargs):
+        return self.nodes(*args, **kwargs)
+
+    def edges(self, query=Edge):
         self._configure_driver_mappers()
         with self.session_scope(must_inherit=True) as local:
             if isinstance(query, list) or isinstance(query, tuple):
@@ -162,9 +180,10 @@ class PsqlGraphDriver(object):
         try:
             configure_mappers()
         except Exception as e:
-            raise type(e)(
-                '{}: '.format(str(e)) +
-                'Unable to configure mappers. Have you imported your models?')
+            logging.error((
+                '{}: Unable to configure mappers. '
+                'Have you imported your models?'
+            ).format(str(e)))
 
     def voided_nodes(self, query=VoidedNode):
         with self.session_scope(must_inherit=True) as local:
@@ -188,14 +207,6 @@ class PsqlGraphDriver(object):
 
     def get_nodes(self, session=None, batch_size=1000):
         return self.nodes().yield_per(batch_size)
-
-    def edges(self, query=Edge):
-        self._configure_driver_mappers()
-        with self.session_scope(must_inherit=True) as local:
-            if isinstance(query, list) or isinstance(query, tuple):
-                return local.query(*query)
-            else:
-                return local.query(query)
 
     def get_edges(self, session=None, batch_size=1000):
         return self.edges().yield_per(batch_size)
@@ -232,8 +243,7 @@ class PsqlGraphDriver(object):
     def node_update(self, node, system_annotations={},
                     acl=None, properties={}, session=None):
         with self.session_scope() as local:
-            for key, val in system_annotations.items():
-                node.system_annotations[key] = val
+            node.system_annotations.update(system_annotations)
             if acl is not None:
                 node.acl = acl
             node.properties.update(properties)
@@ -305,6 +315,7 @@ class PsqlGraphDriver(object):
                                            session=None,
                                            max_retries=DEFAULT_RETRIES,
                                            backoff=default_backoff):
+        raise NotImplementedError()
         with self.session_scope(session) as local:
             if not node:
                 node = self.node_lookup_one(node_id=node_id)
@@ -357,9 +368,9 @@ class PsqlGraphDriver(object):
             query = self.edges()
 
         if src_id is not None:
-            query = query.src_ids(src_id)
+            query = query.src(src_id)
         if dst_id is not None:
-            query = query.dst_ids(dst_id)
+            query = query.dst(dst_id)
         if label is not None:
             query = query.filter(Edge.label == label)
         return query
@@ -397,5 +408,29 @@ class PsqlGraphDriver(object):
                  and edge.__dst_class__ == dst_classes[0].__name__
                  and edge.get_label() == edge_label]
         assert len(edges) == 1,\
-            'Expected 1 edge {}-{}->{}'.format(dst_label)
+            'Expected 1 edge {}-{}->{}, found {}'.format(
+                src_label, edge_label, dst_label, len(edges))
         return edges[0]
+
+    def get_PsqlEdge(self, src_id=None, dst_id=None, label=None,
+                     acl=[], system_annotations={}, properties={},
+                     src_label=None, dst_label=None):
+        Type = self.get_edge_by_labels(src_label, label, dst_label)
+        return Type(
+            src_id=src_id,
+            dst_id=dst_id,
+            properties=properties,
+            acl=acl,
+            system_annotations=system_annotations,
+            label=label
+        )
+
+    def reload(self, *entities):
+        reloaded = []
+        for e in entities:
+            if isinstance(e, Edge):
+                reloaded.append(self.edges(type(e)).src(e.src_id)
+                                .dst(e.dst_id).one())
+            else:
+                reloaded.append(self.nodes(type(e)).ids(e.node_id).one())
+        return reloaded

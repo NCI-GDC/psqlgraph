@@ -15,5 +15,5 @@ before_script:
   - sudo service postgresql restart
   - yes | python setup.py install
   - cd test; python setup_test_psqlgraph.py
-  - python bin/setup_neo4j.py
+  - cd ..; python bin/setup_neo4j.py
 script: "cd test; nosetests -v"

@@ -2,6 +2,8 @@ language: python
 python:
     - "2.7"
 # command to run tests
+jdk:
+  - oraclejdk7
 before_script:
   - echo -e 'Host github.com\n\tStrictHostKeyChecking no\n' >> ~/.ssh/config
   - wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
@@ -15,5 +17,5 @@ before_script:
   - sudo service postgresql restart
   - yes | python setup.py install
   - cd test; python setup_test_psqlgraph.py
-  - python bin/setup_neo4j.py
-script: "cd test; nosetests -v"
+  - cd ..; python bin/setup_neo4j.py
+script: "cd test; py.test -v"

@@ -32,7 +32,6 @@ class Test_psql2neo(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        pdb.set_trace()
         dirname = os.path.dirname
         script = os.path.join(
             dirname(dirname(__file__)),
@@ -42,8 +41,11 @@ class Test_psql2neo(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         dirname = os.path.dirname
-        shutil.rmtree(
-            os.path.join(dirname(dirname(__file__)), 'batch_importer'))
+        try:
+            shutil.rmtree(
+                os.path.join(dirname(dirname(__file__)), 'batch_importer'))
+        except:
+            pass
 
     def setUp(self):
         self.logger = logging.getLogger(__name__)
@@ -54,11 +56,11 @@ class Test_psql2neo(unittest.TestCase):
         self.neo4j_script = None
         self.batch_script = None
         self.psqlDriver = self.driver.psqlgraphDriver
-        shutil.rmtree(self.get_data_dir())
         self._clear_tables()
 
     def tearDown(self):
         self.psqlDriver.engine.dispose()
+        shutil.rmtree(self.get_data_dir())
 
     def _clear_tables(self):
         conn = self.psqlDriver.engine.connect()
@@ -181,11 +183,6 @@ class Test_psql2neo(unittest.TestCase):
                                 'fields': []}]
 
             self.driver.export(self.get_csv_dir(), node_properties)
-        self.batch_import()
-
-        node_properties = [{'name': 'test_properties', 'fields': []}]
-
-        self.driver.export(self.get_csv_dir(), node_properties)
         self.batch_import()
 
         self.neo4jDriver = py2neo.Graph()

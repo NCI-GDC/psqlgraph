@@ -3,10 +3,44 @@ from functools import wraps
 import time
 import random
 import logging
-import unicodedata
+from functools import wraps
+from exc import ValidationError
 
 #  PsqlNode modules
 DEFAULT_RETRIES = 0
+
+
+def validate(f, value, types, options):
+    """Validation decorator types for hybrid_properties
+
+    """
+    if not types:
+        return
+    _types = types+(type(None),)
+    # If type is str, accept unicode as well, it will be sanitized
+    if str in _types:
+        _types = types+(unicode,)
+    assert isinstance(value, _types), (
+        "arg '{}' ({}), does not match {} for property {}".format(
+            value, type(value), _types, f.__name__))
+    enum = options.get('enum')
+    if enum:
+        assert value in enum, (
+            "arg '{}' not in {} for property {}".format(
+                value, enum, f.__name__))
+
+
+def pg_property(*types, **kwargs):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            return f
+        # wrapper.__pg_getter__ = kwargs.get('fget', None)
+        wrapper.__pg_setter__ = True
+        # wrapper.__pg_prop_types__ = types
+        # wrapper.__pg_prop_options__ = kwargs
+        return wrapper
+    return decorator
 
 
 def sanitize(properties):

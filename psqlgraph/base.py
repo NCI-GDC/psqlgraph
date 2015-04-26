@@ -1,12 +1,14 @@
 from attributes import PropertiesDict, SystemAnnotationDict
-from sqlalchemy import Column, Text, DateTime, text
+from sqlalchemy import Column, Text, DateTime, text, event
 from sqlalchemy.dialects.postgres import ARRAY, JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import object_session, sessionmaker
 from sqlalchemy.orm.util import polymorphic_union
-from util import sanitize
+from util import sanitize, validate
+from sqlalchemy.ext.declarative.api import DeclarativeMeta
+
 
 Base = declarative_base()
 abstract_classes = ['Node', 'Edge', 'Base']
@@ -254,6 +256,33 @@ class CommonBase(object):
             assert self.properties[key] is not None, (
                 "Null value in key '{}' violates non-null constraint for {}."
             ).format(key, self)
+
+
+@event.listens_for(CommonBase, 'mapper_configured', propagate=True)
+def create_hybrid_properties(mapper, cls):
+
+    for attr in dir(cls):
+        if attr in ['properties', 'props', 'system_annotations', 'sysan']:
+            continue
+
+        f = getattr(cls, attr)
+        if not getattr(f, '__pg_setter__', False):
+            continue
+
+        print attr, f
+
+        @hybrid_property
+        def hybrid_prop(instance):
+            return instance._props[attr]
+
+        @hybrid_prop.setter
+        def hybrid_prop(instance, value):
+            # validate(f, value, types, options)
+            # f = value
+            pass
+
+        # hybrid_prop.__pg_prop_types__ = types
+        setattr(cls, attr, hybrid_prop)
 
 
 ORMBase = declarative_base(cls=CommonBase)

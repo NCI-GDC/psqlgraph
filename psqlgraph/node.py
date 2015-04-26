@@ -1,16 +1,11 @@
-from datetime import datetime
-from sqlalchemy import Column, Text, DateTime, UniqueConstraint, event
-from sqlalchemy.dialects.postgres import ARRAY, JSONB
+from base import ORMBase
+from edge import Edge
+from sqlalchemy import Column, Text, UniqueConstraint, event
+from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import object_session, sessionmaker, relationship
-import copy
-
-from base import ORMBase
+from sqlalchemy.orm import relationship
 from voided_node import VoidedNode
-from util import sanitize
-from edge import Edge
-from sqlalchemy.ext.associationproxy import association_proxy
 
 
 DST_SRC_ASSOC = '__dst_src_assoc__'

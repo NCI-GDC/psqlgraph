@@ -7,7 +7,7 @@ from models import Test, Edge1
 from psqlgraph import Edge, Node, PolyNode
 from py2neo.packages.httpstream import http
 http.socket_timeout = 9999
-from psqlgraph import PolyEdge,Edge, Node
+from psqlgraph import PolyEdge, Edge, Node
 
 import uuid
 import shutil
@@ -25,6 +25,7 @@ driver.connect_to_psql(host, user, password, database)
 
 logging.basicConfig(level=logging.INFO)
 
+
 class Test_psql2neo(unittest.TestCase):
 
     @classmethod
@@ -41,6 +42,8 @@ class Test_psql2neo(unittest.TestCase):
         try:
             shutil.rmtree(
                 os.path.join(dirname(dirname(__file__)), 'batch_importer'))
+        except Exception:
+            pass
 
     def setUp(self):
         self.logger = logging.getLogger(__name__)

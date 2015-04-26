@@ -10,6 +10,7 @@ from psqlgraph import Edge, Node, PolyNode
 from py2neo.packages.httpstream import http
 http.socket_timeout = 9999
 from psqlgraph import PolyEdge, Edge, Node
+from datetime import datetime
 
 import uuid
 import shutil
@@ -44,7 +45,7 @@ class Test_psql2neo(unittest.TestCase):
         try:
             shutil.rmtree(
                 os.path.join(dirname(dirname(__file__)), 'batch_importer'))
-        except:
+        except Exception:
             pass
 
     def setUp(self):

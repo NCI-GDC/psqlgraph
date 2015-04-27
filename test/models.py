@@ -1,7 +1,4 @@
-from psqlgraph import Node
-from psqlgraph.edge import Edge
-from sqlalchemy.ext.hybrid import hybrid_property
-from psqlgraph import pg_property
+from psqlgraph import Node, Edge, pg_property
 
 
 class Edge1(Edge):
@@ -43,7 +40,7 @@ class Edge3(Edge):
 
 class Test(Node):
 
-    @pg_property(str)
+    @pg_property
     def key1(self, value):
         assert isinstance(value, (str, type(None)))
         assert value != 'bad_value'
@@ -73,6 +70,14 @@ class Foo(Node):
     @pg_property
     def bar(self, value):
         self._set_property('bar', value)
+
+    @pg_property(enum=('allowed_1', 'allowed_2'))
+    def baz(self, value):
+        self._set_property('baz', value)
+
+    @pg_property(int)
+    def fobble(self, value):
+        self._set_property('fobble', value)
 
 
 class FooBar(Node):

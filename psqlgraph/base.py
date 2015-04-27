@@ -271,7 +271,7 @@ def create_hybrid_property(name, fset):
 
     @hybrid_prop.setter
     def hybrid_prop(instance, value):
-        validate(fset, value, fset.__pg_types__, None)
+        validate(fset, value, fset.__pg_types__, fset.__pg_enum__)
         fset(instance, value)
     return hybrid_prop
 

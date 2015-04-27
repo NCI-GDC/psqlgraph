@@ -16,6 +16,11 @@ abstract_classes = ['Node', 'Edge', 'Base']
 
 class CommonBase(object):
 
+    # This dictionary will be a property name to allowed types
+    # dictionary.  It will be populated at mapper configuration using
+    # all model properties defined with @pg_property
+    __pg_properties__ = {}
+
     # ======== Columns ========
     created = Column(
         DateTime(timezone=True),
@@ -272,7 +277,6 @@ def create_hybrid_property(name, fset):
 
 @event.listens_for(CommonBase, 'mapper_configured', propagate=True)
 def create_hybrid_properties(mapper, cls):
-    cls.__pg_types__ = {}
     for pg_attr in dir(cls):
         if pg_attr in ['properties', 'props', 'system_annotations', 'sysan']:
             continue
@@ -281,10 +285,9 @@ def create_hybrid_properties(mapper, cls):
         if not getattr(f, '__pg_setter__', False):
             continue
 
-        print 'Found:', pg_attr
         h_prop = create_hybrid_property(pg_attr, f)
         setattr(cls, pg_attr, h_prop)
-        cls.__pg_types__[pg_attr] = f.__pg_types__
+        cls.__pg_properties__[pg_attr] = f.__pg_types__
 
 
 ORMBase = declarative_base(cls=CommonBase)

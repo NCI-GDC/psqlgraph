@@ -3,6 +3,7 @@ import unittest
 import logging
 from psqlgraph import PsqlGraphDriver
 from psqlgraph import Node
+from psqlgraph.exc import ValidationError
 
 host = 'localhost'
 user = 'test'
@@ -160,3 +161,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
         with g.session_scope() as s:
             n = g.nodes().ids(self.nid).one()
             self.assertEqual(n.foos[0].node_id, 'foonode')
+
+    def test_type_enum(self):
+        with self.assertRaises(ValidationError):
+            Foo().fobble = 'test'
+
+    def test_validate_enum(self):
+        n = Foo('foonode')
+        n.baz = 'allowed_1'
+        n.baz = 'allowed_2'
+        with self.assertRaises(ValidationError):
+            n.baz = 'not allowed'

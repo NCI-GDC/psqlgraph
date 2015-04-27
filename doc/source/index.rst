@@ -33,12 +33,10 @@ Nodes
 -----
 
 Creating a node model is straightforward.  We specify the properties
-of the node with the ``hybrid_property`` method.  Each hybrid_property
-needs a 'getter' and a 'setter'.  The setter is where any custom
-validation happens::
+of the node with the ``pg_property`` method.  Each pg_property needs a
+'setter'.  The setter is where any custom validation happens::
 
-    from psqlgraph import Node, Edge
-
+    from psqlgraph import Node, Edge, pg_property
 
     class Foo(Node):
 
@@ -49,13 +47,21 @@ validation happens::
          # Optional: specify a non-null constraint key list
          __nonnull_properties__ = ['key1']
 
-         @hybrid_property
-         def key1(self):
-             return self._get_property('key1')
-
-         @key1.setter
+         @pg_property
          def key1(self, value):
              # insert custom validation here!
+             self._set_property('key1', value)
+
+         @pg_property(int)
+         def key2(self, value):
+             # Attempting to do node.key2 = '10' will
+             # raise a ValidationError
+             self._set_property('key1', value)
+
+         @pg_property(enum=('allowed_value_1', 'allowed_2'))
+         def key2(self, value):
+             # Attempting to do node.key2 = 'not_allowed' will
+             # raise a ValidationError
              self._set_property('key1', value)
 
 You can also provide a list of keys that are non-nullable.  This will
@@ -139,10 +145,12 @@ equivalent::
     node1.properies['key1'] = 'demonstration'
 
 Similarly, you can update the system annotations directly on the node.
-These will not be validated using any ``hybrid_property`` setter
-method::
+These will not be validated using any `hybrid_property` setter
+method that is specified as a ``@pg_property``::
 
     node.system_annotations['source'] = 'the moon'
+
+.. _hybrid_property: http://docs.sqlalchemy.org/en/latest/orm/extensions/hybrid.html
 
 When you are done updating your node, you can insert it or merge it
 into a session::

@@ -2,22 +2,22 @@
 #
 
 # External modules
-import logging
 from contextlib import contextmanager
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, configure_mappers
 from xlocal import xlocal
-from sqlalchemy import create_engine, event
-import psqlgraph2neo4j
+import logging
 # Custom modules
-from exc import QueryError
-from util import retryable, default_backoff
-from query import GraphQuery
-from node import PolyNode, Node
-from voided_node import VoidedNode
-from hooks import receive_before_flush
 from edge import Edge, PolyEdge
+from exc import QueryError
+from hooks import receive_before_flush
+from node import PolyNode, Node
+from query import GraphQuery
 from util import pg_property
+from util import retryable, default_backoff
 from voided_edge import VoidedEdge
+from voided_node import VoidedNode
+import psqlgraph2neo4j
 
 DEFAULT_RETRIES = 0
 
@@ -31,7 +31,6 @@ class PsqlGraphDriver(object):
             user=user, password=password, host=host, database=database)
         self.engine = create_engine(conn_str, encoding='latin1', **kwargs)
         self.context = xlocal()
-        self._configure_driver_mappers()
 
     def _new_session(self):
         Session = sessionmaker(expire_on_commit=False)

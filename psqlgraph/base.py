@@ -257,6 +257,10 @@ class CommonBase(object):
                 "Null value in key '{}' violates non-null constraint for {}."
             ).format(key, self)
 
+    @classmethod
+    def get_pg_properties(cls):
+        return cls.__pg_properties__
+
 
 def create_hybrid_property(name, fset):
     @hybrid_property

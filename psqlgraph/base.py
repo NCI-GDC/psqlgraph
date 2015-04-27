@@ -16,10 +16,11 @@ abstract_classes = ['Node', 'Edge', 'Base']
 
 class CommonBase(object):
 
-    # This dictionary will be a property name to allowed types
-    # dictionary.  It will be populated at mapper configuration using
-    # all model properties defined with @pg_property
-    __pg_properties__ = {}
+    __pg_properties__ = {
+        # This dictionary will be a property name to allowed types
+        # dictionary.  It will be populated at mapper configuration using
+        # all model properties defined with @pg_property
+    }
 
     # ======== Columns ========
     created = Column(

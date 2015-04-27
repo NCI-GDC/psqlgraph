@@ -31,18 +31,21 @@ def validate(f, value, types, enum=None):
                 value, enum, f.__name__))
 
 
-def pg_property(*method_or_types):
-    def decorator(method):
-        @wraps(method)
+def pg_property(*pg_args):
+    if len(pg_args) == 1 and isinstance(pg_args[0], FunctionType):
+        fn = pg_args[0]
+        fn.__pg_setter__ = True
+        fn.__pg_types__ = None
+        return fn
+
+    def decorator(fn):
+        fn.__pg_setter__ = True
+        fn.__pg_types__ = pg_args
+
+        @wraps(fn)
         def wrapper(*args, **kwargs):
-            return method(*args, **kwargs)
-        wrapper.__pg_setter__ = True
-        wrapper.__pg_types__ = method_or_types
+            return fn(*args, **kwargs)
         return wrapper
-    if isinstance(type(method_or_types), FunctionType):
-        return decorator(method_or_types)
-    decorator.__pg_setter__ = True
-    decorator.__pg_types__ = method_or_types
     return decorator
 
 

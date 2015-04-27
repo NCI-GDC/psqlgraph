@@ -1,12 +1,8 @@
-from sqlalchemy import Column, Text, BigInteger, Integer,\
-    UniqueConstraint, ForeignKey, DateTime, Table, Text
-from sqlalchemy.orm import relationship, validates
+from sqlalchemy.orm import validates
 from psqlgraph import Node
-from psqlgraph.edge import Edge, IDColumn, edge_attributes
+from psqlgraph.edge import Edge
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
-from psqlgraph.base import CommonBase
-from sqlalchemy.ext.associationproxy import association_proxy
+from psqlgraph import pg_property
 
 
 class Edge1(Edge):
@@ -16,27 +12,15 @@ class Edge1(Edge):
     __src_dst_assoc__ = 'tests'
     __dst_src_assoc__ = '_tests'
 
-    @hybrid_property
-    def test(self):
-        return self._get_property('test')
-
-    @test.setter
+    @pg_property(str, int)
     def test(self, value):
         self._set_property('test', value)
 
-    @hybrid_property
-    def key1(self):
-        return self._get_property('key1')
-
-    @key1.setter
+    @pg_property
     def key1(self, value):
         self._set_property('key1', value)
 
-    @hybrid_property
-    def key2(self):
-        return self._get_property('key2')
-
-    @key2.setter
+    @pg_property
     def key2(self, value):
         self._set_property('key2', value)
 
@@ -62,7 +46,7 @@ class Test(Node):
 
     @hybrid_property
     def key1(self):
-        return self._get_property('key1')
+        return self._props['key1']
 
     @key1.setter
     def key1(self, value):
@@ -77,7 +61,7 @@ class Test(Node):
 
     @hybrid_property
     def key2(self):
-        return self._get_property('key2')
+        return self._props['key2']
 
     @key2.setter
     def key2(self, value):
@@ -85,7 +69,7 @@ class Test(Node):
 
     @hybrid_property
     def key3(self):
-        return self._get_property('key3')
+        return self._props['key3']
 
     @key3.setter
     def key3(self, value):
@@ -93,7 +77,7 @@ class Test(Node):
 
     @hybrid_property
     def new_key(self):
-        return self._get_property('new_key')
+        return self._props['new_key']
 
     @new_key.setter
     def new_key(self, value):
@@ -101,7 +85,7 @@ class Test(Node):
 
     @hybrid_property
     def timestamp(self):
-        return self._get_property('timestamp')
+        return self._props['timestamp']
 
     @timestamp.setter
     def timestamp(self, value):
@@ -114,7 +98,7 @@ class Foo(Node):
 
     @hybrid_property
     def bar(self):
-        return self._get_property('bar')
+        return self._props['bar']
 
     @bar.setter
     def bar(self, value):
@@ -128,7 +112,7 @@ class FooBar(Node):
 
     @hybrid_property
     def bar(self):
-        return self._get_property('bar')
+        return self._props['bar']
 
     @bar.setter
     def bar(self, value):

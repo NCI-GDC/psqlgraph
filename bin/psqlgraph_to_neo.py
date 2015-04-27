@@ -4,7 +4,6 @@ import re
 import requests
 import os.path
 import os,json,argparse, subprocess,shutil
-from pdb import set_trace
 from psqlgraph import psqlgraph2neo4j
     
 def export():
@@ -31,7 +30,7 @@ def export():
     parser.add_argument("--convert_only", action='store_true')
     parser.add_argument("--cleanup",default = False)
     args = parser.parse_args()
-    if not (args.host and args.user and args.name):
+    if not (args.user and args.name):
         print '''please provide psqlgraph credentials with --host, --user, --password, --name
 or set GDC_PG_HOST, GDC_PG_USER, GDC_PG_PASSWORD, GDC_PB_DBNAME environment variables.'''
         return
@@ -45,18 +44,14 @@ or set GDC_PG_HOST, GDC_PG_USER, GDC_PG_PASSWORD, GDC_PB_DBNAME environment vari
             gdcdatamodel.schema_src_dir,'node_properties.avsc'),'r') as f:
             schema = json.load(f)
         print "Exporting psqlgraph to csv"
-        try:
-            driver.export(csv_dir,schema)
-        except Exception as e:
-            set_trace()
-            pass
+        driver.export(csv_dir,schema)
         print "-Done"
     data_dir = args.out 
     if args.convert_only or not (args.export_only or args.convert_only):
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
         batch_importer = get_batch_importer(cur_dir,args.importer_url)
-        convert_csv(csv_dir,data_dir,os.path.dirname(batch_importer))
+        convert_csv(csv_dir,data_dir,batch_importer)
     
     if args.cleanup:
         if (not args.export_only):
@@ -69,14 +64,15 @@ def get_batch_importer(cur_dir,url):
         return importer
     else:
         print "Downloading Neo4j batch importer"
+        os.makedirs(importer)
         r = requests.get(url,stream=True)
         zipfile = os.path.basename(url)
         with open(zipfile, "wb") as zipf:
             for chunk in r.iter_content(100*1024):
                 zipf.write(chunk)
-
-        subprocess.check_call(['unzip',zipf])
-        if os.path.exists( os.path.join(cur_dir,'batch_importer','import.sh') ):
+                
+        subprocess.check_call(['unzip','-d',importer,zipfile])
+        if os.path.exists( os.path.join(importer,'import.sh') ):
             os.remove(zipfile)
             return importer
         else:
@@ -85,13 +81,15 @@ def get_batch_importer(cur_dir,url):
 def convert_csv(csv_dir,data_dir,importer_dir):
     if not os.path.exists(csv_dir):
         raise RuntimeError("Can't find directory '%s'" % csv_dir)
-    files=filter(re.match('(nodes.*|rels.*)\.csv$', os.listdir(csv_dir)))
+    node_files=filter(lambda x: re.match('nodes.*\.csv$',x), os.listdir(csv_dir))
+    edge_files=filter(lambda x: re.match('rels.*\.csv$',x), os.listdir(csv_dir))
     pwd=os.getcwd()
-    chdir(importer_dir)
-    cmd = ['./import.sh',data_dir]
-    cmd.extend(files)
+    os.chdir(importer_dir)
+    cmd = ['bash','./import.sh',data_dir,
+           ','.join([os.path.join(csv_dir,i) for i in node_files]),
+           ','.join([os.path.join(csv_dir,i) for i in edge_files])]
     subprocess.check_call(cmd)
-    chdir(pwd)
+    os.chdir(pwd)
     
 if __name__ == "__main__":
     export()

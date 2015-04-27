@@ -281,6 +281,7 @@ def create_hybrid_properties(mapper, cls):
         if not getattr(f, '__pg_setter__', False):
             continue
 
+        print 'Found:', pg_attr
         h_prop = create_hybrid_property(pg_attr, f)
         setattr(cls, pg_attr, h_prop)
         cls.__pg_types__[pg_attr] = f.__pg_types__

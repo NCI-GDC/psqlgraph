@@ -1,4 +1,3 @@
-from sqlalchemy.orm import validates
 from psqlgraph import Node
 from psqlgraph.edge import Edge
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -44,50 +43,25 @@ class Edge3(Edge):
 
 class Test(Node):
 
-    @hybrid_property
-    def key1(self):
-        return self._props['key1']
-
-    @key1.setter
+    @pg_property(str)
     def key1(self, value):
         assert isinstance(value, (str, type(None)))
+        assert value != 'bad_value'
         self._set_property('key1', value)
 
-    @validates('key1')
-    def validate_key1(self, key, value):
-        print 'validating', key, value
-        assert value != 'bad_value'
-        return value
-
-    @hybrid_property
-    def key2(self):
-        return self._props['key2']
-
-    @key2.setter
+    @pg_property
     def key2(self, value):
         self._set_property('key2', value)
 
-    @hybrid_property
-    def key3(self):
-        return self._props['key3']
-
-    @key3.setter
+    @pg_property
     def key3(self, value):
         self._set_property('key3', value)
 
-    @hybrid_property
-    def new_key(self):
-        return self._props['new_key']
-
-    @new_key.setter
+    @pg_property
     def new_key(self, value):
         self._set_property('new_key', value)
 
-    @hybrid_property
-    def timestamp(self):
-        return self._props['timestamp']
-
-    @timestamp.setter
+    @pg_property
     def timestamp(self, value):
         self._set_property('timestamp', value)
 
@@ -96,11 +70,7 @@ class Foo(Node):
 
     __label__ = 'foo'
 
-    @hybrid_property
-    def bar(self):
-        return self._props['bar']
-
-    @bar.setter
+    @pg_property
     def bar(self, value):
         self._set_property('bar', value)
 
@@ -110,10 +80,6 @@ class FooBar(Node):
     __label__ = 'foo_bar'
     __nonnull_properties__ = ['bar']
 
-    @hybrid_property
-    def bar(self):
-        return self._props['bar']
-
-    @bar.setter
+    @pg_property
     def bar(self, value):
         self._set_property('bar', value)

@@ -185,7 +185,6 @@ class PsqlGraphDriver(object):
                 '{}: Unable to configure mappers. '
                 'Have you imported your models?'
             ).format(str(e)))
-            raise
 
     def voided_nodes(self, query=VoidedNode):
         with self.session_scope(must_inherit=True) as local:

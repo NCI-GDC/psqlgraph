@@ -258,31 +258,32 @@ class CommonBase(object):
             ).format(key, self)
 
 
+def create_hybrid_property(name, fset):
+    @hybrid_property
+    def hybrid_prop(instance):
+        return instance._props.get(name, None)
+
+    @hybrid_prop.setter
+    def hybrid_prop(instance, value):
+        validate(fset, value, fset.__pg_types__, None)
+        fset(instance, value)
+    return hybrid_prop
+
+
 @event.listens_for(CommonBase, 'mapper_configured', propagate=True)
 def create_hybrid_properties(mapper, cls):
-
-    for attr in dir(cls):
-        if attr in ['properties', 'props', 'system_annotations', 'sysan']:
+    cls.__pg_types__ = {}
+    for pg_attr in dir(cls):
+        if pg_attr in ['properties', 'props', 'system_annotations', 'sysan']:
             continue
 
-        f = getattr(cls, attr)
+        f = getattr(cls, pg_attr)
         if not getattr(f, '__pg_setter__', False):
             continue
 
-        print attr, f
-
-        @hybrid_property
-        def hybrid_prop(instance):
-            return instance._props[attr]
-
-        @hybrid_prop.setter
-        def hybrid_prop(instance, value):
-            # validate(f, value, types, options)
-            # f = value
-            pass
-
-        # hybrid_prop.__pg_prop_types__ = types
-        setattr(cls, attr, hybrid_prop)
+        h_prop = create_hybrid_property(pg_attr, f)
+        setattr(cls, pg_attr, h_prop)
+        cls.__pg_types__[pg_attr] = f.__pg_types__
 
 
 ORMBase = declarative_base(cls=CommonBase)

@@ -5,12 +5,13 @@ import random
 import logging
 from functools import wraps
 from exc import ValidationError
+from types import FunctionType
 
 #  PsqlNode modules
 DEFAULT_RETRIES = 0
 
 
-def validate(f, value, types, options):
+def validate(f, value, types, enum=None):
     """Validation decorator types for hybrid_properties
 
     """
@@ -19,27 +20,29 @@ def validate(f, value, types, options):
     _types = types+(type(None),)
     # If type is str, accept unicode as well, it will be sanitized
     if str in _types:
-        _types = types+(unicode,)
-    assert isinstance(value, _types), (
-        "arg '{}' ({}), does not match {} for property {}".format(
-            value, type(value), _types, f.__name__))
-    enum = options.get('enum')
+        _types = _types+(unicode,)
+    assert isinstance(value, _types), ((
+        "Value '{}' is of type {} and is not one of the allowed types "
+        "for property {}: {}"
+    ).format(value, type(value), f.__name__, _types))
     if enum:
         assert value in enum, (
             "arg '{}' not in {} for property {}".format(
                 value, enum, f.__name__))
 
 
-def pg_property(*types, **kwargs):
-    def decorator(f):
-        @wraps(f)
+def pg_property(*method_or_types):
+    def decorator(method):
+        @wraps(method)
         def wrapper(*args, **kwargs):
-            return f
-        # wrapper.__pg_getter__ = kwargs.get('fget', None)
+            return method(*args, **kwargs)
         wrapper.__pg_setter__ = True
-        # wrapper.__pg_prop_types__ = types
-        # wrapper.__pg_prop_options__ = kwargs
+        wrapper.__pg_types__ = method_or_types
         return wrapper
+    if isinstance(type(method_or_types), FunctionType):
+        return decorator(method_or_types)
+    decorator.__pg_setter__ = True
+    decorator.__pg_types__ = method_or_types
     return decorator
 
 

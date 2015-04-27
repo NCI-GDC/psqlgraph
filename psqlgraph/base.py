@@ -16,12 +16,6 @@ abstract_classes = ['Node', 'Edge', 'Base']
 
 class CommonBase(object):
 
-    __pg_properties__ = {
-        # This dictionary will be a property name to allowed types
-        # dictionary.  It will be populated at mapper configuration using
-        # all model properties defined with @pg_property
-    }
-
     # ======== Columns ========
     created = Column(
         DateTime(timezone=True),
@@ -278,6 +272,11 @@ def create_hybrid_property(name, fset):
 
 @event.listens_for(CommonBase, 'mapper_configured', propagate=True)
 def create_hybrid_properties(mapper, cls):
+    # This dictionary will be a property name to allowed types
+    # dictionary.  It will be populated at mapper configuration using
+    # all model properties defined with @pg_property
+    cls.__pg_properties__ = {}
+
     for pg_attr in dir(cls):
         if pg_attr in ['properties', 'props', 'system_annotations', 'sysan']:
             continue

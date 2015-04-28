@@ -1,23 +1,19 @@
-import pdb
-pdb.set_trace()
-import unittest
-import logging
-from psqlgraph import psqlgraph2neo4j
-import py2neo
-import os
-from models import Test, Edge1
-from psqlgraph import Edge, Node, PolyNode
-from py2neo.packages.httpstream import http
-http.socket_timeout = 9999
-from psqlgraph import PolyEdge, Edge, Node
 from datetime import datetime
-
-import uuid
+from psqlgraph import psqlgraph2neo4j
+from py2neo.packages.httpstream import http
+import logging
+import os
+import py2neo
 import shutil
 import subprocess
 import time
-from models import Test, Edge1
+import unittest
+import uuid
 
+from psqlgraph import Edge, Node, PolyEdge
+import models
+
+http.socket_timeout = 9999
 host = 'localhost'
 user = 'test'
 password = 'test'

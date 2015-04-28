@@ -58,7 +58,7 @@ GDC_PB_DBNAME environment variables.'''
         shutil.rmtree(batch_importer)
 
 
-def get_batch_importer(cur_dir, url):
+def get_batch_importer(cur_dir, url=''):
     importer = os.path.join(cur_dir, 'batch_importer')
     if os.path.exists(importer):
         return importer

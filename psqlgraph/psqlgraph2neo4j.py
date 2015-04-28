@@ -47,7 +47,10 @@ class PsqlGraph2Neo4j(object):
                 title = 'i:id\tid\tl:label\t'
                 for key, value in properties.iteritems():
                     keys.append(key)
-                    typ = type_conversion[value[0]]
+                    if not value:
+                        typ = 'String'
+                    else:
+                        typ = type_conversion[value[0]]
                     title += (key + ':' + typ + '\t')
                 print(title, file=f)
                 self.files[label].append(keys)

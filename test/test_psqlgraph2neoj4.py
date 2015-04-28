@@ -10,7 +10,6 @@ from psqlgraph.edge import PsqlEdge
 import uuid
 import shutil
 import subprocess
-import pdb
 import time
 host = 'localhost'
 user = 'test'
@@ -107,6 +106,8 @@ class Test_psql2neo(unittest.TestCase):
         if r==2:
             subprocess.call([self.get_neo4j_script(), 'start-no-wait'])
             time.sleep(20)
+        else:
+            time.sleep(1)
         
     def test_neo_single_node(self):
         self._clear_tables()

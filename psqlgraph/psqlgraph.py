@@ -10,6 +10,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker
 from xlocal import xlocal
+import re
 
 #  ORM object base
 Base = declarative_base()
@@ -53,7 +54,7 @@ class PsqlGraphDriver(object):
 
         conn_str = 'postgresql://{user}:{password}@{host}/{database}'.format(
             user=user, password=password, host=host, database=database)
-
+        conn_str = re.sub('None','',conn_str)
         self.engine = create_engine(conn_str)
 
     def _new_session(self):

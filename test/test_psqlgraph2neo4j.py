@@ -1,4 +1,3 @@
-from datetime import datetime
 from psqlgraph import psqlgraph2neo4j
 from py2neo.packages.httpstream import http
 import logging
@@ -12,6 +11,9 @@ import uuid
 
 from psqlgraph import Edge, Node, PolyEdge
 import models
+from sqlalchemy.orm import configure_mappers
+configure_mappers()
+
 
 http.socket_timeout = 9999
 host = 'localhost'
@@ -62,10 +64,10 @@ class Test_psql2neo(unittest.TestCase):
     def _clear_tables(self):
         conn = self.psqlDriver.engine.connect()
         conn.execute('commit')
-        for table in Node().get_subclass_table_names():
+        for table in Node.get_subclass_table_names():
             if table != Node.__tablename__:
                 conn.execute('delete from {}'.format(table))
-        for table in Edge().get_subclass_table_names():
+        for table in Edge.get_subclass_table_names():
             if table != Edge.__tablename__:
                 conn.execute('delete from {}'.format(table))
         conn.execute('delete from _voided_nodes')
@@ -133,10 +135,8 @@ class Test_psql2neo(unittest.TestCase):
         }
         with self.psqlDriver.session_scope():
             self.psqlDriver.node_merge(node_id, label='test', properties=props)
-            node_properties = [ {'name':'test_properties',
-                'fields':[{'name':'timestamp','type':'long'}]} ]
-
-            self.driver.export(self.get_csv_dir(),node_properties)
+            
+            self.driver.export(self.get_csv_dir())
         self.batch_import()
 
         self.neo4jDriver = py2neo.Graph()
@@ -158,9 +158,8 @@ class Test_psql2neo(unittest.TestCase):
                 })
                 self.psqlDriver.node_merge(node_id, label='test', properties=props)
 
-            node_properties = [ {'name':'test_properties',
-                'fields':[{'name':'timestamp','type':'long'}]} ]
-            self.driver.export(self.get_csv_dir(),node_properties)
+
+            self.driver.export(self.get_csv_dir())
         self.batch_import()
 
         self.neo4jDriver = py2neo.Graph()
@@ -182,10 +181,8 @@ class Test_psql2neo(unittest.TestCase):
             self.psqlDriver.node_merge(node_id=dst_id, label='test')
             self.psqlDriver.edge_insert(
                 PolyEdge(src_id=src_id, dst_id=dst_id, label='edge1'))
-            node_properties = [ {'name':'test_properties',
-                'fields':[]} ]
-
-            self.driver.export(self.get_csv_dir(),node_properties)
+            
+            self.driver.export(self.get_csv_dir())
         self.batch_import()
 
         self.neo4jDriver = py2neo.Graph()
@@ -232,10 +229,8 @@ class Test_psql2neo(unittest.TestCase):
                 self.psqlDriver.node_merge(node_id=dst_id, label='test')
                 self.psqlDriver.edge_insert(PolyEdge(
                     src_id=src_id, dst_id=dst_id, label='edge1'))
-            node_properties = [{'name': 'test_properties',
-                                'fields': []}]
-
-            self.driver.export(self.get_csv_dir(), node_properties)
+            
+            self.driver.export(self.get_csv_dir())
         self.batch_import()
 
         self.neo4jDriver = py2neo.Graph()
@@ -266,10 +261,8 @@ class Test_psql2neo(unittest.TestCase):
         with self.psqlDriver.session_scope():
             self.psqlDriver.node_merge(node_id=node_id, label='test')
             self._create_subtree(node_id, 0)
-            node_properties = [{'name': 'test_properties',
-                                'fields': []}]
-
-            self.driver.export(self.get_csv_dir(), node_properties)
+            
+            self.driver.export(self.get_csv_dir())
             self.batch_import()
 
 

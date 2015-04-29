@@ -37,7 +37,6 @@ class PsqlGraphDriver(object):
         Session.configure(bind=self.engine, query_cls=GraphQuery)
         session = Session()
         event.listen(session, 'before_flush', receive_before_flush)
-        logging.debug('Created session {}'.format(session))
         return session
 
     def has_session(self):
@@ -141,7 +140,6 @@ class PsqlGraphDriver(object):
                 yield local
 
             if not inherited_session:
-                logging.debug('Committing session {}'.format(local))
                 local.commit()
 
         except Exception, msg:

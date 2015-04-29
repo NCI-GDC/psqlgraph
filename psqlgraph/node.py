@@ -57,14 +57,16 @@ class Node(AbstractConcreteBase, ORMBase):
             name_out = '_{}_out'.format(name)
             src_assoc = getattr(scls, SRC_DST_ASSOC)
             dst_assoc = getattr(scls, DST_SRC_ASSOC)
-            if scls.__dst_class__ == cls.__name__:
+            if scls.__dst_class__ == cls.__name__\
+               and not hasattr(cls, name_in):
                 edge_in = relationship(
                     name, foreign_keys=[scls.dst_id], viewonly=True)
                 setattr(cls, name_in, edge_in)
                 cls._edges_in.append(name_in)
                 dst_ids.append(scls.dst_id)
                 cls._set_association_proxy(scls, dst_assoc, name_in, 'src')
-            if scls.__src_class__ == cls.__name__:
+            if scls.__src_class__ == cls.__name__\
+               and not hasattr(cls, name_out):
                 edge_out = relationship(
                     name, foreign_keys=[scls.src_id], viewonly=True)
                 setattr(cls, name_out, edge_out)

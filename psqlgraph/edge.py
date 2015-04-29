@@ -71,8 +71,12 @@ class Edge(AbstractConcreteBase, ORMBase):
             'You must declare __src_dst_assoc__ for {}'.format(cls)
         assert hasattr(cls, '__dst_src_assoc__'),\
             'You must declare __dst_src_assoc__ for {}'.format(cls)
-        cls.src = relationship(cls.__src_class__, foreign_keys=[cls.src_id])
-        cls.dst = relationship(cls.__dst_class__, foreign_keys=[cls.dst_id])
+        if getattr(cls, 'src', None) is None:
+            cls.src = relationship(
+                cls.__src_class__, foreign_keys=[cls.src_id])
+        if getattr(cls, 'dst', None) is None:
+            cls.dst = relationship(
+                cls.__dst_class__, foreign_keys=[cls.dst_id])
 
     @declared_attr
     def __table_args__(cls):

@@ -11,6 +11,6 @@ setup(
         'progressbar',
         'avro==1.7.7',
         'xlocal==0.5',
-        'requests==2.6.2'
+        'requests==2.5.1'
     ]
 )

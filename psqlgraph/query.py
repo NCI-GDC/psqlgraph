@@ -396,7 +396,7 @@ class GraphQuery(Query):
         assert isinstance(sysans, dict)
         kwargs.update(sysans)
         return self.filter(
-            not_(self.entity().system_annotations.contains(kwargs)))
+            not_(self.entity()._sysan.contains(kwargs)))
 
     def has_sysan(self, keys):
         """Filter only entities that have a key `key` in system_annotations

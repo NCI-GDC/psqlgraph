@@ -58,7 +58,7 @@ class Test(Node):
     def new_key(self, value):
         self._set_property('new_key', value)
 
-    @pg_property
+    @pg_property(long, str)
     def timestamp(self, value):
         self._set_property('timestamp', value)
 

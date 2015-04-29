@@ -47,7 +47,10 @@ class PsqlGraph2Neo4j(object):
                 title = 'i:id\tid\tl:label\t'
                 for key, value in properties.iteritems():
                     keys.append(key)
-                    typ = type_conversion[value[0]]
+                    if not value:
+                        typ = 'String'
+                    else:
+                        typ = type_conversion[value[0]]
                     title += (key + ':' + typ + '\t')
                 print(title, file=f)
                 self.files[label].append(keys)
@@ -93,10 +96,11 @@ class PsqlGraph2Neo4j(object):
         nodes = self.psqlgraphDriver.get_nodes()
         id_count = 0
         for node in nodes:
-            self.convert_node(node)
-            self.node_to_csv(str(id_count), node)
-            node_ids[node.node_id] = id_count
-            id_count += 1
+            if not node.system_annotations.get('to_delete'):
+                self.convert_node(node)
+                self.node_to_csv(str(id_count), node)
+                node_ids[node.node_id] = id_count
+                id_count += 1
 
             if not silent and node_count != 0:
                 i = self.update_pbar(pbar, i)

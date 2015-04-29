@@ -10,6 +10,7 @@ setup(
         'py2neo==2.0.1',
         'progressbar',
         'avro==1.7.7',
-        'xlocal==0.5'
+        'xlocal==0.5',
+        'requests==2.6.2'
     ]
 )

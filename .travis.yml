@@ -18,4 +18,4 @@ before_script:
   - yes | python setup.py install
   - cd test; python setup_test_psqlgraph.py
   - cd ..; python bin/setup_neo4j.py
-script: "cd test; py.test -vvs"
+script: "cd test; py.test -v"

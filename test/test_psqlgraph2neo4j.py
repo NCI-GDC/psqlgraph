@@ -1,13 +1,16 @@
 from psqlgraph import psqlgraph2neo4j
 from py2neo.packages.httpstream import http
 import logging
-import os
+import os,sys
 import py2neo
 import shutil
 import subprocess
 import time
 import unittest
 import uuid
+sys.path.append(os.path.join(
+    os.path.dirname(os.path.dirname(__file__)),'bin'))
+from psqlgraph_to_neo import get_batch_importer,convert_csv
 
 from psqlgraph import Edge, Node, PolyEdge
 import models
@@ -31,18 +34,14 @@ class Test_psql2neo(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        dirname = os.path.dirname
-        script = os.path.join(
-            dirname(dirname(__file__)),
-            'bin/csv_to_neo.sh')
-        subprocess.call('bash %s setup' % script, shell=True)
+        get_batch_importer(os.getcwd())
 
     @classmethod
     def tearDownClass(cls):
         dirname = os.path.dirname
         try:
             shutil.rmtree(
-                os.path.join(dirname(dirname(__file__)), 'batch_importer'))
+                os.path.join(os.getcwd(), 'batch_importer'))
         except:
             pass
 
@@ -112,10 +111,9 @@ class Test_psql2neo(unittest.TestCase):
     def batch_import(self):
         data_dir = self.get_data_dir()
         csv_dir = self.get_csv_dir()
-        script = self.get_batch_script()
-        print script, csv_dir, data_dir
-        subprocess.call('%s -s %s -d %s -b batch_importer convert' % (
-            script, csv_dir, data_dir), shell=True)
+        importer_dir = get_batch_importer(os.getcwd())
+        print 'directories: ', importer_dir, csv_dir, data_dir
+        convert_csv(csv_dir, data_dir, importer_dir)
         subprocess.call([self.get_neo4j_script(), 'stop'])
         r = subprocess.call([self.get_neo4j_script(), 'start'])
         if r == 2:

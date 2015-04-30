@@ -97,10 +97,11 @@ class  PsqlGraph2Neo4j(object):
         nodes = self.psqlgraphDriver.get_nodes()
         id_count=0
         for node in nodes:
-            self.convert_node(node)
-            self.node_to_csv(str(id_count),node)
-            node_ids[node.node_id]=id_count
-            id_count+=1
+            if not node.system_annotations.get('to_delete'):
+                self.convert_node(node)
+                self.node_to_csv(str(id_count),node)
+                node_ids[node.node_id]=id_count
+                id_count+=1
            
             if not silent:
                 i = self.update_pbar(pbar, i)
@@ -117,9 +118,10 @@ class  PsqlGraph2Neo4j(object):
 
         edges = self.psqlgraphDriver.get_edges()
         for edge in edges:
-            src = node_ids[edge.src_id]
-            dst = node_ids[edge.dst_id]
-            edge_file.write(str(src)+'\t'+str(dst)+'\t'+edge.label+'\n')
+            src = node_ids.get(edge.src_id, '')
+            dst = node_ids.get(edge.dst_id, '')
+            if src != '' and dst != '':
+                edge_file.write(str(src)+'\t'+str(dst)+'\t'+edge.label+'\n')
             if not silent:
                 i = self.update_pbar(pbar, i)
 

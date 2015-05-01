@@ -8,6 +8,7 @@ import subprocess
 import time
 import unittest
 import uuid
+import requests
 sys.path.append(os.path.join(
     os.path.dirname(os.path.dirname(__file__)),'bin'))
 from psqlgraph_to_neo import get_batch_importer,convert_csv
@@ -116,11 +117,22 @@ class Test_psql2neo(unittest.TestCase):
         convert_csv(csv_dir, data_dir, importer_dir)
         subprocess.call([self.get_neo4j_script(), 'stop'])
         r = subprocess.call([self.get_neo4j_script(), 'start'])
-        if r == 2:
-            subprocess.call([self.get_neo4j_script(), 'start-no-wait'])
-            time.sleep(20)
+        if r != 0:
+            print 'fail to start\n'
+            subprocess.call([self.get_neo4j_script(),  'start-no-wait'])
+            while True:
+                try:
+                    r=requests.get('http://localhost:7474')
+                    time.sleep(2)
+                    print 'live now' 
+                    break
+                except:
+                    print 'not live'
+                    time.sleep(1)
+
 
         else:
+            print 'succeed to start\n ', r
             time.sleep(1)
 
     def test_neo_single_node(self):

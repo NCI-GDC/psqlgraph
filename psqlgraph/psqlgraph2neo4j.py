@@ -118,9 +118,10 @@ class PsqlGraph2Neo4j(object):
 
         edges = self.psqlgraphDriver.get_edges()
         for edge in edges:
-            src = node_ids[edge.src_id]
-            dst = node_ids[edge.dst_id]
-            edge_file.write(str(src)+'\t'+str(dst)+'\t'+edge.label+'\n')
+            src = node_ids.get(edge.src_id,'')
+            dst = node_ids.get(edge.dst_id,'')
+            if src!='' and dst!='':
+                edge_file.write(str(src)+'\t'+str(dst)+'\t'+edge.label+'\n')
             if not silent and edge_count != 0:
                 i = self.update_pbar(pbar, i)
 

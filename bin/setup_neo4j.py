@@ -22,6 +22,9 @@ def start_neo4j(url):
     dir_path = p_dir.match(url).group(2)
     conf = os.path.join(dir_path, 'conf', 'neo4j.properties')
     call(['sed','-i','s/^#allow/allow/g', conf])
+    jvm_conf = os.path.join(dir_path,'con','neo4j-wrapper.properties')
+    call(['sed','-i','s/^#wrapper.java.initmemory/wrapper.java.initmemory/g',jvm_conf])
+    call(['sed','-i','s/^#wrapper.java.maxmemory/wrapper.java.initmemory/g',jvm_conf])
     #call(['bash',os.path.join(dir_path,'bin','neo4j'),'start'])
 
 if __name__ == '__main__':

@@ -149,7 +149,6 @@ class Node(AbstractConcreteBase, ORMBase):
         temp = self.__class__(self.node_id, old_props, self.acl,
                               old_sysan, self.label)
         voided = VoidedNode(temp)
-        print 'snapshot:', voided.properties
         session.add(voided)
 
     def _lookup_existing(self, session):

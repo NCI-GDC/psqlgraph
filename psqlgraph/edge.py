@@ -134,19 +134,11 @@ class Edge(AbstractConcreteBase, ORMBase):
     def get_subclasses(cls):
         return [s for s in cls.__subclasses__()]
 
-    def _snapshot_existing(self, session, existing):
-        if existing:
-            voided_node = VoidedEdge(existing)
-            session.add(voided_node)
-
-    def _merge_onto_existing(self, session, existing):
-        if not existing:
-            self._props = self.properties
-        else:
-            temp = self.property_template()
-            temp.update(existing._props)
-            temp.update(self._props)
-            self._props = temp
+    def _snapshot_existing(self, session, old_props, old_sysan):
+        temp = self.__class__(self.src_id, self.dst_id, old_props, self.acl,
+                              old_sysan, self.label)
+        voided = VoidedEdge(temp)
+        session.add(voided)
 
     def _lookup_existing(self, session):
         clean = self._get_clean_session(session)

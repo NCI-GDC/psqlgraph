@@ -145,21 +145,12 @@ class Node(AbstractConcreteBase, ORMBase):
                       .filter(VoidedNode.label == self.label)\
                       .order_by(VoidedNode.voided.desc())
 
-    def _snapshot_existing(self, session, existing):
-        if existing:
-            voided_node = VoidedNode(existing)
-            session.add(voided_node)
-
-    def _merge_onto_existing(self, session, existing):
-        if not existing:
-            self._props = self.properties
-        else:
-            temp = self.property_template()
-            temp.update(existing._props)
-            temp.update(self._props)
-            temp = existing._sysan
-            temp.update(self._sysan)
-            self._sysan = temp
+    def _snapshot_existing(self, session, old_props, old_sysan):
+        temp = self.__class__(self.node_id, old_props, self.acl,
+                              old_sysan, self.label)
+        voided = VoidedNode(temp)
+        print 'snapshot:', voided.properties
+        session.add(voided)
 
     def _lookup_existing(self, session):
         clean = self._get_clean_session(session)

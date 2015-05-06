@@ -1,11 +1,26 @@
 from util import sanitize
+from sqlalchemy.types import TypeDecorator
+from sqlalchemy.dialects.postgres import JSONB
+from sqlalchemy.ext.mutable import Mutable
 
 
 class PropertiesDictError(Exception):
     pass
 
 
-class SystemAnnotationDict(dict):
+class JSONBDict(TypeDecorator):
+    "Represents an immutable structure as a json-encoded string."
+
+    impl = JSONB
+
+    def process_bind_param(self, value, dialect):
+        return value
+
+    def process_result_value(self, value, dialect):
+        return value
+
+
+class SystemAnnotationDict(Mutable, dict):
     """Transparent wrapper for _sysan so you can update it as
     if it were a dict and the changes get pushed to the sqlalchemy object
 
@@ -33,7 +48,7 @@ class SystemAnnotationDict(dict):
         self.update()
 
 
-class PropertiesDict(dict):
+class PropertiesDict(Mutable, dict):
     """Transparent wrapper for _props so you can update it as
     if it were a dict and the changes get pushed to the sqlalchemy object
 

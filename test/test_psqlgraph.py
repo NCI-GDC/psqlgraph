@@ -190,12 +190,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
                        'timestamp': None, 'new_key': None}
         g.node_merge(node_id=node_id, properties=propertiesA,
                      label=label, max_retries=retries)
+        print '-- commited A'
 
         # Add second node
         propertiesB = {'key1': u'2', 'new_key': u'n',
                        'timestamp': timestamp()}
         g.node_merge(node_id=node_id, properties=propertiesB,
                      max_retries=retries)
+        print '-- commited B'
 
         # Merge properties
         merged = deepcopy(propertiesA)
@@ -208,8 +210,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             with g.session_scope():
                 node = g.node_lookup_one(node_id)
                 self.assertEqual(merged, node.properties)
-                voided_node = g.node_lookup(
-                    node_id, voided=True).first()
+                voided_node = g.node_lookup(node_id, voided=True).one()
                 voided_props = sanitize(propertiesA)
                 self.assertEqual(voided_props, voided_node.properties)
             self.verify_node_count(2, node_id=node_id, voided=True)
@@ -631,8 +632,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         with g.session_scope():
             g.edge_update(edge, properties={'test': 3})
             voided_edge = g.edge_lookup(label='edge1', voided=True).one()
-            self.assertEqual(edge.property_template({'test': None}),
-                             voided_edge.properties)
+            self.assertEqual(edge.property_template(), voided_edge.properties)
 
     def test_edge_insert_and_lookup_properties(self):
         """Test edge property merging"""

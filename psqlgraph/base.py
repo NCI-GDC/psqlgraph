@@ -8,6 +8,7 @@ from sqlalchemy.orm import object_session, sessionmaker
 from sqlalchemy.orm.util import polymorphic_union
 from util import sanitize, validate
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
+from sqlalchemy.ext.mutable import MutableDict
 
 
 Base = declarative_base()
@@ -235,6 +236,19 @@ class CommonBase(object):
             setattr(self, key, value)
         if acl is not None:
             self.acl = acl
+
+    def _merge_onto_existing(self, old_props, old_sysan):
+        # properties
+        temp = self.property_template()
+        temp.update(old_props)
+        temp.update(self._props)
+        self._props = temp
+
+        # system annotations
+        temp = {}
+        temp.update(old_sysan)
+        temp.update(self._sysan)
+        self._sysan = temp
 
     def _get_clean_session(self, session=None):
         """Create a new session from an objects session using the same

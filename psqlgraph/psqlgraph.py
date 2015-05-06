@@ -230,6 +230,9 @@ class PsqlGraphDriver(object):
                 self.node_update(
                     node, system_annotations, acl, properties, local)
 
+            from sqlalchemy.inspection import inspect
+            print node
+            print 'pre-merge', inspect(node).attrs.get('_props').history
             local.merge(node)
 
         return node

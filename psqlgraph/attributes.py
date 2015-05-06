@@ -1,23 +1,10 @@
 from util import sanitize
-from sqlalchemy.types import TypeDecorator
 from sqlalchemy.dialects.postgres import JSONB
-from sqlalchemy.ext.mutable import Mutable
 
 
 class PropertiesDictError(Exception):
     pass
 
-
-class JSONBDict(TypeDecorator):
-    "Represents an immutable structure as a json-encoded string."
-
-    impl = JSONB
-
-    def process_bind_param(self, value, dialect):
-        return value
-
-    def process_result_value(self, value, dialect):
-        return value
 
 
 class SystemAnnotationDict(Mutable, dict):

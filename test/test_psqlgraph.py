@@ -439,7 +439,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         """
 
-        label = str(uuid.uuid4())
+        label = 'test'
         node_ids = [str(uuid.uuid4()) for i in range(self.REPEAT_COUNT)]
         properties = {}
         with g.session_scope() as session:

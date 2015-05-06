@@ -7,7 +7,7 @@ class PropertiesDictError(Exception):
 
 
 
-class SystemAnnotationDict(Mutable, dict):
+class SystemAnnotationDict(dict):
     """Transparent wrapper for _sysan so you can update it as
     if it were a dict and the changes get pushed to the sqlalchemy object
 
@@ -35,7 +35,7 @@ class SystemAnnotationDict(Mutable, dict):
         self.update()
 
 
-class PropertiesDict(Mutable, dict):
+class PropertiesDict(dict):
     """Transparent wrapper for _props so you can update it as
     if it were a dict and the changes get pushed to the sqlalchemy object
 

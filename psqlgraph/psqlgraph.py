@@ -220,8 +220,12 @@ class PsqlGraphDriver(object):
                    session=None, max_retries=DEFAULT_RETRIES,
                    backoff=default_backoff):
         with self.session_scope() as local:
-            if not node:
+            if not node and not label:
                 node = self.nodes().ids(node_id).scalar()
+
+            elif not node and label:
+                cls = Node.get_subclass(label)
+                node = self.nodes(cls).ids(node_id).scalar()
 
             if not node:
                 node = PolyNode(
@@ -255,8 +259,11 @@ class PsqlGraphDriver(object):
                     voided=False, session=None):
         if voided:
             query = self.voided_nodes()
-        else:
+        elif not label:
             query = self.nodes()
+        else:
+            cls = Node.get_subclass(label)
+            query = self.nodes(cls)
 
         if node_id is not None:
             query = query.ids(node_id)

@@ -112,7 +112,7 @@ class Node(AbstractConcreteBase, ORMBase):
         for c in cls.__subclasses__():
             if c.get_label() == label:
                 return c
-        raise KeyError('Node has no subclass {}'.format(label))
+        return None
 
     @classmethod
     def get_subclass_named(cls, name):

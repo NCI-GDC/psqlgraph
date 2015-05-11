@@ -251,12 +251,11 @@ class GraphQuery(Query):
            your query, e.g. driver.nodes(TestNode)
 
         """
-
-        entity = self.entity()
-        if hasattr(labels, '__iter__'):
-            return self.filter(entity._label.in_(labels))
-        else:
-            return self.filter(entity._label == labels)
+        labels = self._iterable(labels)
+        potential_subclasses = [Node.get_subclass(label) for label in labels if label]
+        for label in labels:
+            potential_subclasses += Edge._get_subclasses_labeled(label)
+        return self.with_entities(*potential_subclasses)
 
     # ======== Properties ========
     def props(self, props={}, **kwargs):

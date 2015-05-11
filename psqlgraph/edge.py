@@ -108,7 +108,7 @@ class Edge(AbstractConcreteBase, ORMBase):
                 'More than one Edge with label {} found: {}'.format(
                     label, scls))
         if not scls:
-            KeyError('Edge has no subclass {}'.format(label))
+            return None
         return scls[0]
 
     @classmethod

@@ -252,9 +252,11 @@ class GraphQuery(Query):
 
         """
         labels = self._iterable(labels)
-        potential_subclasses = [Node.get_subclass(label) for label in labels if label]
+        potential_subclasses = [Node.get_subclass(label) for label in labels]
         for label in labels:
             potential_subclasses += Edge._get_subclasses_labeled(label)
+        # filter Nones
+        potential_subclasses = [cls for cls in potential_subclasses if cls]
         return self.with_entities(*potential_subclasses)
 
     # ======== Properties ========

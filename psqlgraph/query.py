@@ -257,7 +257,12 @@ class GraphQuery(Query):
             potential_subclasses += Edge._get_subclasses_labeled(label)
         # filter Nones
         potential_subclasses = [cls for cls in potential_subclasses if cls]
-        return self.with_entities(*potential_subclasses)
+        if not potential_subclasses:
+            raise RuntimeError("No classes found with labels {}".format(labels))
+        q = self.with_entities(potential_subclasses[0])
+        for cls in potential_subclasses[1:]:
+            q = q.union_all(self.with_entities(cls))
+        return q
 
     # ======== Properties ========
     def props(self, props={}, **kwargs):

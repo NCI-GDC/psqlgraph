@@ -237,12 +237,12 @@ class GraphQuery(Query):
         return self
 
     # ======== Labels ========
-    def labels(self, labels):
+    def labels(self, label):
         """Filters on nodes that have certain labels.
 
         :param labels:
-           A list of labels or a single scalar string.  The filtered
-           results will all have label in `labels`
+           A single scalar string.  The filtered
+           results will have this label
         :returns: |qobj|
 
         .. note::
@@ -251,14 +251,13 @@ class GraphQuery(Query):
            your query, e.g. driver.nodes(TestNode)
 
         """
-        labels = self._iterable(labels)
-        potential_subclasses = [Node.get_subclass(label) for label in labels]
-        for label in labels:
-            potential_subclasses += Edge._get_subclasses_labeled(label)
+        assert type(label) == str, ".labels only accepts a single string nowa"
+        potential_subclasses = [Node.get_subclass(label)]
+        potential_subclasses += Edge._get_subclasses_labeled(label)
         # filter Nones
         potential_subclasses = [cls for cls in potential_subclasses if cls]
         if not potential_subclasses:
-            raise RuntimeError("No classes found with labels {}".format(labels))
+            raise RuntimeError("No classes found with label {}".format(label))
         q = self.with_entities(potential_subclasses[0])
         for cls in potential_subclasses[1:]:
             q = q.union_all(self.with_entities(cls))

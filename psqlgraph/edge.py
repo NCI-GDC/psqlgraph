@@ -1,10 +1,6 @@
-from datetime import datetime
-from sqlalchemy import Column, Text, DateTime, UniqueConstraint, \
-    event, ForeignKey
+from sqlalchemy import Column, Text, event, ForeignKey
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
-from sqlalchemy.orm import object_session, sessionmaker, relationship
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm.collections import attribute_mapped_collection
+from sqlalchemy.orm import relationship
 
 from base import ORMBase
 from voided_edge import VoidedEdge
@@ -72,23 +68,6 @@ class Edge(AbstractConcreteBase, ORMBase):
             'You must declare __src_dst_assoc__ for {}'.format(cls)
         assert hasattr(cls, '__dst_src_assoc__'),\
             'You must declare __dst_src_assoc__ for {}'.format(cls)
-        # name = cls.__name__
-        # if getattr(cls, 'src', None) is None:
-        #     cls.src = relationship(
-        #         cls.__src_class__,
-        #         foreign_keys=[cls.src_id],
-        #         # backref='_{}_out'.format(name),
-        #         # passive_deletes=True,
-        #         # cascade="save-update, merge, delete-orphan",
-        #     )
-        # if getattr(cls, 'dst', None) is None:
-        #     cls.dst = relationship(
-        #         cls.__dst_class__,
-        #         foreign_keys=[cls.dst_id],
-        #         # backref='_{}_in'.format(name),
-        #         # passive_deletes=True,
-        #         # cascade="save-update, merge, delete-orphan",
-        #     )
 
     @declared_attr
     def __table_args__(cls):

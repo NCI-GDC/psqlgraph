@@ -192,9 +192,46 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_association_proxy(self):
         a = Test('a')
         b = Foo('b')
+        c = Test('c')
         a.foos.append(b)
+        a.tests = [c]
         with g.session_scope() as s:
-            map(s.merge, (a, b))
+            a, b, c = map(s.merge, (a, b, c))
         with g.session_scope() as s:
             a = g.nodes(Test).ids('a').one()
             self.assertTrue(b in a.foos)
+            self.assertEqual(a.tests, [c])
+
+    def test_relationship_population_setter(self):
+        a = Test('a')
+        b = Foo('b')
+        e = Edge2()
+        e.src = a
+        e.dst = b
+        with g.session_scope() as s:
+            a, b = map(s.merge, (a, b))
+            e2 = s.query(Edge2).src('a').dst('b').one()
+            e = a._Edge2_out[0]
+            self.assertEqual(e2, e)
+
+    def test_relationship_population_constructer(self):
+        a = Test('a')
+        b = Foo('b')
+        e = Edge2(src=a, dst=b)
+        with g.session_scope() as s:
+            a, b = map(s.merge, (a, b))
+            e2 = s.query(Edge2).src('a').dst('b').one()
+            e = a._Edge2_out[0]
+            self.assertEqual(e2, e)
+
+    def test_cascade_delete(self):
+        a = Test('a')
+        b = Foo('b')
+        a.foos = [b]
+        with g.session_scope() as s:
+            a, b = map(s.merge, (a, b))
+        with g.session_scope() as s:
+            s.delete(g.nodes(Test).ids('a').one())
+        with g.session_scope() as s:
+            self.assertIsNone(g.nodes(Test).ids('a').scalar())
+            self.assertIsNone(g.edges(Edge2).src('a').dst('b').scalar())

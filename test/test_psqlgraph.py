@@ -61,8 +61,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
         node = PolyNode(
             node_id=str(uuid.uuid4()), label="foo", properties={"bar": 1})
         self.assertEqual(node["bar"], 1)
-        # edge = Edge(src_id=None, dst_id=None, label="foo", properties={"bar": 1})
-        # self.assertEqual(edge["bar"], 1)
 
     def test_setitem(self):
         """Test that indexing nodes/edges accesses their properties"""

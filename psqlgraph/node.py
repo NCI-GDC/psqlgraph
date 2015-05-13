@@ -214,6 +214,5 @@ def PolyNode(node_id=None, label=None, acl=[], system_annotations={},
 
 @event.listens_for(Node, 'before_insert', propagate=True)
 def receive_before_insert(mapper, connection, node):
-    # node._check_unique()
     node._validate()
     node._props = node.properties

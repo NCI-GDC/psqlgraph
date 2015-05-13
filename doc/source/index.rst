@@ -102,11 +102,69 @@ be a list of ``Bar`` objects related to your ``Foo`` object.
 Using your models
 =================
 
+Basic usage would be something like the following::
+
+    # IMPORTANT: You must import your models module.  This is how they are
+    # registered as models with psqlgraph.
+    from models import Test, Foo
+
+    g = PsqlGraphDriver(host, user, password, database)
+    with g.session_scope() as session:
+        # create some nodes
+        a = Test('a')
+        b = Foo('b')
+
+        # update our nodes
+        a.key1 = 'Our first property!'
+        a.foos.append(b)
+
+        # b will now be a Foo in the list of a's Foos
+        assert b in a.foos
+
+        # actually add the nodes to the session
+        session.add(a)
+        session.merge(b)
+    # ^-- Here we exit the session scope  --^
+    #     anything you've added or merged
+    #     into the session will now be
+    #     flushed to the database.
+
+
+    # Now our changes above are stored in the database,
+    # let's look back at them with a new session.
+    with g.session_scope() as session:
+        a = g.nodes(Test).props(key1='Our first property!').one()
+        b = g.nodes(Foo).ids('b').one()
+        assert b in a.foos
+
+        excited = g.nodes(Test).filter(
+            Test.key1.astext.endswith('Our first property!')).one()
+        assert excited = a
+
+Here we create nodes of types ``Test, Foo`` and add ``b`` to the list
+of ``Foo`` objects specified on the class ``Test``.  This is done
+behind the scenes with an `AssociationProxy`_ which represents a
+many-to-many relationship by creating a row in an edge table that
+specifies the source (``a``) and the destination (``b``).  From a
+simplified perspect you can interact with association proxies like
+``Test.foos`` as if they were python lists.
+
+See sections :ref:`label-using-the-session` and :ref:`label-queries`
+for more detailed usage.
+
+
+.. _AssociationProxy: http://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html
 .. _label-using-the-session:
 
 -----------
 Using The Session
 -----------
+
+.. note:: You cannot use psqlgraph without importing your models.  In
+          order to use any of your models, you must import them into
+          the current runtime.  For example, importing all classes
+          from test/models.py will load the nodes and edges as
+          subclasses.
 
 Psqlgraph is basically a glorified session/model factory.  It has a
 context scope function which is the bread and butter of dealing with
@@ -165,6 +223,9 @@ or::
 
 the difference being that :func:`insert` will raise an exception if
 the node already exists in the database.
+
+
+.. _label-queries:
 
 --------
 Querying

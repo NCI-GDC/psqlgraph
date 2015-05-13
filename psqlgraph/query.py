@@ -218,7 +218,7 @@ class GraphQuery(Query):
             self = self.join(*getattr(self.entity(), e).attr)
         return self
 
-    def path2(self, *entities):
+    def path_via_assoc_proxy(self, *entities):
         """Similar to :func:`path`, but more cumbersome.
 
         :param entities:
@@ -229,7 +229,8 @@ class GraphQuery(Query):
 
             # Filter for Nations who have states who have cities who
             # have streets named Main St.
-            g.nodes(Nation).path(Nation.states, States.cities, City.streets)\\
+            g.nodes(Nation).path_via_assoc_proxy(
+                               Nation.states, States.cities, City.streets)\\
                            .props(name='Main St')\\
                            .count()
 

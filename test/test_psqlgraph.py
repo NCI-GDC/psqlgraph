@@ -629,7 +629,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 src_id=src_id, dst_id=dst_id, label='edge1'))
         with g.session_scope():
             g.edge_update(edge, properties={'test': 3})
-            voided_edge = g.edges(VoidedEdge).labels(label='edge1').one()
+            voided_edge = g.edges(VoidedEdge).labels('edge1').one()
             self.assertEqual(edge.property_template(), voided_edge.properties)
 
     def test_edge_insert_and_lookup_properties(self):
@@ -863,25 +863,25 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 self._walk_tree(node)
 
     def test_edge_multiplicity(self):
-        with g.session_scope():
+        with g.session_scope() as s:
             src_id = str(uuid.uuid4())
             dst_id = str(uuid.uuid4())
+            foo_id = str(uuid.uuid4())
             g.node_merge(node_id=src_id, label='test')
             g.node_merge(node_id=dst_id, label='test')
+            g.node_merge(node_id=foo_id, label='foo')
             g.edge_insert(PsqlEdge(
                 src_id=src_id, dst_id=dst_id, label='edge1'))
-            g.edge_insert(PsqlEdge(
-                src_id=src_id, dst_id=dst_id, label='edge3'))
+            g.edge_insert(Edge2(src_id, foo_id))
+            s.commit()
             self.assertEqual(len(list(g.edge_lookup(
-                src_id=src_id, dst_id=dst_id))), 2)
+                src_id=src_id, dst_id=dst_id))), 1)
             self.assertEqual(len(list(g.edge_lookup(
-                src_id=src_id, dst_id=dst_id, label='edge1'))), 1)
-            self.assertEqual(len(list(g.edge_lookup(
-                src_id=src_id, dst_id=dst_id, label='edge3'))), 1)
+                src_id=src_id, dst_id=foo_id))), 1)
             self.assertRaises(
                 Exception,
                 g.edge_insert,
-                PsqlEdge(src_id=src_id, dst_id=dst_id, label='edge1')
+                Edge1(src_id=src_id, dst_id=dst_id)
             )
 
     def test_simple_automatic_session(self):

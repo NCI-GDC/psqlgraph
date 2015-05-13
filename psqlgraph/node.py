@@ -98,12 +98,13 @@ class Node(AbstractConcreteBase, ORMBase):
             yield edge_out
 
     def __init__(self, node_id=None, properties={}, acl=[],
-                 system_annotations={}, label=None):
+                 system_annotations={}, label=None, **kwargs):
         self._props = {}
         self.system_annotations = system_annotations
         self.acl = acl
         self.label = label or self.get_label()
         self.properties = properties
+        self.properties.update(kwargs)
         self.node_id = node_id
 
     def __repr__(self):

@@ -72,12 +72,14 @@ class Edge(AbstractConcreteBase, ORMBase):
     def __tablename__(cls):
         return cls.__name__.lower()
 
-    def __init__(self, src_id=None, dst_id=None, properties={}, acl=[],
-                 system_annotations={}, label=None, src=None, dst=None):
+    def __init__(self, src_id=None, dst_id=None, properties={},
+                 acl=[], system_annotations={}, label=None,
+                 src=None, dst=None, **kwargs):
         self._props = {}
         self.system_annotations = system_annotations
         self.acl = acl
         self.properties = properties
+        self.properties.update(kwargs)
 
         if src is not None:
             if src_id is not None:

@@ -254,8 +254,7 @@ class GraphQuery(Query):
 
         """
         assert type(label) == str, ".labels only accepts a single string now"
-
-        if isinstance(self.entity(), (VoidedNode, VoidedEdge)):
+        if self.entity() in (VoidedNode, VoidedEdge):
             return self.filter(self.entity().label == label)
 
         potential_subclasses = [Node.get_subclass(label)]

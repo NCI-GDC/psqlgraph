@@ -35,20 +35,11 @@ class CommonBase(object):
     )
 
     _props = Column(
-        # WARNING: Do not update this column directly. See `.properties`
+        # WARNING: Do not update this column directly.
+        # See `.properties` or `.props`
         JSONB,
         default={},
     )
-
-    @declared_attr
-    def _type(cls):
-        # WARNING: Do not update this column at all. It is used to
-        # identify the polymorphic identity of the model
-        return Column(
-            Text,
-            nullable=False,
-            default=cls.__name__,
-        )
 
     @classmethod
     def get_label(cls):
@@ -67,7 +58,6 @@ class CommonBase(object):
                 scls.__tablename__: scls.__table__ for scls in
                 cls.get_subclasses()}, 'type')
             return {
-                'polymorphic_on': cls._type,
                 'polymorphic_identity': name,
                 'with_polymorphic': ('*', pjoin),
             }

@@ -57,26 +57,38 @@ class Node(AbstractConcreteBase, ORMBase):
             name_out = '_{}_out'.format(name)
             src_assoc = getattr(scls, SRC_DST_ASSOC)
             dst_assoc = getattr(scls, DST_SRC_ASSOC)
-            if scls.__dst_class__ == cls.__name__\
-               and not hasattr(cls, name_in):
-                edge_in = relationship(
-                    name, foreign_keys=[scls.dst_id], viewonly=True)
-                setattr(cls, name_in, edge_in)
-                cls._edges_in.append(name_in)
-                dst_ids.append(scls.dst_id)
+            if scls.__dst_class__ == cls.__name__:
+                if not hasattr(cls, name_in):
+                    edge_in = relationship(
+                        name,
+                        foreign_keys=[scls.dst_id],
+                        backref='dst',
+                        cascade='all, delete, delete-orphan',
+                    )
+                    setattr(cls, name_in, edge_in)
+                    cls._edges_in.append(name_in)
+                    dst_ids.append(scls.dst_id)
                 cls._set_association_proxy(scls, dst_assoc, name_in, 'src')
-            if scls.__src_class__ == cls.__name__\
-               and not hasattr(cls, name_out):
-                edge_out = relationship(
-                    name, foreign_keys=[scls.src_id], viewonly=True)
-                setattr(cls, name_out, edge_out)
-                cls._edges_out.append(name_out)
-                src_ids.append(scls.src_id)
+            if scls.__src_class__ == cls.__name__:
+                if not hasattr(cls, name_out):
+                    edge_out = relationship(
+                        name,
+                        foreign_keys=[scls.src_id],
+                        backref='src',
+                        cascade='all, delete, delete-orphan',
+                    )
+                    setattr(cls, name_out, edge_out)
+                    cls._edges_out.append(name_out)
+                    src_ids.append(scls.src_id)
                 cls._set_association_proxy(scls, src_assoc, name_out, 'dst')
 
     @classmethod
     def _set_association_proxy(cls, edge_cls, attr_name, edge_name, direction):
-        rel = association_proxy(edge_name, direction)
+        rel = association_proxy(
+            edge_name,
+            direction,
+            creator=lambda dst: edge_cls(dst=dst)
+        )
         setattr(cls, attr_name, rel)
 
     def get_edges(self):
@@ -95,8 +107,18 @@ class Node(AbstractConcreteBase, ORMBase):
         self.node_id = node_id
 
     def __repr__(self):
-        return '<{}({node_id}, {label})>'.format(
-            self.__class__.__name__, node_id=self.node_id, label=self.label)
+        return '<{}({node_id})>'.format(
+            self.__class__.__name__,
+            node_id=self.node_id)
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, self.__class__)
+            and self.node_id == other.node_id
+        )
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def copy(self):
         node = Node(

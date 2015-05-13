@@ -4,6 +4,7 @@ from sqlalchemy import Column, Text, DateTime, UniqueConstraint, \
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.orm import object_session, sessionmaker, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm.collections import attribute_mapped_collection
 
 from base import ORMBase
 from voided_edge import VoidedEdge
@@ -71,12 +72,23 @@ class Edge(AbstractConcreteBase, ORMBase):
             'You must declare __src_dst_assoc__ for {}'.format(cls)
         assert hasattr(cls, '__dst_src_assoc__'),\
             'You must declare __dst_src_assoc__ for {}'.format(cls)
-        if getattr(cls, 'src', None) is None:
-            cls.src = relationship(
-                cls.__src_class__, foreign_keys=[cls.src_id])
-        if getattr(cls, 'dst', None) is None:
-            cls.dst = relationship(
-                cls.__dst_class__, foreign_keys=[cls.dst_id])
+        # name = cls.__name__
+        # if getattr(cls, 'src', None) is None:
+        #     cls.src = relationship(
+        #         cls.__src_class__,
+        #         foreign_keys=[cls.src_id],
+        #         # backref='_{}_out'.format(name),
+        #         # passive_deletes=True,
+        #         # cascade="save-update, merge, delete-orphan",
+        #     )
+        # if getattr(cls, 'dst', None) is None:
+        #     cls.dst = relationship(
+        #         cls.__dst_class__,
+        #         foreign_keys=[cls.dst_id],
+        #         # backref='_{}_in'.format(name),
+        #         # passive_deletes=True,
+        #         # cascade="save-update, merge, delete-orphan",
+        #     )
 
     @declared_attr
     def __table_args__(cls):
@@ -87,18 +99,46 @@ class Edge(AbstractConcreteBase, ORMBase):
         return cls.__name__.lower()
 
     def __init__(self, src_id=None, dst_id=None, properties={}, acl=[],
-                 system_annotations={}, label=None):
+                 system_annotations={}, label=None, src=None, dst=None):
         self._props = {}
         self.system_annotations = system_annotations
         self.acl = acl
         self.label = label or self.__mapper_args__['polymorphic_identity']
         self.properties = properties
-        self.src_id = src_id
-        self.dst_id = dst_id
+
+        if src is not None:
+            if src_id is not None:
+                assert src.node_id == src_id, (
+                    "Edge initialized with src.node_id and src_id"
+                    "that don't match.")
+            self.src = src
+            self.src_id = src.node_id
+        else:
+            self.src_id = src_id
+
+        if dst is not None:
+            if dst_id is not None:
+                assert dst.node_id == dst_id, (
+                    "Edge initialized with src.node_id and src_id"
+                    "that don't match.")
+            self.dst = dst
+            self.dst_id = dst.node_id
+        else:
+            self.dst_id = dst_id
 
     def __repr__(self):
         return '<{}(({})-[{}]->({})>'.format(
             self.__class__.__name__, self.src_id, self.label, self.dst_id)
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, self.__class__)
+            and self.src_id == other.src_id
+            and self.dst_id == other.dst_id
+        )
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     @classmethod
     def get_subclass(cls, label):

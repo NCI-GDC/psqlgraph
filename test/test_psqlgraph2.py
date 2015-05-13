@@ -188,3 +188,13 @@ class TestPsqlGraphDriver(unittest.TestCase):
         n.baz = 'allowed_2'
         with self.assertRaises(ValidationError):
             n.baz = 'not allowed'
+
+    def test_association_proxy(self):
+        a = Test('a')
+        b = Foo('b')
+        a.foos.append(b)
+        with g.session_scope() as s:
+            map(s.merge, (a, b))
+        with g.session_scope() as s:
+            a = g.nodes(Test).ids('a').one()
+            self.assertTrue(b in a.foos)

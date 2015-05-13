@@ -279,7 +279,13 @@ class CommonBase(object):
 def create_hybrid_property(name, fset):
     @hybrid_property
     def hybrid_prop(instance):
-        return instance._props.get(name, None)
+        # Note: this does not use an 'in' clause or a .get() with a
+        # default because that doesn't allow you to use
+        # Node.property_key in a filter on a query.
+        try:
+            return instance._props[name]
+        except KeyError:
+            return None
 
     @hybrid_prop.setter
     def hybrid_prop(instance, value):

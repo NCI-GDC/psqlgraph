@@ -2,7 +2,7 @@
 import logging
 import argparse
 from gdcdatamodel import models
-from sqlalchemy import UniqueConstraint, desc
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgres import ARRAY, JSONB
 from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.orm import relationship, joinedload
@@ -11,7 +11,7 @@ from sqlalchemy import ForeignKey
 from multiprocessing import Pool
 import sys
 
-from psqlgraph import PsqlGraphDriver, Node, PolyNode
+from psqlgraph import PsqlGraphDriver, PolyNode
 
 logging.root.setLevel(level=logging.ERROR)
 
@@ -61,9 +61,11 @@ class OldNode(Base):
 def translate_node_range(_args):
     args, offset = _args
     src = PsqlGraphDriver(
-        args.host, args.user, args.password, args.source, **driver_kwargs)
+        args.source_host, args.source_user, args.source_password,
+        args.source, **driver_kwargs)
     dst = PsqlGraphDriver(
-        args.host, args.user, args.password, args.dest, **driver_kwargs)
+        args.dest_host, args.dest_user, args.dest_password,
+        args.dest, **driver_kwargs)
     with src.session_scope() as session:
         with dst.session_scope() as session:
             for old in src.nodes(OldNode).order_by(OldNode.node_id)\
@@ -94,7 +96,8 @@ def translate_node_range(_args):
 
 def translate_nodes(args):
     src = PsqlGraphDriver(
-        args.host, args.user, args.password, args.source, **driver_kwargs)
+        args.source_host, args.source_user, args.source_password,
+        args.source, **driver_kwargs)
     with src.session_scope():
         count = src.nodes(OldNode).count()
     offsets = [i*BLOCK for i in range(count/BLOCK+1)]
@@ -106,9 +109,12 @@ def translate_nodes(args):
 def translate_edge_range(_args):
     args, offset = _args
     src = PsqlGraphDriver(
-        args.host, args.user, args.password, args.source, **driver_kwargs)
+        args.source_host, args.source_user, args.source_password,
+        args.source, **driver_kwargs)
     dst = PsqlGraphDriver(
-        args.host, args.user, args.password, args.dest, **driver_kwargs)
+        args.dest_host, args.dest_user, args.dest_password,
+        args.dest, **driver_kwargs)
+
     print '{}-{}'.format(offset, offset+BLOCK)
     sys.stdout.flush()
     with src.session_scope() as session:
@@ -147,7 +153,8 @@ def translate_edge_range(_args):
 
 def translate_edges(args):
     src = PsqlGraphDriver(
-        args.host, args.user, args.password, args.source, **driver_kwargs)
+        args.source_host, args.source_user, args.source_password,
+        args.source, **driver_kwargs)
     with src.session_scope():
         count = src.nodes(OldEdge).count()
     src.engine.dispose()
@@ -159,18 +166,28 @@ def translate_edges(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--source', required=True, type=str,
-                        help='the database to import from')
+    parser.add_argument('--nprocs', default=16, type=int,
+                        help='number of processes')
+
+    # ======== Destination options ========
     parser.add_argument('--dest', required=True, type=str,
                         help='the database to import to')
-    parser.add_argument('-u', '--user', default='test', type=str,
+    parser.add_argument('--dest-user', default='test', type=str,
                         help='the user to import as')
-    parser.add_argument('-p', '--password', default='test', type=str,
+    parser.add_argument('--dest-password', default='test', type=str,
                         help='the password for import user')
-    parser.add_argument('-i', '--host', default='localhost', type=str,
+    parser.add_argument('--dest-host', default='localhost', type=str,
                         help='the postgres server host')
-    parser.add_argument('-n', '--nprocs', default=16, type=int,
-                        help='number of processes')
+
+    # ======== Source options ========
+    parser.add_argument('--source', required=True, type=str,
+                        help='the database to import from')
+    parser.add_argument('--source-user', default='test', type=str,
+                        help='the user to import as')
+    parser.add_argument('--source-password', default='test', type=str,
+                        help='the password for import user')
+    parser.add_argument('--source-host', default='localhost', type=str,
+                        help='the postgres server host')
     args = parser.parse_args()
-    # translate_nodes(args)
+    translate_nodes(args)
     translate_edges(args)

@@ -7,8 +7,6 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import object_session, sessionmaker
 from sqlalchemy.orm.util import polymorphic_union
 from util import sanitize, validate
-from sqlalchemy.ext.declarative.api import DeclarativeMeta
-from sqlalchemy.ext.mutable import MutableDict
 
 
 Base = declarative_base()
@@ -40,12 +38,6 @@ class CommonBase(object):
         # WARNING: Do not update this column directly. See `.properties`
         JSONB,
         default={},
-    )
-
-    _label = Column(
-        # WARNING: Do not update this column directly. See `.label`
-        Text,
-        nullable=False,
     )
 
     @declared_attr
@@ -184,7 +176,7 @@ class CommonBase(object):
 
         .. note: This is not the polymorphic identity, see `_type`
         """
-        return self._label
+        return self.get_label()
 
     @label.setter
     def label(self, label):
@@ -192,11 +184,10 @@ class CommonBase(object):
 
         """
         if not isinstance(self.label, Column)\
-           and self._label is not None\
-           and self._label != label:
+           and self.get_label() is not None\
+           and self.get_label() != label:
             raise AttributeError('Cannot change label from {} to {}'.format(
-                self._label, label))
-        self._label = label
+                self.get_label(), label))
 
     # ======== System Annotations ========
     @hybrid_property

@@ -2,8 +2,8 @@ import uuid
 import unittest
 import logging
 import random
-import psqlgraph
-from psqlgraph import PsqlGraphDriver, Node, Edge, PolyNode, sanitize
+from psqlgraph import PsqlGraphDriver, Node, Edge, PolyNode, sanitize,\
+    VoidedEdge, VoidedNode
 from psqlgraph import PolyNode as PsqlNode
 from psqlgraph import PolyEdge as PsqlEdge
 
@@ -68,7 +68,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             node_id=str(uuid.uuid4()), label="foo", properties={"bar": 1})
         node["bar"] = 2
         self.assertEqual(node["bar"], 2)
-        edge = Edge1(src_id=None, dst_id=None, label="foo")
+        edge = Edge1(src_id=None, dst_id=None)
         edge["bar"] = 2
         self.assertEqual(edge["bar"], 2)
 
@@ -629,7 +629,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 src_id=src_id, dst_id=dst_id, label='edge1'))
         with g.session_scope():
             g.edge_update(edge, properties={'test': 3})
-            voided_edge = g.edge_lookup(label='edge1', voided=True).one()
+            voided_edge = g.edges(VoidedEdge).labels(label='edge1').one()
             self.assertEqual(edge.property_template(), voided_edge.properties)
 
     def test_edge_insert_and_lookup_properties(self):

@@ -1,8 +1,10 @@
 # from edge import Edge, PsqlEdge, PsqlVoidedEdge
 from node import Node
+from voided_node import VoidedNode
+from voided_edge import VoidedEdge
 from edge import Edge
-from sqlalchemy.orm import Query, joinedload
-from sqlalchemy import or_, not_
+from sqlalchemy.orm import Query
+from sqlalchemy import not_
 
 """
 
@@ -251,7 +253,11 @@ class GraphQuery(Query):
            your query, e.g. driver.nodes(TestNode)
 
         """
-        assert type(label) == str, ".labels only accepts a single string nowa"
+        assert type(label) == str, ".labels only accepts a single string now"
+
+        if isinstance(self.entity(), (VoidedNode, VoidedEdge)):
+            return self.filter(self.entity().label == label)
+
         potential_subclasses = [Node.get_subclass(label)]
         potential_subclasses += Edge._get_subclasses_labeled(label)
         # filter Nones

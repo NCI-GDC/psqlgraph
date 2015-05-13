@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Text, event, ForeignKey
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from base import ORMBase
 from voided_edge import VoidedEdge
@@ -28,12 +29,6 @@ def edge_attributes(name, src_class, dst_class,
 
 
 class Edge(AbstractConcreteBase, ORMBase):
-
-    _label = Column(
-        Text,
-        nullable=False,
-        primary_key=True,
-    )
 
     __src_table__ = None
     __dst_table__ = None
@@ -82,7 +77,6 @@ class Edge(AbstractConcreteBase, ORMBase):
         self._props = {}
         self.system_annotations = system_annotations
         self.acl = acl
-        self.label = label or self.__mapper_args__['polymorphic_identity']
         self.properties = properties
 
         if src is not None:
@@ -98,7 +92,7 @@ class Edge(AbstractConcreteBase, ORMBase):
         if dst is not None:
             if dst_id is not None:
                 assert dst.node_id == dst_id, (
-                    "Edge initialized with src.node_id and src_id"
+                    "Edge initialized with dst.node_id and dst_id"
                     "that don't match.")
             self.dst = dst
             self.dst_id = dst.node_id
@@ -159,15 +153,21 @@ class Edge(AbstractConcreteBase, ORMBase):
         voided = VoidedEdge(temp)
         session.add(voided)
 
-    def _lookup_existing(self, session):
-        clean = self._get_clean_session(session)
-        res = clean.query(Edge).filter(Edge.src_id == self.src_id)\
-                               .filter(Edge.dst_id == self.dst_id)\
-                               .filter(Edge._label == self.label)\
-                               .scalar()
-        clean.expunge_all()
-        clean.close()
-        return res
+    # ======== Label ========
+    @hybrid_property
+    def label(self):
+        return self.get_label()
+
+    @label.setter
+    def label(self, label):
+        """Custom setter as an application level ban from changing labels.
+
+        """
+        if not isinstance(self.label, Column)\
+           and self.get_label() is not None\
+           and self.get_label() != label:
+            raise AttributeError('Cannot change label from {} to {}'.format(
+                self.get_label(), label))
 
 
 def PolyEdge(src_id=None, dst_id=None, label=None, acl=[],

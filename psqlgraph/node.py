@@ -87,7 +87,7 @@ class Node(AbstractConcreteBase, ORMBase):
         rel = association_proxy(
             edge_name,
             direction,
-            creator=lambda dst: edge_cls(dst=dst)
+            creator=lambda node: edge_cls(**{direction: node})
         )
         setattr(cls, attr_name, rel)
 

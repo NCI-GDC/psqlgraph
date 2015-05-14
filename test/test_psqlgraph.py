@@ -671,6 +671,16 @@ class TestPsqlGraphDriver(unittest.TestCase):
             for dst_id in dst_ids:
                 self.assertTrue(dst_id in set(edge_ids))
 
+    def test_edge_lookup_with_label(self):
+        """
+        Regression test that edge_lookup works if label is specified.
+        """
+        with g.session_scope():
+            nid1 = g.node_merge(node_id=str(uuid.uuid4()), label='test').node_id
+            nid2 = g.node_merge(node_id=str(uuid.uuid4()), label='test').node_id
+            g.edge_insert(PsqlEdge(src_id=nid1, dst_id=nid2, label='edge1'))
+            g.edge_lookup(label="edge1", src_id=nid1, dst_id=nid2).one()
+
     def test_sessioned_path_insertion(self):
         """Test creation of a sessioned node path
 

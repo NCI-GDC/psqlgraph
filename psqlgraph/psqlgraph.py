@@ -375,7 +375,7 @@ class PsqlGraphDriver(object):
         if dst_id is not None:
             query = query.dst(dst_id)
         if label is not None:
-            query = query.filter(Edge.label == label)
+            query = query.labels(label)
         return query
 
     def edge_lookup_voided(self, src_id=None, dst_id=None, label=None,

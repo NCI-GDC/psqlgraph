@@ -70,15 +70,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
             for n in self.g.nodes().not_ids(self.lone_id).all():
                 self.assertNotEqual(n.node_id, self.lone_id)
 
-    def test_labels(self):
-        with self.g.session_scope():
-            for i in range(3):
-                label = 'test'
-                ns = self.g.nodes().labels(label).all()
-                self.assertTrue(ns != [])
-                for n in ns:
-                    self.assertTrue(n.label == label)
-
     def test_props(self):
         with self.g.session_scope():
             for i in range(3):

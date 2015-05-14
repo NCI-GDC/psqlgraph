@@ -629,7 +629,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 src_id=src_id, dst_id=dst_id, label='edge1'))
         with g.session_scope():
             g.edge_update(edge, properties={'test': 3})
-            voided_edge = g.edges(VoidedEdge).labels('edge1').one()
+            voided_edge = g.edges(VoidedEdge).one()
             self.assertEqual(edge.property_template(), voided_edge.properties)
 
     def test_edge_insert_and_lookup_properties(self):

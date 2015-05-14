@@ -95,9 +95,9 @@ class GraphQuery(Query):
 
         assert hasattr(self.entity(), 'src_id')
         if hasattr(ids, '__iter__'):
-            return self.filter(Edge.src_id.in_(ids))
+            return self.filter(self.entity().src_id.in_(ids))
         else:
-            return self.filter(Edge.src_id == str(ids))
+            return self.filter(self.entity().src_id == str(ids))
 
     def dst(self, ids):
         """Filter edges by dst_id
@@ -114,9 +114,9 @@ class GraphQuery(Query):
 
         assert hasattr(self.entity(), 'dst_id')
         if hasattr(ids, '__iter__'):
-            return self.filter(Edge.dst_id.in_(ids))
+            return self.filter(self.entity().dst_id.in_(ids))
         else:
-            return self.filter(Edge.dst_id == str(ids))
+            return self.filter(self.entity().dst_id == str(ids))
 
     # ====== Nodes ========
     def ids(self, ids):
@@ -240,34 +240,33 @@ class GraphQuery(Query):
         return self
 
     # ======== Labels ========
-    def labels(self, label):
-        """Filters on nodes that have certain labels.
+    # def labels(self, label):
+    #     """Filters on nodes that have certain labels.
 
-        :param labels:
-           A single scalar string.  The filtered
-           results will have this label
-        :returns: |qobj|
+    #     :param labels:
+    #        A single scalar string.  The filtered
+    #        results will have this label
+    #     :returns: |qobj|
 
-        .. note::
-           This is largely **deprecated**, rather you should specify the
-           actual model class entity you want to return when you begin
-           your query, e.g. driver.nodes(TestNode)
+    #     .. note::
+    #        This is largely **deprecated**, rather you should specify the
+    #        actual model class entity you want to return when you begin
+    #        your query, e.g. driver.nodes(TestNode)
 
-        """
-        assert type(label) == str, ".labels only accepts a single string now"
-        if self.entity() in (VoidedNode, VoidedEdge):
-            return self.filter(self.entity().label == label)
+    #     """
+    #     assert type(label) == str, ".labels only accepts a single string now"
+    #     if self.entity() in (VoidedNode, VoidedEdge):
+    #         return self.filter(self.entity().label == label)
 
-        potential_subclasses = [Node.get_subclass(label)]
-        potential_subclasses += Edge._get_subclasses_labeled(label)
-        # filter Nones
-        potential_subclasses = [cls for cls in potential_subclasses if cls]
-        if not potential_subclasses:
-            raise RuntimeError("No classes found with label {}".format(label))
-        q = self.with_entities(potential_subclasses[0])
-        for cls in potential_subclasses[1:]:
-            q = q.union_all(self.with_entities(cls))
-        return q
+    #     potential_subclasses = [Node.get_subclass(label)]
+    #     potential_subclasses += Edge._get_subclasses_labeled(label)
+    #     # filter Nones
+    #     potential_subclasses = [cls for cls in potential_subclasses if cls]
+    #     if not potential_subclasses:
+    #         raise RuntimeError("No classes found with label {}".format(label))
+    #     q = self.with_entities(potential_subclasses[0])
+    #     q = q.union_all(*[self.with_entities(cls) for cls in potential_subclasses[1:]])
+    #     return q
 
     # ======== Properties ========
     def props(self, props={}, **kwargs):

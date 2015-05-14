@@ -366,17 +366,20 @@ class PsqlGraphDriver(object):
     def edge_lookup(self, src_id=None, dst_id=None, label=None,
                     voided=False, session=None):
         if voided:
-            query = self.voided_edges()
+            queries = [self.voided_edges()]
+        elif label is not None:
+            queries = [self.edges(cls) for cls in Edge._get_subclasses_labeled(label)]
         else:
-            query = self.edges()
+            queries = [self.edges()]
 
         if src_id is not None:
-            query = query.src(src_id)
+            queries = [q.src(src_id) for q in queries]
         if dst_id is not None:
-            query = query.dst(dst_id)
-        if label is not None:
-            query = query.labels(label)
-        return query
+            queries = [q.dst(dst_id) for q in queries]
+        if len(queries) > 1:
+            return queries[0].union_all(*queries[1:])
+        else:
+            return queries[0]
 
     def edge_lookup_voided(self, src_id=None, dst_id=None, label=None,
                            session=None):

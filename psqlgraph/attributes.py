@@ -1,10 +1,8 @@
 from util import sanitize
-from sqlalchemy.dialects.postgres import JSONB
 
 
 class PropertiesDictError(Exception):
     pass
-
 
 
 class SystemAnnotationDict(dict):
@@ -27,7 +25,9 @@ class SystemAnnotationDict(dict):
         super(SystemAnnotationDict, self).update(self.source._sysan)
 
     def __setitem__(self, key, val):
-        self.source._sysan[key] = val
+        temp = dict(self.source._sysan)
+        temp[key] = val
+        self.source._sysan = temp
         super(SystemAnnotationDict, self).__setitem__(key, val)
 
     def __delitem__(self, key):

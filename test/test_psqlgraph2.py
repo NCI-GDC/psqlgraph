@@ -235,3 +235,17 @@ class TestPsqlGraphDriver(unittest.TestCase):
         with g.session_scope() as s:
             self.assertIsNone(g.nodes(Test).ids('a').scalar())
             self.assertIsNone(g.edges(Edge2).src('a').dst('b').scalar())
+
+    def test_set_sysan(self):
+        a = Test('a')
+        with g.session_scope() as s:
+            a = s.merge(a)
+        with g.session_scope() as s:
+            a = g.nodes(Test).ids('a').one()
+            a = s.merge(a)
+            a.sysan['key1'] = True
+            s.merge(a)
+        with g.session_scope() as s:
+            n = g.nodes(Test).ids('a').one()
+            print n.sysan
+            self.assertTrue(n.sysan['key1'])

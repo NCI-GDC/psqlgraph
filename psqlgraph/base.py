@@ -100,6 +100,20 @@ class CommonBase(object):
         """
         self.properties = properties
 
+    @hybrid_property
+    def sysan(self):
+        """Alias of properties
+
+        """
+        return self.system_annotations
+
+    @sysan.setter
+    def sysan(self, sysan):
+        """Alias of properties
+
+        """
+        self.system_annotations = sysan
+
     def _set_property(self, key, val):
         """Property dict is cloned (to make sure that SQLAlchemy flushes it)
         before setting the key value pair.

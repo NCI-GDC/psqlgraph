@@ -192,9 +192,3 @@ def PolyEdge(src_id=None, dst_id=None, label=None, acl=[],
         system_annotations=system_annotations,
         label=label
     )
-
-
-@event.listens_for(Edge, 'before_insert', propagate=True)
-def receive_before_insert(mapper, connection, edge):
-    edge._validate()
-    edge._props = edge.properties

@@ -234,7 +234,7 @@ class CommonBase(object):
 
     def _merge_onto_existing(self, old_props, old_sysan):
         # properties
-        temp = self.property_template()
+        temp = {}
         temp.update(old_props)
         temp.update(self._props)
         self._props = temp

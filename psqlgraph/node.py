@@ -174,31 +174,6 @@ class Node(AbstractConcreteBase, ORMBase):
         voided = VoidedNode(temp)
         session.add(voided)
 
-    def _lookup_existing(self, session):
-        clean = self._get_clean_session(session)
-        res = clean.query(Node).filter(Node.node_id == self.node_id)\
-                               .filter(Node._label == self.label)\
-                               .scalar()
-        clean.expunge_all()
-        clean.close()
-        return res
-
-    def _check_unique(self):
-        clean = self._get_clean_session()
-        current = self.get_session()
-        others = clean.query(Node).filter(Node.node_id == self.node_id)\
-                                  .filter(Node._label != self.label)
-        assert others.count() == 0,\
-            'There is another node with id "{}" in the database'.format(
-                self.node_id)
-        others = current.query(Node).filter(Node.node_id == self.node_id)\
-                                    .filter(Node._label != self.label)
-        assert others.count() == 0,\
-            'There is another node with id "{}" in current session'.format(
-                self.node_id)
-        clean.expunge_all()
-        clean.close()
-
 
 def PolyNode(node_id=None, label=None, acl=[], system_annotations={},
              properties={}):
@@ -211,9 +186,3 @@ def PolyNode(node_id=None, label=None, acl=[], system_annotations={},
         system_annotations=system_annotations,
         label=label
     )
-
-
-@event.listens_for(Node, 'before_insert', propagate=True)
-def receive_before_insert(mapper, connection, node):
-    node._validate()
-    node._props = node.properties

@@ -24,11 +24,23 @@ DEFAULT_RETRIES = 0
 
 class PsqlGraphDriver(object):
 
+    acceptable_isolation_levels = ['REPEATABLE_READ', 'SERIALIZABLE']
+
     def __init__(self, host, user, password, database, **kwargs):
         kwargs.pop('node_validator', None)
         kwargs.pop('edge_validator', None)
         conn_str = 'postgresql://{user}:{password}@{host}/{database}'.format(
             user=user, password=password, host=host, database=database)
+        if 'isolation_level' not in kwargs:
+            kwargs['isolation_level'] = 'REPEATABLE_READ'
+        if kwargs['isolation_level'] not in self.acceptable_isolation_levels:
+            logging.warn((
+                "Using an isolation level '{}' that is not in the list of "
+                "acceptable isolation levels {} is not safe and should be "
+                "avoided.  Doing this can result in one session overwriting "
+                "the commit of a concurrent session and losing data!"
+            ).format(
+                kwargs['isolation_level'], self.acceptable_isolation_levels))
         self.engine = create_engine(conn_str, encoding='latin1', **kwargs)
         self.context = xlocal()
 

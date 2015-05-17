@@ -4,6 +4,7 @@ import logging
 from psqlgraph import PsqlGraphDriver
 from psqlgraph import Node
 from psqlgraph.exc import ValidationError
+import sqlalchemy as sa
 
 host = 'localhost'
 user = 'test'
@@ -277,3 +278,17 @@ class TestPsqlGraphDriver(unittest.TestCase):
             s.merge(a)
             s.commit()
             self.assertEqual(a._history.all(), [])
+
+    def test_isolation_level(self):
+        nid = str(uuid.uuid4())
+        with g.session_scope() as s:
+            s.merge(Test(nid))
+        with self.assertRaises(sa.exc.OperationalError):
+            with g.session_scope() as outer:
+                a = outer.query(Test).filter(Test.node_id == nid).one()
+                with g.session_scope(can_inherit=False) as inner:
+                    b = inner.query(Test).filter(Test.node_id == nid).one()
+                    b.sysan['inner'] = True
+                    inner.merge(b)
+                    inner.commit()
+                a.sysan['outer'] = True

@@ -249,3 +249,31 @@ class TestPsqlGraphDriver(unittest.TestCase):
             n = g.nodes(Test).ids('a').one()
             print n.sysan
             self.assertTrue(n.sysan['key1'])
+
+    def test_unchanged_properties_snapshot(self):
+        nid = str(uuid.uuid4())
+        a = Test(nid)
+        value = '++ VALUE ++'
+        with g.session_scope() as s:
+            a.key1 = value
+            s.merge(a)
+            s.commit()
+            a = g.nodes(Test).ids(nid).one()
+            a.key1 = value
+            s.merge(a)
+            s.commit()
+            self.assertEqual(a._history.all(), [])
+
+    def test_unchanged_sysan_snapshot(self):
+        nid = str(uuid.uuid4())
+        a = Test(nid)
+        value = '++ VALUE ++'
+        with g.session_scope() as s:
+            a.sysan['key1'] = value
+            s.merge(a)
+            s.commit()
+            a = g.nodes(Test).ids(nid).one()
+            a.sysan['key1'] = value
+            s.merge(a)
+            s.commit()
+            self.assertEqual(a._history.all(), [])

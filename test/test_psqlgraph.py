@@ -262,7 +262,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             node = g.nodes().ids(node_id).one()
             self.assertEqual(merged, node.properties)
 
-        nodes = self.verify_node_count(3, node_id=node_id, voided=True)
+        nodes = self.verify_node_count(2, node_id=node_id, voided=True)
         self.assertEqual(merged, nodes[0].properties)
         return merged
 

@@ -16,7 +16,7 @@ def validate(f, value, types, enum=None):
 
     """
     if enum:
-        if value not in enum:
+        if value not in enum and value is not None:
             raise ValidationError((
                 "Value '{}' not in allowed value list for {} for property {}."
             ).format(value, enum, f.__name__))

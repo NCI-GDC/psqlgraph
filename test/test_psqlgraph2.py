@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 # We have to import models here, even if we don't use them
-from models import Test, Foo, Edge1, Edge2
+from models import Test, Foo, Edge1, Edge2, FooBar
 
 
 def _props(target, updates):
@@ -119,6 +119,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
             node.properties['key1'] = 1
         with self.assertRaises(AssertionError):
             node.properties.update({'key1': 1})
+        with self.assertRaises(AssertionError):
+            node.properties = {'key1': 1}
 
     def test_set_query_result_properties(self):
         new = {'key1': 'first property'}
@@ -214,6 +216,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
             e2 = s.query(Edge2).src('a').dst('b').one()
             e = a._Edge2_out[0]
             self.assertEqual(e2, e)
+
+    def test_nonnull(self):
+        a = FooBar('a')
+        a.bar = None
+        a.props['bar'] = None
+        a.properties = {'bar': None}
+        with self.assertRaises(AssertionError):
+            with g.session_scope() as s:
+                s.merge(a)
+        a.bar = True
+        with g.session_scope() as s:
+            s.merge(a)
 
     def test_relationship_population_constructer(self):
         a = Test('a')

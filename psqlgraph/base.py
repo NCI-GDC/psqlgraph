@@ -84,7 +84,7 @@ class CommonBase(object):
 
         """
         for key, val in sanitize(properties).items():
-            self._set_property(key, val)
+            setattr(self, key, val)
 
     @hybrid_property
     def props(self):

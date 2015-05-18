@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Text, event, ForeignKey
+from sqlalchemy import Column, Text, event, ForeignKey, Index
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -9,12 +9,15 @@ from voided_edge import VoidedEdge
 
 def IDColumn(tablename):
     return Column(
-        Text, ForeignKey(
+        Text,
+        ForeignKey(
             '{}.node_id'.format(tablename),
             ondelete="CASCADE",
             deferrable=True,
-            initially="DEFERRED",
-        ), primary_key=True, nullable=False)
+            initially="DEFERRED"),
+        primary_key=True,
+        nullable=False,
+    )
 
 
 def edge_attributes(name, src_class, dst_class,
@@ -66,7 +69,12 @@ class Edge(AbstractConcreteBase, ORMBase):
 
     @declared_attr
     def __table_args__(cls):
-        return tuple()
+        return (
+            Index('{}_dst_id_src_id_idx'.format(cls.__tablename__),
+                  "src_id", "dst_id"),
+            Index('{}_dst_id'.format(cls.__tablename__), "dst_id"),
+            Index('{}_src_id'.format(cls.__tablename__), "src_id"),
+        )
 
     @declared_attr
     def __tablename__(cls):

@@ -1,6 +1,6 @@
 from base import ORMBase
 from edge import Edge
-from sqlalchemy import Column, Text, UniqueConstraint, event
+from sqlalchemy import Column, Text, UniqueConstraint, Index
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -37,8 +37,16 @@ class Node(AbstractConcreteBase, ORMBase):
     @declared_attr
     def __table_args__(cls):
         name = cls.__name__.lower()
-        return (UniqueConstraint(
-            'node_id', name='_{}_id_uc'.format(name)),)
+        return (
+            UniqueConstraint('node_id', name='_{}_id_uc'.format(name)),
+            Index('{}__props_idx'.format(cls.__tablename__),
+                  '_props', postgresql_using='gin'),
+            Index('{}__sysan__props_idx'.format(cls.__tablename__),
+                  '_sysan', '_props', postgresql_using='gin'),
+            Index('{}__sysan_idx'.format(cls.__tablename__),
+                  '_sysan', postgresql_using='gin'),
+            Index('{}_node_id_idx'.format(cls.__tablename__), 'node_id'),
+        )
 
     @hybrid_property
     def edges_in(self):

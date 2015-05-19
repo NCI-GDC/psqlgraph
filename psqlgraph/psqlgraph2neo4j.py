@@ -1,6 +1,7 @@
 from __future__ import print_function
 from datetime import datetime
 import psqlgraph
+from psqlgraph import Node, Edge
 import progressbar
 import os
 
@@ -85,7 +86,7 @@ class PsqlGraph2Neo4j(object):
         node_ids = dict()
         if not silent:
             i = 0
-            node_count = self.psqlgraphDriver.get_node_count()
+            node_count = self.psqlgraphDriver.nodes().not_sysan({'to_delete': True}).count()
             print("Exporting {n} nodes:".format(n=node_count))
             if node_count != 0:
                 pbar = self.start_pbar(node_count)
@@ -93,20 +94,21 @@ class PsqlGraph2Neo4j(object):
         edge_file = open(os.path.join(data_dir, 'rels.csv'), 'w')
         print('start\tend\ttype\t', file=edge_file)
         self.create_node_files(data_dir)
-        nodes = self.psqlgraphDriver.get_nodes()
+        batch_size = 1000
         id_count = 0
-        for node in nodes:
-            if not node.system_annotations.get('to_delete'):
+        for node_type in Node.get_subclasses():
+            nodes = self.psqlgraphDriver.nodes(node_type).not_sysan({'to_delete': True}).yield_per(batch_size)
+            for node in nodes:
                 self.convert_node(node)
                 self.node_to_csv(str(id_count), node)
                 node_ids[node.node_id] = id_count
                 id_count += 1
 
-            if not silent and node_count != 0:
-                i = self.update_pbar(pbar, i)
+                if not silent and node_count != 0:
+                    i = self.update_pbar(pbar, i)
 
-        if not silent and node_count != 0:
-            self.update_pbar(pbar, node_count)
+            if not silent and node_count != 0:
+                self.update_pbar(pbar, node_count)
 
         self.close_files()
         if not silent:
@@ -116,14 +118,15 @@ class PsqlGraph2Neo4j(object):
             if edge_count != 0:
                 pbar = self.start_pbar(node_count)
 
-        edges = self.psqlgraphDriver.get_edges()
-        for edge in edges:
-            src = node_ids.get(edge.src_id,'')
-            dst = node_ids.get(edge.dst_id,'')
-            if src!='' and dst!='':
-                edge_file.write(str(src)+'\t'+str(dst)+'\t'+edge.label+'\n')
-            if not silent and edge_count != 0:
-                i = self.update_pbar(pbar, i)
+        for edge_type in Edge.get_subclasses():
+            edges = self.psqlgraphDriver.edges(edge_type).yield_per(batch_size)
+            for edge in edges:
+                src = node_ids.get(edge.src_id, '')
+                dst = node_ids.get(edge.dst_id, '')
+                if src != '' and dst != '':
+                    edge_file.write(str(src)+'\t'+str(dst)+'\t'+edge.label+'\n')
+                if not silent and edge_count != 0:
+                    i = self.update_pbar(pbar, i)
 
         edge_file.close()
         if not silent and edge_count != 0:

@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, configure_mappers
 from xlocal import xlocal
 import logging
+import re
 # Custom modules
 from edge import Edge, PolyEdge
 from exc import QueryError
@@ -31,6 +32,7 @@ class PsqlGraphDriver(object):
         kwargs.pop('edge_validator', None)
         conn_str = 'postgresql://{user}:{password}@{host}/{database}'.format(
             user=user, password=password, host=host, database=database)
+        conn_str =  re.sub('None','',conn_str)
         if 'isolation_level' not in kwargs:
             kwargs['isolation_level'] = 'REPEATABLE_READ'
         if kwargs['isolation_level'] not in self.acceptable_isolation_levels:

@@ -29,8 +29,9 @@ class PsqlGraphDriver(object):
     def __init__(self, host, user, password, database, **kwargs):
         kwargs.pop('node_validator', None)
         kwargs.pop('edge_validator', None)
+        host = '' if host is None else host
         conn_str = 'postgresql://{user}:{password}@{host}/{database}'.format(
-            user=user, password=password, host=host if host else '', database=database)
+            user=user, password=password, host=host, database=database)
         if 'isolation_level' not in kwargs:
             kwargs['isolation_level'] = 'REPEATABLE_READ'
         if kwargs['isolation_level'] not in self.acceptable_isolation_levels:

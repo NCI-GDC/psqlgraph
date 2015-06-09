@@ -9,7 +9,6 @@ from sqlalchemy.orm.util import polymorphic_union
 from util import sanitize, validate
 
 
-Base = declarative_base()
 abstract_classes = ['Node', 'Edge', 'Base']
 
 
@@ -309,9 +308,41 @@ def create_hybrid_properties(mapper, cls):
         cls.__pg_properties__[pg_attr] = f.__pg_types__
 
 
+class VoidedBaseClass(object):
+
+    @hybrid_property
+    def props(self):
+        """Alias of properties
+
+        """
+        return self.properties
+
+    @props.setter
+    def props(self, properties):
+        """Alias of properties
+
+        """
+        self.properties = properties
+
+    @hybrid_property
+    def sysan(self):
+        """Alias of properties
+
+        """
+        return self.system_annotations
+
+    @sysan.setter
+    def sysan(self, sysan):
+        """Alias of properties
+
+        """
+        self.system_annotations = sysan
+
+
+VoidedBase = declarative_base(cls=VoidedBaseClass)
 ORMBase = declarative_base(cls=CommonBase)
 
 
 def create_all(engine):
     ORMBase.metadata.create_all(engine)
-    Base.metadata.create_all(engine)
+    VoidedBase.metadata.create_all(engine)

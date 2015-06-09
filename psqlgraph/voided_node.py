@@ -1,10 +1,9 @@
 from sqlalchemy.dialects.postgres import ARRAY, JSONB
 from sqlalchemy import Column, Text, DateTime, BigInteger, text
-from datetime import datetime
-from base import Base
+from base import VoidedBase
 
 
-class VoidedNode(Base):
+class VoidedNode(VoidedBase):
 
     __tablename__ = '_voided_nodes'
 
@@ -57,4 +56,4 @@ class VoidedNode(Base):
         self.acl = node.acl
         self.label = node.label
         self.system_annotations = node.system_annotations
-        self.properties = node.properties
+        self.properties = node._props

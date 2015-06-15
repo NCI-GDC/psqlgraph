@@ -1,7 +1,7 @@
 import uuid
 import unittest
 import logging
-from psqlgraph import PsqlGraphDriver
+from psqlgraph import PsqlGraphDriver, VoidedNode
 from psqlgraph import Node
 from psqlgraph.exc import ValidationError
 import sqlalchemy as sa
@@ -285,11 +285,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
         value = '++ VALUE ++'
         with g.session_scope() as s:
             a.sysan['key1'] = value
-            s.merge(a)
+            a = s.merge(a)
             s.commit()
-            a = g.nodes(Test).ids(nid).one()
             a.sysan['key1'] = value
-            s.merge(a)
+            a = s.merge(a)
             s.commit()
             self.assertEqual(a._history.all(), [])
 
@@ -306,3 +305,22 @@ class TestPsqlGraphDriver(unittest.TestCase):
                     inner.merge(b)
                     inner.commit()
                 a.sysan['outer'] = True
+
+    def test_snapshot_on_delete(self):
+        a = Test(str(uuid.uuid4()), key2=1)
+        g.node_insert(a)
+        with g.session_scope() as s:
+            s.delete(a)
+            self.assertEqual(a._history.one().properties['key2'], 1)
+
+    def test_snapshot_sysan(self):
+        a = Test(str(uuid.uuid4()), key2=1)
+        with g.session_scope() as s:
+            a = s.merge(a)
+            s.commit()
+            a.sysan['key'] = 1
+            a = s.merge(a)
+            s.commit()
+            self.assertEqual(a._history.one().properties['key2'], 1)
+            a.sysan['key'] = 3
+            a = s.merge(a)

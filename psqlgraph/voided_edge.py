@@ -1,10 +1,9 @@
 from sqlalchemy.dialects.postgres import ARRAY, JSONB
 from sqlalchemy import Column, Text, DateTime, BigInteger, text
-from datetime import datetime
-from base import Base
+from base import VoidedBase
 
 
-class VoidedEdge(Base):
+class VoidedEdge(VoidedBase):
 
     __tablename__ = '_voided_edges'
 

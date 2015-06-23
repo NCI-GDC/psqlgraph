@@ -324,3 +324,11 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertEqual(a._history.one().properties['key2'], 1)
             a.sysan['key'] = 3
             a = s.merge(a)
+
+    def test_session_closing(self):
+        a = Test(str(uuid.uuid4()))
+        with g.session_scope() as s:
+            nodes = g.nodes()
+        try: nodes.first()
+        except sa.exc.ResourceClosedError: pass
+        else: assert False, 'session usable after close'

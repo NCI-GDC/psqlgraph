@@ -10,6 +10,8 @@ from util import sanitize, validate
 
 
 abstract_classes = ['Node', 'Edge', 'Base']
+NODE_TABLENAME_SCHEME = 'node_{class_name}'
+EDGE_TABLENAME_SCHEME = 'edge_{class_name}'
 
 
 class CommonBase(object):
@@ -45,10 +47,6 @@ class CommonBase(object):
         return getattr(cls, '__label__', cls.__name__.lower())
 
     # ======== Table Attributes ========
-    @declared_attr
-    def __tablename__(cls):
-        return cls.__name__.lower()
-
     @declared_attr
     def __mapper_args__(cls):
         name = cls.__name__

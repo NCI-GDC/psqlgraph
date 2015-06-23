@@ -18,14 +18,14 @@ class GraphSession(Session):
     @inherit_docstring_from(Session)
     def __init__(self, *args, **kwargs):
         
-        self.closed = False
+        self._psqlgraph_closed = False
         
         return super(GraphSession, self).__init__(*args, **kwargs)
 
     @inherit_docstring_from(Session)
     def connection(self, *args, **kwargs):
         
-        if self.closed:
+        if self._psqlgraph_closed:
             raise exc.SessionClosedError('session closed')
         
         return super(GraphSession, self).connection(*args, **kwargs)
@@ -39,6 +39,6 @@ class GraphSession(Session):
         
         """
         
-        self.closed = True
+        self._psqlgraph_closed = True
         
         return super(GraphSession, self).close(*args, **kwargs)

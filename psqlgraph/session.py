@@ -1,7 +1,7 @@
 import sqlalchemy
-
-from sqlalchemy.exc import ResourceClosedError
 from sqlalchemy.orm.session import Session
+
+import exc
 
 
 # NOTE TODO Find a better way to handle method docstring inheritance?
@@ -29,7 +29,7 @@ class ShortSession(Session):
     def connection(self, *args, **kwargs):
         
         if self.closed:
-            raise ResourceClosedError('short session closed')
+            raise exc.SessionClosedError('short session closed')
         
         return super(ShortSession, self).connection(*args, **kwargs)
 

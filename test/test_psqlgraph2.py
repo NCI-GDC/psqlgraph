@@ -4,6 +4,7 @@ import logging
 from psqlgraph import PsqlGraphDriver, VoidedNode
 from psqlgraph import Node
 from psqlgraph.exc import ValidationError
+from psqlgraph.exc import SessionClosedError
 import sqlalchemy as sa
 
 host = 'localhost'
@@ -329,6 +330,5 @@ class TestPsqlGraphDriver(unittest.TestCase):
         a = Test(str(uuid.uuid4()))
         with g.session_scope() as s:
             nodes = g.nodes()
-        try: nodes.first()
-        except sa.exc.ResourceClosedError: pass
-        else: assert False, 'session usable after close'
+        with self.assertRaises(SessionClosedError):
+            nodes.first()

@@ -12,26 +12,23 @@ def inherit_docstring_from(cls):
     return docstring_inheriting_decorator
 
 
-class ShortSession(Session):
-    """A short-lived session that prohibits use after it is closed.
-
-    """
-    __doc__ += Session.__doc__
+class GraphSession(Session):
+    __doc__ = Session.__doc__
 
     @inherit_docstring_from(Session)
     def __init__(self, *args, **kwargs):
         
         self.closed = False
         
-        return super(ShortSession, self).__init__(*args, **kwargs)
+        return super(GraphSession, self).__init__(*args, **kwargs)
 
     @inherit_docstring_from(Session)
     def connection(self, *args, **kwargs):
         
         if self.closed:
-            raise exc.SessionClosedError('short session closed')
+            raise exc.SessionClosedError('session closed')
         
-        return super(ShortSession, self).connection(*args, **kwargs)
+        return super(GraphSession, self).connection(*args, **kwargs)
 
     def close(self, *args, **kwargs):
         """Close this Session.
@@ -44,4 +41,4 @@ class ShortSession(Session):
         
         self.closed = True
         
-        return super(ShortSession, self).close(*args, **kwargs)
+        return super(GraphSession, self).close(*args, **kwargs)

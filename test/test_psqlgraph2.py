@@ -4,6 +4,7 @@ import logging
 from psqlgraph import PsqlGraphDriver, VoidedNode
 from psqlgraph import Node
 from psqlgraph.exc import ValidationError
+from psqlgraph.exc import SessionClosedError
 import sqlalchemy as sa
 
 host = 'localhost'
@@ -324,3 +325,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertEqual(a._history.one().properties['key2'], 1)
             a.sysan['key'] = 3
             a = s.merge(a)
+
+    def test_session_closing(self):
+        a = Test(str(uuid.uuid4()))
+        with g.session_scope() as s:
+            nodes = g.nodes()
+        with self.assertRaises(SessionClosedError):
+            nodes.first()

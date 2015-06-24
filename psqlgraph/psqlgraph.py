@@ -17,6 +17,7 @@ from util import pg_property
 from util import retryable, default_backoff
 from voided_edge import VoidedEdge
 from voided_node import VoidedNode
+from session import GraphSession
 import psqlgraph2neo4j
 
 DEFAULT_RETRIES = 0
@@ -46,7 +47,7 @@ class PsqlGraphDriver(object):
         self.context = xlocal()
 
     def _new_session(self):
-        Session = sessionmaker(expire_on_commit=False)
+        Session = sessionmaker(expire_on_commit=False, class_=GraphSession)
         Session.configure(bind=self.engine, query_cls=GraphQuery)
         session = Session()
         event.listen(session, 'before_flush', receive_before_flush)

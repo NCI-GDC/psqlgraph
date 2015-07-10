@@ -1,4 +1,4 @@
-from base import ORMBase
+from base import ORMBase, NODE_TABLENAME_SCHEME
 from edge import Edge
 from sqlalchemy import Column, Text, UniqueConstraint, Index
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -35,10 +35,14 @@ class Node(AbstractConcreteBase, ORMBase):
     )
 
     @declared_attr
+    def __tablename__(cls):
+        return NODE_TABLENAME_SCHEME.format(class_name=cls.__name__.lower())
+
+    @declared_attr
     def __table_args__(cls):
-        name = cls.__name__.lower()
         return (
-            UniqueConstraint('node_id', name='_{}_id_uc'.format(name)),
+            UniqueConstraint('node_id', name='_{}_id_uc'.format(
+                cls.__name__.lower())),
             Index('{}__props_idx'.format(cls.__tablename__),
                   '_props', postgresql_using='gin'),
             Index('{}__sysan__props_idx'.format(cls.__tablename__),

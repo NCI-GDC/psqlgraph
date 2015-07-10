@@ -1,9 +1,9 @@
-from sqlalchemy import Column, Text, event, ForeignKey, Index
+from sqlalchemy import Column, Text, ForeignKey, Index
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 
-from base import ORMBase
+from base import ORMBase, EDGE_TABLENAME_SCHEME, NODE_TABLENAME_SCHEME
 from voided_edge import VoidedEdge
 
 
@@ -20,17 +20,6 @@ def IDColumn(tablename):
     )
 
 
-def edge_attributes(name, src_class, dst_class,
-                    src_table=None, dst_table=None):
-    src_table = src_table or src_class.lower()
-    dst_table = dst_table or dst_class.lower()
-    src_id = IDColumn(src_table)
-    dst_id = IDColumn(dst_table)
-    src = relationship(src_class, foreign_keys=[src_id])
-    dst = relationship(dst_class, foreign_keys=[dst_id])
-    return (src_id, dst_id, src, dst)
-
-
 class Edge(AbstractConcreteBase, ORMBase):
 
     __src_table__ = None
@@ -42,7 +31,8 @@ class Edge(AbstractConcreteBase, ORMBase):
     def src_id(cls):
         if cls.__name__ == 'Edge':
             return
-        src_table = cls.__src_table__ or cls.__src_class__.lower()
+        src_table = cls.__src_table__ or NODE_TABLENAME_SCHEME.format(
+            class_name=cls.__src_class__.lower())
         src_id = IDColumn(src_table)
         return src_id
 
@@ -50,7 +40,8 @@ class Edge(AbstractConcreteBase, ORMBase):
     def dst_id(cls):
         if cls.__name__ == 'Edge':
             return
-        dst_table = cls.__dst_table__ or cls.__dst_class__.lower()
+        dst_table = cls.__dst_table__ or NODE_TABLENAME_SCHEME.format(
+            class_name=cls.__dst_class__.lower())
         dst_id = IDColumn(dst_table)
         return dst_id
 
@@ -78,7 +69,7 @@ class Edge(AbstractConcreteBase, ORMBase):
 
     @declared_attr
     def __tablename__(cls):
-        return cls.__name__.lower()
+        return EDGE_TABLENAME_SCHEME.format(class_name=cls.__name__.lower())
 
     def __init__(self, src_id=None, dst_id=None, properties={},
                  acl=[], system_annotations={}, label=None,

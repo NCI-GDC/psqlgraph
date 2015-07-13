@@ -7,6 +7,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, configure_mappers
 from xlocal import xlocal
 import logging
+from socket import gethostname
 # Custom modules
 from edge import Edge, PolyEdge
 from exc import QueryError
@@ -43,6 +44,9 @@ class PsqlGraphDriver(object):
                 "the commit of a concurrent session and losing data!"
             ).format(
                 kwargs['isolation_level'], self.acceptable_isolation_levels))
+        if not kwargs.get("connect_args"):
+            # set a default application_name if the user didn't pass connect_args
+            kwargs["connect_args"] = {"application_name": gethostname()}
         self.engine = create_engine(conn_str, encoding='latin1', **kwargs)
         self.context = xlocal()
 

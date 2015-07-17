@@ -42,6 +42,15 @@ build succeeded.
 Build finished. The HTML pages are in build/html.
 ```
 
+## Setup Script for Developers
+
+Running the setup script will setup git hooks for the project
+```
+$ ./setup.sh
+```
+The git hooks can be found in https://github.com/NCI-GDC/git-hooks.
+
+
 ## Test Setup
 
 Running the setup script will:

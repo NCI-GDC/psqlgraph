@@ -76,8 +76,8 @@ class PsqlGraph2Neo4j(object):
         result = id+'\t'+node.node_id + '\t' + node.label + '\t'
         for key in node_file[1]:
             value = unicode(node.properties.get(key, ''))\
-                .replace('\r', '\\r').replace('\n', '\\n')\
-                .replace('"', "'")
+                .replace('\r', '\\\\r').replace('\n', '\\\\n')\
+                .replace('"', '\\"')
             if value == 'None':
                 value = ''
             result += value+'\t'

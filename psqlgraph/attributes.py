@@ -27,7 +27,7 @@ class SystemAnnotationDict(dict):
     def __setitem__(self, key, val):
         temp = dict(self.source._sysan)
         temp[key] = val
-        self.source._sysan = temp
+        self.source.system_annotations = temp
         super(SystemAnnotationDict, self).__setitem__(key, val)
 
     def __delitem__(self, key):

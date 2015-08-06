@@ -332,3 +332,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
             nodes = g.nodes()
         with self.assertRaises(SessionClosedError):
             nodes.first()
+
+    def test_sysan_sanitization(self):
+        """It shouldn't be possible to set system annotations keys to
+        anything but primitive values.
+
+        """
+        a = Test(str(uuid.uuid4()))
+        with g.session_scope() as s:
+            a = s.merge(a)
+            with self.assertRaises(ValueError):
+                a.sysan["foo"] = {"bar": "baz"}

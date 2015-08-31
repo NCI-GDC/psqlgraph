@@ -54,6 +54,8 @@ Setting up test database
 Dropping old test data
 Creating tables in test database
 ```
+# Contributing
+Read how to contribute [here](https://github.com/NCI-GDC/gdcapi/blob/master/CONTRIBUTING.md)
 
 # Tests
 

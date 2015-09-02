@@ -29,7 +29,12 @@ def export():
     parser.add_argument("--export_only", action='store_true')
     parser.add_argument("--convert_only", action='store_true')
     parser.add_argument("--cleanup", default=False)
+    parser.add_argument("--index", action="store_true")
     args = parser.parse_args()
+    if args.index:
+        print "create index"
+        psqlgraph2neo4j.create_index()
+        return 
     if not args.convert_only and not (args.user and args.name):
         print '''please provide psqlgraph credentials with --host, --user, --password, --name
 or set GDC_PG_HOST, GDC_PG_USER, GDC_PG_PASSWORD,

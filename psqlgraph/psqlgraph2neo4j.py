@@ -7,7 +7,7 @@ import os
 import py2neo
 
 def create_index():
-    graph = py2neo.Graph('http://172.17.0.83:7474/db/data')
+    graph = py2neo.Graph()
     for node_class in psqlgraph.Node.get_subclasses():
         label = node_class.get_label()
         graph.cypher.execute("create index on :{}(id)".format(label))

@@ -49,6 +49,12 @@ def receive_before_flush(session, flush_context, instances):
 
     """
     for target in session.dirty:
+
+        # Only hook on Nodes and Edges
+        if target.__class__ not in (
+                Node.__subclasses__()+Edge.__subclasses__()):
+            continue
+
         target._validate()
         props, sysan = get_old_version(target, 'unchanged', 'deleted')
         props_diff, sysan_diff = get_old_version(target, 'deleted', 'added')

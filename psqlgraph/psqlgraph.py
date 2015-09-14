@@ -28,6 +28,15 @@ class PsqlGraphDriver(object):
     acceptable_isolation_levels = ['REPEATABLE_READ', 'SERIALIZABLE']
 
     def __init__(self, host, user, password, database, **kwargs):
+        """Create a Postgresql Graph Driver
+
+        :param bool set_flush_timestamps:
+            Is `True` by default.  Setting this to `True` will
+            perform an extra database query to get the server time at
+            flush and store `session._flush_timestamp`.
+
+        """
+        self.set_flush_timestamps = kwargs.pop('set_flush_timestamps', True)
         kwargs.pop('node_validator', None)
         kwargs.pop('edge_validator', None)
         host = '' if host is None else host
@@ -50,6 +59,8 @@ class PsqlGraphDriver(object):
         Session = sessionmaker(expire_on_commit=False, class_=GraphSession)
         Session.configure(bind=self.engine, query_cls=GraphQuery)
         session = Session()
+        session._flush_timestamp = None
+        session._set_flush_timestamps = self.set_flush_timestamps
         event.listen(session, 'before_flush', receive_before_flush)
         return session
 

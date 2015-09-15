@@ -327,8 +327,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             a = s.merge(a)
 
     def test_session_closing(self):
-        a = Test(str(uuid.uuid4()))
-        with g.session_scope() as s:
+        with g.session_scope():
             nodes = g.nodes()
         with self.assertRaises(SessionClosedError):
             nodes.first()
@@ -343,3 +342,15 @@ class TestPsqlGraphDriver(unittest.TestCase):
             a = s.merge(a)
             with self.assertRaises(ValueError):
                 a.sysan["foo"] = {"bar": "baz"}
+
+    def test_session_timestamp(self):
+        with g.session_scope() as s:
+            self.assertIsNone(s._flush_timestamp)
+            s.merge(Test(""))
+            s.flush()
+            self.assertIsNotNone(s._flush_timestamp)
+        g.set_flush_timestamps = False
+        with g.session_scope() as s:
+            s.merge(Test(""))
+            s.flush()
+            self.assertIsNone(s._flush_timestamp)

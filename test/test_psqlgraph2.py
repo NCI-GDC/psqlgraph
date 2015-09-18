@@ -5,6 +5,7 @@ from psqlgraph import PsqlGraphDriver, VoidedNode
 from psqlgraph import Node
 from psqlgraph.exc import ValidationError
 from psqlgraph.exc import SessionClosedError
+import socket
 import sqlalchemy as sa
 
 host = 'localhost'
@@ -45,6 +46,23 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 conn.execute('delete from {}'.format(table))
         conn.execute('delete from {}'.format('_voided_nodes'))
         conn.close()
+
+    def test_default_application_name(self):
+        cmd = "select application_name from pg_stat_activity;"
+        with g.session_scope() as s:
+            s.merge(Test('a'))
+            app_names = {r[0] for r in g.engine.execute(cmd)}
+        self.assertIn(socket.gethostname(), app_names)
+
+    def test_custom_application_name(self):
+        cmd = "select application_name from pg_stat_activity;"
+        custom_name = '_CUSTOM_NAME'
+        g_ = PsqlGraphDriver(host, user, password, database,
+                             application_name=custom_name)
+        with g_.session_scope() as s:
+            s.merge(Test('a'))
+            app_names = {r[0] for r in g.engine.execute(cmd)}
+        self.assertIn(custom_name, app_names)
 
     def test_property_set(self):
         new = {'key1': 'first property'}

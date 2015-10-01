@@ -48,7 +48,18 @@ def receive_before_flush(session, flush_context, instances):
     - Merge deleted props/sysan on top of that
 
     """
+
+    if session._set_flush_timestamps:
+        session._flush_timestamp = list(
+            session.execute("SELECT CURRENT_TIMESTAMP"))[0][0]
+
     for target in session.dirty:
+
+        # Only hook on Nodes and Edges
+        if target.__class__ not in (
+                Node.__subclasses__()+Edge.__subclasses__()):
+            continue
+
         target._validate()
         props, sysan = get_old_version(target, 'unchanged', 'deleted')
         props_diff, sysan_diff = get_old_version(target, 'deleted', 'added')

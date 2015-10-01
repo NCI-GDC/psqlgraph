@@ -4,6 +4,13 @@ import psqlgraph
 from psqlgraph import Node, Edge
 import progressbar
 import os
+import py2neo
+
+def create_index():
+    graph = py2neo.Graph()
+    for node_class in psqlgraph.Node.get_subclasses():
+        label = node_class.get_label()
+        graph.cypher.execute("create index on :{}(id)".format(label))
 
 
 class PsqlGraph2Neo4j(object):

@@ -5,6 +5,7 @@ from voided_edge import VoidedEdge
 from edge import Edge
 from sqlalchemy.orm import Query
 from sqlalchemy import not_
+from copy import copy
 
 """
 
@@ -217,6 +218,112 @@ class GraphQuery(Query):
         for e in entities:
             self = self.join(*getattr(self.entity(), e).attr)
         return self
+
+    @staticmethod
+    def _get_link_details(entity, link_name):
+        """"Lookup the (edge_class, left_edge_id, right_edge_id, node_class)
+        for the given entity and link_name.
+
+        param entity: The current entity Node subclass
+        :param str link_name: The association proxy name
+
+        edge_class: The Edge subclass the association is proxied through
+        left_edge_id: The edge.{src,dst}_id
+        right_edge_id: The edge.{dst,src}_id (opposit of left_edge_id)
+        node_class: The target node the association_proxy points to
+
+        """
+
+        # Look for the link_name in OUTBOUND edges from the current
+        # entity
+        for edge in Edge._get_edges_with_src(entity.__name__):
+            if edge.__src_dst_assoc__ == link_name:
+                return (edge, edge.src_id, edge.dst_id,
+                        Node.get_subclass_named(edge.__dst_class__))
+
+        # Look for the link_name in INBOUND edges from the current
+        # entity
+        for edge in Edge._get_edges_with_dst(entity.__name__):
+            if edge.__dst_src_assoc__ == link_name:
+                return (edge, edge.dst_id, edge.src_id,
+                        Node.get_subclass_named(edge.__src_class__))
+
+        raise AttributeError(
+            "type object '{}' has no attribute '{}'"
+            .format(entity.__name__, link_name))
+
+    def subq_path(self, path, filters=None, __recurse_level=0):
+        """This function will performs very similarly to `path()`.  It emits a
+        query, however, that is not base on `joins` but on sub queries.
+
+        Passing filters: Because of the warning below, you must pass
+        any filters you want to filter the end of this path traversal
+        with as a list of functions. The function list is a stack,
+        from which filters will be applied from the end of the path
+        backwards.
+
+        This example will filter on governments with presidents named Dave:
+
+        ``g.nodes(Nation).subq_path('governments',
+                  [lambda q: q.props(president='Dave')])``
+
+
+        WARNING: Filters applied after calling this filter will be
+        applied to the selection entity, not the end of the path.
+        There is not joinpoint.
+
+        example:
+
+        ``g.nodes(Nation).subq_path('governments').props(president='Dave')``
+
+        will apply the `props` filter to `Nation`, not to `Government`.
+
+        """
+
+        if __recurse_level == 0:
+            # we only want to mutate for recursive calls!
+            filters = copy(filters)
+
+        assert self.entity() != Node,\
+            'Please narrow your search by specifying a node subclass'
+
+        if not path:
+            return self
+
+        # Munge arguments to lists
+        if isinstance(path, str):
+            path = path.strip().split('.')
+        if not isinstance(filters, list):
+            filters = [filters]
+
+        entity = self.entity()
+
+        # Lookup link details
+        link_name = path.pop(0)
+        link_details = self._get_link_details(entity, link_name)
+        edge, this_id, next_id, target_class = link_details
+
+        # Construct the next recursive level's base query and recurse
+        next_node_q = self.session.query(target_class)
+        next_node_q = next_node_q.subq_path(path, filters, __recurse_level+1)
+
+        # Pop a filter from the filter stack and apply if non-null
+        if filters:
+            f = filters.pop(0)
+            if f is not None:
+                next_node_q = f(next_node_q)
+        next_node_sq = next_node_q.subquery()
+
+        return self.filter(entity.node_id == this_id)\
+                   .filter(next_id == next_node_sq.c.node_id)
+
+    def subq_without_path(self, path, filters=[], __recurse_level=0):
+        """This function is similar to ``subq_path`` but will filter for
+        results that **do not** have the given path/filter combination
+
+        """
+
+        return self.except_(self.subq_path(path, filters))
 
     def path_via_assoc_proxy(self, *entities):
         """Similar to :func:`path`, but more cumbersome.

@@ -11,12 +11,12 @@ psqlgraph documentation
 
 :mod:`psqlgraph`
 ----------------
-Postgresql Graph Representation Library
+Postgresql Graph Represetation Library
 
-If you're just interested in a detailed explanation of querying, feel free to skip
+If you're just a detailed explanation of querying, feel free to skip
 to the section on :ref:`label-graph-queries`.
 
-If you're just interested in a detailed explanation of how to write nodes, feel free to skip
+If you're just a detailed explanation of how to write nodes, feel free to skip
 to the section on :ref:`label-using-the-session`.
 
 
@@ -83,10 +83,10 @@ clarity's sake::
         __dst_src_assoc__ = 'bars'
 
 The above edge would join two node classes Foo and Bar.  Edges are
-directional.  This allows a consistent source-to-destination
-relationship.  The names of the source and destination classes are
+direction.  This allows a constitent source-to-destination
+relationship.  The namnes of the source and destination classes are
 specified in ``__src_class__`` and ``__dst_class__`` respectively.
-When these node classes are instantiated, they will get
+When these node classes are instantiated, they will get a
 ``foo._Edge1_out`` and ``bar._Edge1_in`` attributes which are
 SQLAlchemy relationships specifying the connected edge objects.  You
 are required to specify the ``__src_dst_assoc__`` and
@@ -94,7 +94,7 @@ are required to specify the ``__src_dst_assoc__`` and
 set them to None, if so, they will be ignored).  These attributes
 specify what the `AssociationProxy`_ will be called.  You will then be
 able to refer directly to the related objects, e.g. ``foo.bars`` will
-be a list of ``Bar`` objects related via the edge to your ``Foo`` object.
+be a list of ``Bar`` objects related to your ``Foo`` object.
 
 .. _AssociationProxy: http://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html
 
@@ -146,7 +146,7 @@ of ``Foo`` objects specified on the class ``Test``.  This is done
 behind the scenes with an `AssociationProxy`_ which represents a
 many-to-many relationship by creating a row in an edge table that
 specifies the source (``a``) and the destination (``b``).  From a
-simplified perspective you can interact with association proxies like
+simplified perspect you can interact with association proxies like
 ``Test.foos`` as if they were python lists.
 
 See sections :ref:`label-using-the-session` and :ref:`label-queries`

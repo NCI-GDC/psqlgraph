@@ -19,7 +19,6 @@ from voided_edge import VoidedEdge
 from voided_node import VoidedNode
 from session import GraphSession
 import psqlgraph2neo4j
-import socket
 
 DEFAULT_RETRIES = 0
 
@@ -37,23 +36,14 @@ class PsqlGraphDriver(object):
             flush and store `session._flush_timestamp`.
 
         """
-
-        # Parse kwargs
-        connect_args = {}
+        self.set_flush_timestamps = kwargs.pop('set_flush_timestamps', True)
         kwargs.pop('node_validator', None)
         kwargs.pop('edge_validator', None)
-        self.set_flush_timestamps = kwargs.pop('set_flush_timestamps', True)
-        if 'isolation_level' not in kwargs:
-            kwargs['isolation_level'] = 'REPEATABLE_READ'
-        if 'application_name' in kwargs:
-            connect_args['application_name'] = kwargs.pop('application_name')
-        else:
-            connect_args['application_name'] = socket.gethostname()
-
-        # Construct connection string
         host = '' if host is None else host
         conn_str = 'postgresql://{user}:{password}@{host}/{database}'.format(
             user=user, password=password, host=host, database=database)
+        if 'isolation_level' not in kwargs:
+            kwargs['isolation_level'] = 'REPEATABLE_READ'
         if kwargs['isolation_level'] not in self.acceptable_isolation_levels:
             logging.warn((
                 "Using an isolation level '{}' that is not in the list of "
@@ -62,16 +52,7 @@ class PsqlGraphDriver(object):
                 "the commit of a concurrent session and losing data!"
             ).format(
                 kwargs['isolation_level'], self.acceptable_isolation_levels))
-
-        # Create driver engine
-        self.engine = create_engine(
-            conn_str,
-            encoding='latin1',
-            connect_args=connect_args,
-            **kwargs
-        )
-
-        # Create context for xlocal sessions
+        self.engine = create_engine(conn_str, encoding='latin1', **kwargs)
         self.context = xlocal()
 
     def _new_session(self):

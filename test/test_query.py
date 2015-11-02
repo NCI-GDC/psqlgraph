@@ -96,3 +96,58 @@ class TestPsqlGraphDriver(unittest.TestCase):
                              .path('foos')
                              .props(bar=1)
                              .count(), 1)
+
+    def test_subq_path_no_filter(self):
+        with self.g.session_scope():
+            self.assertEqual(self.g.nodes(Test)
+                             .ids(self.parent_id)
+                             .subq_path('foos')
+                             .count(), 4)
+
+    def test_subq_path_single_filter(self):
+        with self.g.session_scope():
+            self.assertEqual(self.g.nodes(Test)
+                             .ids(self.parent_id)
+                             .subq_path('foos', lambda q: q.props(bar=1))
+                             .count(), 1)
+
+    def test_subq_path_single_filter_negative(self):
+        with self.g.session_scope():
+            self.assertEqual(self.g.nodes(Test)
+                             .ids(self.parent_id)
+                             .subq_path('foos', lambda q: q.props(bar=-1))
+                             .count(), 0)
+
+    def test_subq_path_multi_filters(self):
+        with self.g.session_scope():
+            self.assertEqual(
+                self.g.nodes(Foo)
+                .subq_path('tests.foos.tests.foos', [
+                    lambda q: q.props(bar=1),
+                    lambda q: q.ids(self.parent_id),
+                    lambda q: q.props(bar=3)
+                ]).count(), 4)
+
+    def test_subq_path_multi_filters_negative(self):
+        with self.g.session_scope():
+            self.assertEqual(
+                self.g.nodes(Foo)
+                .subq_path('tests.foos.tests.foos', [
+                    lambda q: q.props(bar=-1),
+                    lambda q: q.ids(self.parent_id),
+                    lambda q: q.props(bar=3)
+                ]).count(), 0)
+
+    def test_subq_without_path_no_filter(self):
+        with self.g.session_scope():
+            self.assertEqual(self.g.nodes(Foo)
+                             .subq_without_path('tests')
+                             .count(), 0)
+
+    def test_subq_without_path_filter(self):
+        with self.g.session_scope():
+            self.assertEqual(self.g.nodes(Foo)
+                             .subq_without_path(
+                                 'tests',
+                                 [lambda q: q.ids('test')])
+                             .count(), self.g.nodes(Foo).count())

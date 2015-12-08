@@ -30,6 +30,14 @@ def get_old_version(target, *attrs):
     return props, sysan
 
 
+def is_psqlgraph_entity(target):
+    """Only attempt to track history on Nodes and Edges
+
+    """
+    return target.__class__ in (
+        Node.__subclasses__()+Edge.__subclasses__())
+
+
 def receive_before_flush(session, flush_context, instances):
     """Provide a session hook that gets called before the session is
     flushed.
@@ -54,10 +62,7 @@ def receive_before_flush(session, flush_context, instances):
             session.execute("SELECT CURRENT_TIMESTAMP"))[0][0]
 
     for target in session.dirty:
-
-        # Only hook on Nodes and Edges
-        if target.__class__ not in (
-                Node.__subclasses__()+Edge.__subclasses__()):
+        if not is_psqlgraph_entity(target):
             continue
 
         target._validate()
@@ -67,8 +72,12 @@ def receive_before_flush(session, flush_context, instances):
             target._snapshot_existing(session, props, sysan)
         target._merge_onto_existing(props, sysan)
     for target in session.deleted:
+        if not is_psqlgraph_entity(target):
+            continue
         props, sysan = get_old_version(target, 'unchanged', 'deleted', 'added')
         target._snapshot_existing(session, props, sysan)
     for target in session.new:
+        if not is_psqlgraph_entity(target):
+            continue
         if isinstance(target, (Node, Edge)):
             target._validate()

@@ -17,28 +17,28 @@ class GraphSession(Session):
 
     @inherit_docstring_from(Session)
     def __init__(self, *args, **kwargs):
-        
+
         self._psqlgraph_closed = False
-        
+
         return super(GraphSession, self).__init__(*args, **kwargs)
 
     @inherit_docstring_from(Session)
     def connection(self, *args, **kwargs):
-        
+
         if self._psqlgraph_closed:
             raise exc.SessionClosedError('session closed')
-        
+
         return super(GraphSession, self).connection(*args, **kwargs)
 
     def close(self, *args, **kwargs):
         """Close this Session.
-        
+
         This clears all items and ends any transaction in progress.
-        
+
         This also closes and prevents any new connections from being opened.
-        
+
         """
-        
+
         self._psqlgraph_closed = True
-        
+
         return super(GraphSession, self).close(*args, **kwargs)

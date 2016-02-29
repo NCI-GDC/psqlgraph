@@ -71,13 +71,29 @@ def receive_before_flush(session, flush_context, instances):
         if props_diff or sysan_diff:
             target._snapshot_existing(session, props, sysan)
         target._merge_onto_existing(props, sysan)
+
+        # Call custom session hook
+        for f in target._session_hooks_before_update:
+            f(target, session, flush_context, instances)
+
     for target in session.deleted:
         if not is_psqlgraph_entity(target):
             continue
+
         props, sysan = get_old_version(target, 'unchanged', 'deleted', 'added')
         target._snapshot_existing(session, props, sysan)
+
+        # Call custom session hook
+        for f in target._session_hooks_before_delete:
+            f(target, session, flush_context, instances)
+
     for target in session.new:
         if not is_psqlgraph_entity(target):
             continue
+
         if isinstance(target, (Node, Edge)):
             target._validate()
+
+        # Call custom session hook
+        for f in target._session_hooks_before_insert:
+            f(target, session, flush_context, instances)

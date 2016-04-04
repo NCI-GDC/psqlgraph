@@ -372,3 +372,139 @@ class TestPsqlGraphDriver(unittest.TestCase):
             s.merge(Test(""))
             s.flush()
             self.assertIsNone(s._flush_timestamp)
+
+    def test_custom_insert_hooks(self):
+        """Test that all custom insert hooks are called."""
+
+        self._clear_tables()
+        node_id = 'test_insert'
+
+        def add_key1(target, session, *args, **kwargs):
+            target.key1 = 'value1'
+
+        def add_key2(target, session, *args, **kwargs):
+            target.key2 = 'value2'
+
+        Test._session_hooks_before_insert = [
+            add_key1,
+            add_key2,
+        ]
+
+        try:
+            with g.session_scope() as s:
+                test = Test(node_id)
+                s.merge(test)
+
+            with g.session_scope():
+                test = g.nodes(Test).ids(node_id).one()
+                self.assertEqual(test.key1, 'value1')
+                self.assertEqual(test.key2, 'value2')
+
+        finally:
+            Test._session_hooks_before_insert = []
+
+    def test_custom_hooks_are_class_local(self):
+        """Test that all custom hooks affect single classes."""
+
+        self._clear_tables()
+        node_id = 'test_locality'
+
+        def bad_hook(target, session, *args, **kwargs):
+            raise RuntimeError
+
+        Test._session_hooks_before_insert = [
+            bad_hook,
+        ]
+
+        try:
+            with self.assertRaises(RuntimeError):
+                with g.session_scope() as s:
+                    test = Test(node_id)
+                    s.merge(test)
+
+            with g.session_scope() as s:
+                foo = Foo(node_id)
+                s.merge(foo)
+
+            with g.session_scope():
+                foo = g.nodes(Foo).ids(node_id).one()
+                self.assertEqual(foo.bar, None)
+                self.assertEqual(foo.baz, None)
+
+        finally:
+            Test._session_hooks_before_insert = []
+
+    def test_custom_update_hooks(self):
+        """Test that all custom insert hooks are called."""
+
+        self._clear_tables()
+        node_id = 'test_update'
+
+        def add_key1(target, session, *args, **kwargs):
+            target.key1 = 'value1'
+
+        def add_key2(target, session, *args, **kwargs):
+            target.key2 = 'value2'
+
+        Test._session_hooks_before_update = [
+            add_key1,
+            add_key2,
+        ]
+
+        try:
+            with g.session_scope() as s:
+                assert not g.nodes(Test).ids(node_id).first()
+                test = Test(node_id)
+                s.merge(test)
+
+            with g.session_scope():
+                test = g.nodes(Test).ids(node_id).one()
+                self.assertEqual(test.key1, None)
+                self.assertEqual(test.key2, None)
+
+            with g.session_scope() as s:
+                test = Test(node_id)
+                s.merge(test)
+
+            with g.session_scope():
+                test_ = g.nodes(Test).ids(node_id).one()
+                self.assertEqual(test_.key1, 'value1')
+                self.assertEqual(test_.key2, 'value2')
+
+        finally:
+            Test._session_hooks_before_update = []
+
+    def test_custom_delete_hooks(self):
+        """Test that all custom pre-delete hooks are called."""
+
+        self._clear_tables()
+        node_id = 'test_update'
+        new_node_id1 = 'pre-delete-1'
+        new_node_id2 = 'pre-delete-2'
+
+        def add_new_node1(target, session, *args, **kwargs):
+            session.merge(Test(new_node_id1))
+
+        def add_new_node2(target, session, *args, **kwargs):
+            session.merge(Test(new_node_id2))
+
+        Test._session_hooks_before_delete = [
+            add_new_node1,
+            add_new_node2,
+        ]
+
+        try:
+            with g.session_scope() as s:
+                assert not g.nodes(Test).ids(node_id).first()
+                test = Test(node_id)
+                test = s.merge(test)
+                s.commit()
+                s.delete(test)
+
+            with g.session_scope():
+                g.nodes(Test).ids(new_node_id1).one()
+                g.nodes(Test).ids(new_node_id2).one()
+                self.assertFalse(g.nodes(Test).ids(node_id).scalar())
+
+        finally:
+            Test._session_hooks_before_delete = []

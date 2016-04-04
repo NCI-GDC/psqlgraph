@@ -16,6 +16,10 @@ EDGE_TABLENAME_SCHEME = 'edge_{class_name}'
 
 class CommonBase(object):
 
+    _session_hooks_before_insert = []
+    _session_hooks_before_update = []
+    _session_hooks_before_delete = []
+
     # ======== Columns ========
     created = Column(
         DateTime(timezone=True),

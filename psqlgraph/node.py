@@ -7,6 +7,8 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 from voided_node import VoidedNode
 
+from .types import PSQLGraphUUID
+
 
 DST_SRC_ASSOC = '__dst_src_assoc__'
 SRC_DST_ASSOC = '__src_dst_assoc__'
@@ -29,7 +31,7 @@ class Node(AbstractConcreteBase, ORMBase):
         return list()
 
     node_id = Column(
-        Text,
+        PSQLGraphUUID,
         primary_key=True,
         nullable=False,
     )

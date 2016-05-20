@@ -39,7 +39,7 @@ class PsqlGraphDriver(object):
         """
 
         # Parse kwargs
-        connect_args = {}
+        connect_args = kwargs.pop('connect_args', {})
         kwargs.pop('node_validator', None)
         kwargs.pop('edge_validator', None)
         self.set_flush_timestamps = kwargs.pop('set_flush_timestamps', True)

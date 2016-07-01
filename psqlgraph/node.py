@@ -1,6 +1,6 @@
-from base import ORMBase, NODE_TABLENAME_SCHEME
+from base import ORMBase, NODE_TABLENAME_SCHEME, NODE_ID_TYPE
 from edge import Edge
-from sqlalchemy import Column, Text, UniqueConstraint, Index
+from sqlalchemy import Column, UniqueConstraint, Index
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -29,7 +29,7 @@ class Node(AbstractConcreteBase, ORMBase):
         return list()
 
     node_id = Column(
-        Text,
+        NODE_ID_TYPE,
         primary_key=True,
         nullable=False,
     )

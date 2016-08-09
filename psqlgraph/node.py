@@ -142,6 +142,31 @@ class Node(AbstractConcreteBase, ORMBase):
         )
         return node
 
+    def to_json(self):
+        return {
+            'node_id': self.node_id,
+            'label': self.label,
+            'acl': self.acl,
+            'properties': self.properties,
+            'system_annotations': self.system_annotations,
+        }
+
+    @classmethod
+    def from_json(cls, node_json):
+        if cls is Node:
+            Type = Node.get_subclass(node_json['label'])
+            if not Type:
+                raise KeyError('Node has no subclass named {}'
+                                  .format(node_json['label']))
+        else:
+            Type = cls
+
+        return Type(node_id=node_json['node_id'],
+                   properties=node_json['properties'],
+                   acl=node_json['acl'],
+                   system_annotations=node_json['system_annotations'],
+                   label=node_json['label'])
+                   
     @classmethod
     def get_subclass(cls, label):
         for c in cls.__subclasses__():

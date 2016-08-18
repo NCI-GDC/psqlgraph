@@ -166,7 +166,7 @@ class Node(AbstractConcreteBase, ORMBase):
                    acl=node_json['acl'],
                    system_annotations=node_json['system_annotations'],
                    label=node_json['label'])
-                   
+
     @classmethod
     def get_subclass(cls, label):
         for c in cls.__subclasses__():

@@ -18,12 +18,9 @@ from copy import deepcopy
 # We have to import models here, even if we don't use them
 from models import Test, Foo, Edge1, Edge2, Edge3
 
+from conftest import pg_config
 
-host = 'localhost'
-user = 'test'
-password = 'test'
-database = 'automated_test'
-g = PsqlGraphDriver(host, user, password, database)
+g = PsqlGraphDriver(**pg_config())
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -382,7 +379,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertDictEqual(node.to_json(), expected_json)
 
     def test_node_from_json(self):
-        """Test node creation from json 
+        """Test node creation from json
         """
         node_id = str(uuid.uuid4())
 

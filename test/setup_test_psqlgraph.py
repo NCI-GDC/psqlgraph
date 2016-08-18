@@ -3,100 +3,124 @@ This is a one-time use script to set up a fresh install of Postgres 9.4
 Needs to be run as the postgres user.
 """
 
-import argparse
 from sqlalchemy import create_engine
+from models import *
+
+import conftest
 import logging
 
+from psqlgraph import (
+    PsqlGraphDriver,
+    create_all,
+    Node,
+    Edge,
+    VoidedNode,
+    VoidedEdge,
+)
 
-from psqlgraph import create_all
-from psqlgraph import PsqlGraphDriver
-from models import *
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("setup")
+
+
+def try_execute(conn, statement):
+    try:
+        logger.info('TRY EXECUTE: "%s"' % statement)
+        conn.execute(statement)
+        conn.execute('commit')
+    except Exception as msg:
+        logger.warn('Failed to execute: "%s": %s', statement, msg)
+
 
 
 def try_drop_test_data(user, database, root_user='postgres', host=''):
-
-    print('Dropping old test data')
+    logger.info('Dropping old test data')
 
     engine = create_engine("postgres://{user}@{host}/postgres".format(
         user=root_user, host=host))
 
     conn = engine.connect()
     conn.execute("commit")
-
-    try:
-        create_stmt = 'DROP DATABASE "{database}"'.format(database=database)
-        conn.execute(create_stmt)
-    except Exception, msg:
-        logging.warn("Unable to drop test data:" + str(msg))
-
-    try:
-        user_stmt = "DROP USER {user}".format(user=user)
-        conn.execute(user_stmt)
-    except Exception, msg:
-        logging.warn("Unable to drop test data:" + str(msg))
-
+    try_execute(conn, 'Drop database "{database}"'.format(database=database))
+    try_execute(conn, 'Drop user {user}'.format(user=user))
     conn.close()
 
 
-def setup_database(user, password, database, root_user='postgres', host=''):
-    """
-    setup the user and database
-    """
-    print('Setting up test database')
+def setup_database(schemas, user, password, database,
+                   root_user='postgres', host=''):
+    """Setup the user and database"""
+
+    logger.info('Setting up test database')
 
     try_drop_test_data(user, database)
 
-    engine = create_engine("postgres://{user}@{host}/postgres".format(
-        user=root_user, host=host))
+    engine = create_engine("postgres://{user}@/postgres".format(user=root_user))
     conn = engine.connect()
     conn.execute("commit")
 
-    create_stmt = 'CREATE DATABASE "{database}"'.format(database=database)
-    conn.execute(create_stmt)
+    # Create database
+    try_execute(conn, 'Create database "{database}"'.format(database=database))
 
-    try:
-        user_stmt = "CREATE USER {user} WITH PASSWORD '{password}'".format(
-            user=user, password=password)
-        conn.execute(user_stmt)
+    # Create user
+    try_execute(conn, "Create user {user} with password '{password}'"
+                .format(user=user, password=password))
 
-        perm_stmt = 'GRANT ALL PRIVILEGES ON DATABASE {database} to {password}'\
-                    ''.format(database=database, password=password)
-        conn.execute(perm_stmt)
-        conn.execute("commit")
-    except Exception, msg:
-        logging.warn("Unable to add user:" + str(msg))
+    # Create schemas
+    engine = create_engine("postgres://{user}@/{database}"
+                           .format(user=root_user, database=database))
+    for schema in schemas:
+        engine.execute("Create schema if not exists %s" % schema)
+        conn.execute('Set search_path to %s' % schema)
+
     conn.close()
 
 
-def create_tables(host, user, password, database):
-    """
-    create a table
-    """
-    print('Creating tables in test database')
+def get_tables():
+    classes =(
+        Node.__subclasses__()
+        + Edge.__subclasses__()
+        + [VoidedNode, VoidedEdge]
+    )
 
-    driver = PsqlGraphDriver(host, user, password, database)
-    create_all(driver.engine)
+    return [cls.__tablename__ for cls in classes] + [
+        '_voided_edges_key_seq',
+        '_voided_nodes_key_seq',
+    ]
 
 
-def create_indexes(host, user, password, database):
-    """
-    create a table
-    """
-    return
+def grant_all(conn, user, schema):
+    try_execute(conn, 'set session search_path to %s; commit;' % schema)
+    try_execute(conn, 'Grant usage on schema %s to %s' % (schema, user))
+
+    for table in get_tables():
+        try_execute(conn, 'Grant all on {table} to {user}'
+                    .format(user=user, table=table))
+
+
+def create_schema_tables(conn, schema):
+    try_execute(conn, 'set session search_path to %s' % schema)
+    create_all(conn)
+
+
+def create_tables(schemas, **pg_kwargs):
+    """Create all tables"""
+
+    user, pg_kwargs['user'] = pg_kwargs['user'], 'postgres'
+
+    for schema in schemas:
+        logger.info('Creating tables in test database, schema: %s', schema)
+        driver = PsqlGraphDriver(**pg_kwargs)
+        conn = driver.engine.connect()
+        create_schema_tables(conn, schema)
+        grant_all(conn, user, schema)
+        conn.close()
+
+
+def destroy_and_setup_database():
+    schemas = ['public', 'schema2']
+    setup_database(schemas, **conftest.pg_config())
+    create_tables(schemas, **conftest.pg_config())
+
 
 if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--host", type=str, action="store",
-                        default='localhost', help="psql-server host")
-    parser.add_argument("--user", type=str, action="store",
-                        default='test', help="psql test user")
-    parser.add_argument("--password", type=str, action="store",
-                        default='test', help="psql test password")
-    parser.add_argument("--database", type=str, action="store",
-                        default='automated_test', help="psql test database")
-
-    args = parser.parse_args()
-    setup_database(args.user, args.password, args.database)
-    create_tables(args.host, args.user, args.password, args.database)
-    create_indexes(args.host, args.user, args.password, args.database)
+    destroy_and_setup_database()

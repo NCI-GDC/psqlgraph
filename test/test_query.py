@@ -4,11 +4,9 @@ import uuid
 from psqlgraph import Node, Edge, PsqlGraphDriver
 from psqlgraph import PolyNode, PolyEdge
 
-host = 'localhost'
-user = 'test'
-password = 'test'
-database = 'automated_test'
-g = PsqlGraphDriver(host, user, password, database)
+from conftest import pg_config
+
+g = PsqlGraphDriver(**pg_config())
 
 logging.basicConfig(level=logging.INFO)
 

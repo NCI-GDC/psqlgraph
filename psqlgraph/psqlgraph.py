@@ -36,15 +36,46 @@ class PsqlGraphDriver(object):
             perform an extra database query to get the server time at
             flush and store `session._flush_timestamp`.
 
+
+        :param str search_path:
+            Allows the driver to explicitly only use a given postgres
+            schema path. All sessions produced by `_new_session()`
+            guarantee that the session is pinned to `schema_path` if
+            set. Note that setting the self.search_path directly will
+            only be effective for *new* sessions, not existing ones.
+
+        :param str isolation_level:
+            We are currently forced to use REPEATABLE_READ isolation
+            level because we have to do client side merging of
+            JSONB. If we did not, we would lose data to race
+            conditions.  TODO: add more detail
+
+        Any additional `kwargs`  will be passed to ``create_engine()``
+
         """
 
-        # Parse kwargs
         connect_args = kwargs.pop('connect_args', {})
+
+        # Validators
         kwargs.pop('node_validator', None)
         kwargs.pop('edge_validator', None)
+
+        # Driver's Schema
+        self.search_path = kwargs.pop('search_path', None)
+
+        # Timestamps on flush
         self.set_flush_timestamps = kwargs.pop('set_flush_timestamps', True)
-        if 'isolation_level' not in kwargs:
-            kwargs['isolation_level'] = 'REPEATABLE_READ'
+
+        isolation_level = kwargs.setdefault('isolation_level', 'REPEATABLE_READ')
+        if isolation_level not in self.acceptable_isolation_levels:
+            logging.warn((
+                "Using an isolation level '{}' that is not in the list of "
+                "acceptable isolation levels {} is not safe for writes and "
+                "should be avoided.  This can result in one session overwriting "
+                "the commit of a concurrent session and losing data!"
+            ).format(isolation_level, self.acceptable_isolation_levels))
+
+        # Report the application name or hostname to postgres for auditing
         if 'application_name' in kwargs:
             connect_args['application_name'] = kwargs.pop('application_name')
         else:
@@ -54,14 +85,6 @@ class PsqlGraphDriver(object):
         host = '' if host is None else host
         conn_str = 'postgresql://{user}:{password}@{host}/{database}'.format(
             user=user, password=password, host=host, database=database)
-        if kwargs['isolation_level'] not in self.acceptable_isolation_levels:
-            logging.warn((
-                "Using an isolation level '{}' that is not in the list of "
-                "acceptable isolation levels {} is not safe and should be "
-                "avoided.  Doing this can result in one session overwriting "
-                "the commit of a concurrent session and losing data!"
-            ).format(
-                kwargs['isolation_level'], self.acceptable_isolation_levels))
 
         # Create driver engine
         self.engine = create_engine(
@@ -70,17 +93,34 @@ class PsqlGraphDriver(object):
             connect_args=connect_args,
             **kwargs
         )
+        self.set_engine_hooks()
 
         # Create context for xlocal sessions
         self.context = xlocal()
+
+    def set_engine_hooks(self):
+        """Set engine hooks (e.g. search_path on connect)"""
+
+        # Set the search_path to query the specified schema
+        if self.search_path is not None:
+            def set_search_path(conn, *args, **kwargs):
+                """Sets the search path for the engine"""
+
+                cmd = 'SET SESSION search_path TO {path}; commit;'
+                conn.cursor().execute(cmd.format(path=self.search_path))
+
+            event.listen(self.engine, 'connect', set_search_path)
 
     def _new_session(self):
         Session = sessionmaker(expire_on_commit=False, class_=GraphSession)
         Session.configure(bind=self.engine, query_cls=GraphQuery)
         session = Session()
+
+        # see `psqlgraph.hooks` for details on the following
         session._flush_timestamp = None
         session._set_flush_timestamps = self.set_flush_timestamps
         event.listen(session, 'before_flush', receive_before_flush)
+
         return session
 
     def has_session(self):
@@ -108,9 +148,10 @@ class PsqlGraphDriver(object):
            calls within the session scope to use the explicitly passed
            session.
 
-        3. Setting ``can_inherit`` to false will have no effect
+        3. Setting ``can_inherit`` to True will have no effect
 
-        4. Setting ``must_inherit`` to will raise a RuntimeError
+        4. Setting ``must_inherit`` to True will raise a RuntimeError
+           if not wrapped in a parent session
 
         .. note::
             A session scope that is nested has the following

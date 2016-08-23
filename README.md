@@ -62,25 +62,7 @@ Read how to contribute [here](https://github.com/NCI-GDC/gdcapi/blob/master/CONT
 Running the setup script will test the library against a local postgres installation
 
 ```
-❯  nosetests -v
-test_concurrent_node_update_by_id (test_psql_graph.TestPsqlGraphDriver) ... ok
-test_edge_lookup_leaves (test_psql_graph.TestPsqlGraphDriver) ... ok
-test_edge_merge_and_lookup (test_psql_graph.TestPsqlGraphDriver) ... ok
-test_edge_merge_and_lookup_properties (test_psql_graph.TestPsqlGraphDriver) ... ok
-test_node_clobber (test_psql_graph.TestPsqlGraphDriver) ... ok
-test_node_delete (test_psql_graph.TestPsqlGraphDriver) ... ok
-test_node_delete_property_keys (test_psql_graph.TestPsqlGraphDriver) ... ok
-test_node_delete_system_annotation_keys (test_psql_graph.TestPsqlGraphDriver) ... ok
-Insert a single node and query, compare that the result of the ... ok
-Verify that the library handles the case where a user queries for ... ok
-Verify that the library handles the case where a user queries for a ... ok
-test_node_unique_id_constraint (test_psql_graph.TestPsqlGraphDriver) ... ok
-Insert a single node, update it, verify that ... ok
-Insert a single node, update it, verify that ... ok
-Insert a single node, update it, verify that ... ok
-test_null_node_merge (test_psql_graph.TestPsqlGraphDriver) ... ok
-test_null_node_void (test_psql_graph.TestPsqlGraphDriver) ... ok
-
-...
-
+❯  pip install pytest
+❯  cd test
+❯  py.test -v
 ```

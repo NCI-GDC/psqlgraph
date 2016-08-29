@@ -100,6 +100,25 @@ class Edge(AbstractConcreteBase, ORMBase):
         else:
             self.dst_id = dst_id
 
+    def to_json(self):
+        return {
+            'src_id': self.src_id,
+            'dst_id': self.dst_id,
+            'label': self.label,
+            'acl': self.acl,
+            'properties': self.properties,
+            'system_annotations': self.system_annotations,
+        }
+
+    @classmethod
+    def from_json(cls, edge_json):
+        return cls(src_id=edge_json['src_id'],
+                   dst_id=edge_json['dst_id'],
+                   label=edge_json['label'],
+                   acl=edge_json['acl'],
+                   properties=edge_json['properties'],
+                   system_annotations=edge_json['system_annotations'])
+
     def __repr__(self):
         return '<{}(({})-[{}]->({})>'.format(
             self.__class__.__name__, self.src_id, self.label, self.dst_id)

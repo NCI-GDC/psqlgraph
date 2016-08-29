@@ -349,6 +349,72 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         return merged
 
+    def test_node_to_json(self, given_id=None):
+        """Test node serialization
+        """
+        node_id = str(uuid.uuid4()) if not given_id else given_id
+
+        # Add first node
+        propertiesA = sanitize({
+            'key1': None, 'key2': 1, 'key3': timestamp(),
+                       'timestamp': None, 'new_key': None
+        })
+        system_annotationsA = sanitize({
+            'key1': None, 'key2': 2, 'key3': timestamp()
+        })
+        g.node_merge(node_id=node_id, label='test', properties=propertiesA,
+                     system_annotations=system_annotationsA)
+
+        dst = g.node_merge(node_id=str(uuid.uuid4()), label='test')
+        edge1 = g.edge_insert(PsqlEdge(
+            src_id=node_id, dst_id=dst.node_id, label='edge1'))
+
+        with g.session_scope():
+            node = g.node_lookup_one(node_id)
+            expected_json = {
+                                'node_id': node_id,
+                                'label': 'test',
+                                'acl': [],
+                                'properties': propertiesA,
+                                'system_annotations': system_annotationsA,
+                            }
+
+            self.assertDictEqual(node.to_json(), expected_json)
+
+    def test_node_from_json(self, given_id=None):
+        """Test node creation from json 
+        """
+        node_id = str(uuid.uuid4()) if not given_id else given_id
+
+        propertiesA = sanitize({
+            'key1': None, 'key2': 1, 'key3': timestamp(),
+                       'timestamp': None, 'new_key': None
+        })
+
+        system_annotationsA = sanitize({
+            'key1': None, 'key2': 2, 'key3': timestamp()
+        })
+
+        node_json = {
+                        'node_id': node_id,
+                        'label': 'test',
+                        'acl': [],
+                        'properties': propertiesA,
+                        'system_annotations': system_annotationsA,
+                        'edges_out': [],
+                        'edges_in': []
+                    }
+
+        node = Node.from_json(node_json)
+
+        with g.session_scope() as s:
+            s.merge(node)
+            node = g.node_lookup_one(node_id)
+            self.assertDictEqual(node.props, propertiesA)
+            self.assertDictEqual(node.sysan, system_annotationsA)
+            self.assertEqual(node.acl, [])
+            self.assertEqual(node.node_id, node_id)
+
     def _insert_node(self, node):
         """Test inserting a node"""
         with g.session_scope() as session:
@@ -680,6 +746,54 @@ class TestPsqlGraphDriver(unittest.TestCase):
             nid2 = g.node_merge(node_id=str(uuid.uuid4()), label='test').node_id
             g.edge_insert(PsqlEdge(src_id=nid1, dst_id=nid2, label='edge1'))
             g.edge_lookup(label="edge1", src_id=nid1, dst_id=nid2).one()
+
+    def test_edge_to_json(self):
+        """Test edge serialization to json
+        """
+        with g.session_scope():
+            src_id = str(uuid.uuid4())
+            dst_id = str(uuid.uuid4())
+            src = g.node_merge(node_id=src_id, label='test')
+            dst = g.node_merge(node_id=dst_id, label='test')
+
+            edge = g.edge_insert(PsqlEdge(
+                src_id=src_id, dst_id=dst_id, label='edge1'))
+
+            expected_json = {
+                              'src_id': src_id,
+                              'dst_id': dst_id,
+                              'label': 'edge1',
+                              'acl': [],
+                              'properties': edge.property_template(),
+                              'system_annotations': {}
+                            }
+            self.assertDictEqual(edge.to_json(), expected_json)
+
+    def test_edge_from_json(self):
+        """Test edge creation from json
+        """
+        with g.session_scope() as s:
+            src_id = str(uuid.uuid4())
+            dst_id = str(uuid.uuid4())
+            src = g.node_merge(node_id=src_id, label='test')
+            dst = g.node_merge(node_id=dst_id, label='test')
+
+            edge_json = {
+                          'src_id': src_id,
+                          'dst_id': dst_id,
+                          'label': 'edge',
+                          'acl': [],
+                          'properties': {},
+                          'system_annotations': {}
+                        }
+
+            edge = Edge.from_json(edge_json)
+
+            self.assertEqual(edge.acl, [])
+            self.assertEqual(edge.label, 'edge')
+            self.assertEqual(edge.properties, edge.property_template())
+            self.assertEqual(edge.src_id, src_id)
+            self.assertEqual(edge.dst_id, dst_id)
 
     def test_sessioned_path_insertion(self):
         """Test creation of a sessioned node path

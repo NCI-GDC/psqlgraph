@@ -112,7 +112,17 @@ class Edge(AbstractConcreteBase, ORMBase):
 
     @classmethod
     def from_json(cls, edge_json):
-        return cls(src_id=edge_json['src_id'],
+        if cls is Edge:
+            Type = Edge.get_unique_subclass(edge_json['src_label'],
+                                            edge_json['label'],
+                                            edge_json['dst_label'])
+            if not Type:
+                raise KeyError('Edge has no subclass named {}'
+                                  .format(edge_json['label']))
+        else:
+            Type = cls
+
+        return Type(src_id=edge_json['src_id'],
                    dst_id=edge_json['dst_id'],
                    label=edge_json['label'],
                    acl=edge_json['acl'],
@@ -135,7 +145,29 @@ class Edge(AbstractConcreteBase, ORMBase):
 
     @classmethod
     def get_subclass(cls, label):
+        """Tries to resolve an edge subclass by label, this will fail if
+        there are multiple edge subclass that use the same label.
+        """
         scls = cls._get_subclasses_labeled(label)
+        if len(scls) > 1:
+            raise KeyError(
+                'More than one Edge with label {} found, try get_unique_subclass()'
+                'to resolve type using src and dst labels: {}'.format(
+                    label, scls))
+        if not scls:
+            return None
+        return scls[0]
+
+    @classmethod
+    def get_unique_subclass(cls, src_label, label, dst_label):
+        """Determines a subclass based on the src and dst.
+        """
+        src_class = Node.get_subclass(src_label).__name__
+        dst_class = Node.get_subclass(dst_label).__name__
+        scls = [c for c in cls.__subclasses__()
+                if c.get_label() == label
+                   and c.__src_class__ == src_class
+                   and c.__dst_class__ == dst_class]
         if len(scls) > 1:
             raise KeyError(
                 'More than one Edge with label {} found: {}'.format(
@@ -210,3 +242,6 @@ def PolyEdge(src_id=None, dst_id=None, label=None, acl=[],
         system_annotations=system_annotations,
         label=label
     )
+
+# Node and Edge classes depend on eachother so this needs to be done down here
+from node import Node

@@ -769,6 +769,16 @@ class TestPsqlGraphDriver(unittest.TestCase):
                             }
             self.assertDictEqual(edge.to_json(), expected_json)
 
+    def test_edge_get_unique_subclass(self):
+        """Test
+        """
+        src_id = str(uuid.uuid4())
+        dst_id = str(uuid.uuid4())
+        src = g.node_merge(node_id=src_id, label='test')
+        dst = g.node_merge(node_id=dst_id, label='test')
+
+        self.assertIs(Edge.get_unique_subclass('test','edge1','test'), Edge1)
+
     def test_edge_from_json(self):
         """Test edge creation from json
         """
@@ -780,8 +790,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
             edge_json = {
                           'src_id': src_id,
+                          'src_label': 'test',
+                          'dst_label': 'test',
                           'dst_id': dst_id,
-                          'label': 'edge',
+                          'label': 'edge1',
                           'acl': [],
                           'properties': {},
                           'system_annotations': {}
@@ -790,7 +802,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             edge = Edge.from_json(edge_json)
 
             self.assertEqual(edge.acl, [])
-            self.assertEqual(edge.label, 'edge')
+            self.assertEqual(edge.label, 'edge1')
             self.assertEqual(edge.properties, edge.property_template())
             self.assertEqual(edge.src_id, src_id)
             self.assertEqual(edge.dst_id, dst_id)

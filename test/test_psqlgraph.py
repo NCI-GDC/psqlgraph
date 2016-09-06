@@ -349,12 +349,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         return merged
 
-    def test_node_to_json(self, given_id=None):
-        """Test node serialization
+    def test_node_to_json(self):
+        """test node serialization
         """
-        node_id = str(uuid.uuid4()) if not given_id else given_id
+        node_id = str(uuid.uuid4())
 
-        # Add first node
+        # add first node
         propertiesA = sanitize({
             'key1': None, 'key2': 1, 'key3': timestamp(),
                        'timestamp': None, 'new_key': None
@@ -381,10 +381,10 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
             self.assertDictEqual(node.to_json(), expected_json)
 
-    def test_node_from_json(self, given_id=None):
+    def test_node_from_json(self):
         """Test node creation from json 
         """
-        node_id = str(uuid.uuid4()) if not given_id else given_id
+        node_id = str(uuid.uuid4())
 
         propertiesA = sanitize({
             'key1': None, 'key2': 1, 'key3': timestamp(),
@@ -414,6 +414,37 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertDictEqual(node.sysan, system_annotationsA)
             self.assertEqual(node.acl, [])
             self.assertEqual(node.node_id, node_id)
+
+    def test_node_json_roundtrip(self):
+        """test node serialization
+        """
+        node_id = str(uuid.uuid4())
+
+        # add first node
+        propertiesA = sanitize({
+            'key1': None, 'key2': 1, 'key3': timestamp(),
+                       'timestamp': None, 'new_key': None
+        })
+        system_annotationsA = sanitize({
+            'key1': None, 'key2': 2, 'key3': timestamp()
+        })
+        g.node_merge(node_id=node_id, label='test', properties=propertiesA,
+                     system_annotations=system_annotationsA)
+
+        dst = g.node_merge(node_id=str(uuid.uuid4()), label='test')
+        edge1 = g.edge_insert(PsqlEdge(
+            src_id=node_id, dst_id=dst.node_id, label='edge1'))
+
+        with g.session_scope():
+            node = g.node_lookup_one(node_id)
+
+            node_json = node.to_json()
+
+            new_node = Node.from_json(node_json)
+            self.assertDictEqual(new_node.props, node.props)
+            self.assertDictEqual(new_node.sysan, node.sysan)
+            self.assertEqual(new_node.node_id, node_id)
+
 
     def _insert_node(self, node):
         """Test inserting a node"""
@@ -762,6 +793,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
             expected_json = {
                               'src_id': src_id,
                               'dst_id': dst_id,
+                              'src_label': src.label,
+                              'dst_label': dst.label,
                               'label': 'edge1',
                               'acl': [],
                               'properties': edge.property_template(),
@@ -806,6 +839,28 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.assertEqual(edge.properties, edge.property_template())
             self.assertEqual(edge.src_id, src_id)
             self.assertEqual(edge.dst_id, dst_id)
+
+    def test_json_roundtrip(self):
+        """Test edge from_json after a to_json
+        """
+        with g.session_scope():
+            src_id = str(uuid.uuid4())
+            dst_id = str(uuid.uuid4())
+            src = g.node_merge(node_id=src_id, label='test')
+            dst = g.node_merge(node_id=dst_id, label='test')
+
+            edge = g.edge_insert(PsqlEdge(
+                src_id=src_id, dst_id=dst_id, label='edge1'))
+
+            edge_json = edge.to_json()
+
+            new_edge = Edge.from_json(edge_json)
+
+            self.assertEqual(new_edge.src_id, edge.src_id)
+            self.assertEqual(new_edge.dst_id, edge.dst_id)
+            self.assertDictEqual(new_edge.props, edge.props)
+            self.assertDictEqual(new_edge.sysan, edge.sysan)
+
 
     def test_sessioned_path_insertion(self):
         """Test creation of a sessioned node path

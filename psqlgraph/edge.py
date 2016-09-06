@@ -101,9 +101,15 @@ class Edge(AbstractConcreteBase, ORMBase):
             self.dst_id = dst_id
 
     def to_json(self):
+        assert self.src and self.dst, (
+            "src or dst is not set on the edge. Sync with the database first"
+            "to set the src and dst association proxy.")
+
         return {
             'src_id': self.src_id,
             'dst_id': self.dst_id,
+            'src_label': self.src.label,
+            'dst_label': self.dst.label,
             'label': self.label,
             'acl': self.acl,
             'properties': self.properties,

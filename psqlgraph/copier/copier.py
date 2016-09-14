@@ -11,9 +11,8 @@ database.
 from collections import defaultdict
 from psqlgraph import Node, Edge
 from sqlalchemy import or_, bindparam
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import subqueryload
 from logging import getLogger
-
 
 from .upsert import (
     upsert_nodes,
@@ -95,16 +94,15 @@ def copy_subgraph(destination_db, nodes):
         grouped_nodes[node.__class__].append(node)
 
     # Group edges by class
-    edges = chain((n.get_edges() for n in nodes))
-    grouped_edges = defaultdict(list)
+    edges = (edge for node in nodes for edge in node.get_edges())
+    grouped_edges = defaultdict(set)
     for edge in edges:
-        grouped_edges[edge.__class__].append(edge)
+        grouped_edges[edge.__class__].add(edge)
 
+    # Copy subgraph
     with destination_db.session_scope():
-        # Snapshot nodes
-        for node_type, type_nodes in grouped_nodes.iteritems():
-            upsert_nodes(destination_db, node_type, type_nodes)
+        for node_type, node_type_nodes in grouped_nodes.iteritems():
+            upsert_nodes(destination_db, node_type, node_type_nodes)
 
-        # Snapshot edges
-        for edge_type, type_edges in grouped_edges:
-            upsert_edges(destination_db, edge_type, type_edges)
+        for edge_type, edge_type_edges in grouped_edges.iteritems():
+            upsert_edges(destination_db, edge_type, edge_type_edges)

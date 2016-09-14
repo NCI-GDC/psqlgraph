@@ -8,13 +8,14 @@ Functionality for bulk UPSERT implemented at application level.
 
 from sqlalchemy import and_, or_, not_, bindparam
 from psqlgraph import Node
-from logging import getLogger
+from cdisutils.log import get_logger
+from itertools import imap
 
 from .const import (
     DEFAULT_BATCH_SIZE,
 )
 
-logger = getLogger("psqlgraph.copier.upsert")
+logger = get_logger("psqlgraph.copier.upsert")
 
 
 def get_node_values(node):
@@ -146,10 +147,13 @@ def insert_edges(db, edge_type, edges, skip_missing_foreign_key=True):
     session = db.current_session()
 
     if skip_missing_foreign_key:
-        missing_src_ids, missing_dst_ids = get_missing_foreign_keys(
-            db, edge_type, edges)
+        _temp = get_missing_foreign_keys(db, edge_type, edges)
+        missing_src_ids, missing_dst_ids = _temp
     else:
-        missing_src_ids, missing_dst_ids = [], []
+        missing_src_ids, missing_dst_ids = set(), set()
+
+    logger.debug("Skipping %s missing foreign keys",
+                 missing_src_ids.union(missing_dst_ids))
 
     new_edge_values = [
         get_edge_values(edge)
@@ -192,18 +196,16 @@ def get_missing_foreign_keys(db, edge_type, edges):
     src_cls = Node.get_subclass_named(edge_type.__src_class__)
     dst_cls = Node.get_subclass_named(edge_type.__dst_class__)
 
-    src_ids = [edge.src_id for edge in edges]
-    dst_ids = [edge.dst_id for edge in edges]
+    src_ids = {edge.src_id for edge in edges}
+    dst_ids = {edge.dst_id for edge in edges}
 
-    missing_src_ids = set(db.edges(edge_type)
-                          .filter(not_(edge_type.src_id.in_(src_ids)))
-                          .with_entities(edge_type.src_id)
-                          .yield_per(DEFAULT_BATCH_SIZE))
+    get_id = lambda res: res[0]
 
-    missing_dst_ids = set(db.edges(edge_type)
-                          .filter(not_(edge_type.dst_id.in_(dst_ids)))
-                          .with_entities(edge_type.dst_id)
-                          .yield_per(DEFAULT_BATCH_SIZE))
+    found_src_ids = imap(get_id, db.edges(src_cls.node_id).ids(src_ids).all())
+    found_dst_ids = imap(get_id, db.edges(dst_cls.node_id).ids(dst_ids).all())
+
+    missing_src_ids = src_ids - set(found_src_ids)
+    missing_dst_ids = dst_ids - set(found_dst_ids)
 
     logger.info("Found missing %s %s src foreign keys",
                 len(missing_src_ids), src_cls.__name__)

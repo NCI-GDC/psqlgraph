@@ -1,4 +1,5 @@
 from psqlgraph import Node, Edge, pg_property
+from test_copier.models import *
 
 
 class Edge1(Edge):

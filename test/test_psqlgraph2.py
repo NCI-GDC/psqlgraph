@@ -8,11 +8,9 @@ from psqlgraph.exc import SessionClosedError
 import socket
 import sqlalchemy as sa
 
-host = 'localhost'
-user = 'test'
-password = 'test'
-database = 'automated_test'
-g = PsqlGraphDriver(host, user, password, database)
+from conftest import pg_config
+
+g = PsqlGraphDriver(**pg_config())
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -57,8 +55,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_custom_application_name(self):
         cmd = "select application_name from pg_stat_activity;"
         custom_name = '_CUSTOM_NAME'
-        g_ = PsqlGraphDriver(host, user, password, database,
-                             application_name=custom_name)
+        g_ = PsqlGraphDriver(application_name=custom_name, **pg_config())
         with g_.session_scope() as s:
             s.merge(Test('a'))
             app_names = {r[0] for r in g.engine.execute(cmd)}

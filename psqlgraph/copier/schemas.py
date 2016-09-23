@@ -11,7 +11,7 @@ database.
 from copy import deepcopy
 from functools32 import lru_cache
 from psqlgraph import Node, Edge
-from sqlalchemy import literal, exists, MetaData, Table
+from sqlalchemy import literal, exists, MetaData, Table, and_
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import table as sql_table, select, text
@@ -67,8 +67,8 @@ EDGE_UPSERT = (
     # Lock to prevent race condition on join filtering for foreign key
     # constraints
     """
-    Lock table {dst_src_node_table} in share mode;
-    Lock table {dst_dst_node_table} in share mode;
+    Lock table {to_src_node_table} in share mode;
+    Lock table {to_dst_node_table} in share mode;
     """
 
     # Upsert source data
@@ -238,34 +238,35 @@ def copy_edges(source_driver, src_schema, dst_schema, query):
         return copy_edge_baseclass(source_driver, src_schema, dst_schema, query)
 
     # These are the edge tables in the source and dest schemas
-    src_schema_edge_table = copy_sql_table(entity_type.__table__, src_schema)
-    dst_schema_edge_table = copy_sql_table(entity_type.__table__, dst_schema)
+    from_edge_table = entity_type.__table__
+    to_edge_table = copy_sql_table(entity_type.__table__, dst_schema)
 
     # These are the src and dst node classes of the edge in the dst schema
     node_src_cls = Node.get_subclass_named(entity_type.__src_class__)
     node_dst_cls = Node.get_subclass_named(entity_type.__dst_class__)
 
     # These are the src and dst node tables of the edge in the dst schema
-    dst_schema_src_table = node_src_cls.__table__
-    dst_schema_dst_table = node_dst_cls.__table__
+    to_src_table = copy_sql_table(node_src_cls.__table__, dst_schema)
+    to_dst_table = copy_sql_table(node_dst_cls.__table__, dst_schema)
 
     # Update the query to inner join on the target schema node tables
     # to filter edges that would fail foreign key constraints
-    query = (query
-             .join(dst_schema_src_table).reset_joinpoint()
-             .join(dst_schema_dst_table).reset_joinpoint())
+    src_join = from_edge_table.c.src_id == to_src_table.c.node_id
+    dst_join = to_dst_table.c.node_id == from_edge_table.c.dst_id
+    query = query.filter(and_(src_join, dst_join))
 
     upsert = EDGE_UPSERT.format(
         source=unicode(query),
-        src_table=full_tablename(src_schema, src_schema_edge_table),
-        dst_table=full_tablename(dst_schema, dst_schema_edge_table),
-        dst_src_node_table=full_tablename(dst_schema, dst_schema_src_table),
-        dst_dst_node_table=full_tablename(dst_schema, dst_schema_dst_table),
-        columns=column_names_str(dst_schema_edge_table),
-        set_props=column_setter_str(dst_schema_edge_table)
+        src_table=full_tablename(src_schema, from_edge_table),
+        dst_table=full_tablename(dst_schema, to_edge_table),
+        to_src_node_table=full_tablename(dst_schema, to_src_table),
+        to_dst_node_table=full_tablename(dst_schema, to_dst_table),
+        columns=column_names_str(from_edge_table),
+        set_props=column_setter_str(to_edge_table)
     )
 
-    print upsert
+    # import pdb; pdb.set_trace()
+    print(upsert)
 
     params = query.statement.compile(dialect=postgresql.dialect()).params
     with source_driver.session_scope() as session:

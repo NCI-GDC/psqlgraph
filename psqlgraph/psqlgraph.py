@@ -108,9 +108,11 @@ class PsqlGraphDriver(object):
            calls within the session scope to use the explicitly passed
            session.
 
-        3. Setting ``can_inherit`` to false will have no effect
+        3. Setting ``can_inherit`` to True will have no effect
+           if not wrapped in a parent session
 
-        4. Setting ``must_inherit`` to will raise a RuntimeError
+        4. Setting ``must_inherit`` to True will raise a RuntimeError
+           if not wrapped in a parent session
 
         .. note::
             A session scope that is nested has the following

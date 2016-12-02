@@ -25,8 +25,15 @@ def get_old_version(target, *attrs):
 
     sysan, props = dict(), dict()
     for attr in attrs:
-        props.update(history(target, '_props', attr))
-        sysan.update(history(target, '_sysan', attr))
+        old_props = history(target, '_props', attr)
+        if old_props is None:
+            old_props = {}
+        props.update(old_props)
+
+        old_sysan = history(target, '_sysan', attr)
+        if old_sysan is None:
+            old_sysan = {}
+        sysan.update(old_sysan)
     return props, sysan
 
 

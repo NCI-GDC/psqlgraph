@@ -4,7 +4,7 @@ from voided_node import VoidedNode
 from voided_edge import VoidedEdge
 from edge import Edge
 from sqlalchemy.orm import Query
-from sqlalchemy import not_
+from sqlalchemy import not_, or_
 from copy import copy
 
 """
@@ -342,38 +342,11 @@ class GraphQuery(Query):
                            .count()
 
         """
-        for e in entities:
-            self = self.join(*e.attr)
+
+        for entity in entities:
+            self = self.join(*entity.attr)
+
         return self
-
-    # ======== Labels ========
-    # def labels(self, label):
-    #     """Filters on nodes that have certain labels.
-
-    #     :param labels:
-    #        A single scalar string.  The filtered
-    #        results will have this label
-    #     :returns: |qobj|
-
-    #     .. note::
-    #        This is largely **deprecated**, rather you should specify the
-    #        actual model class entity you want to return when you begin
-    #        your query, e.g. driver.nodes(TestNode)
-
-    #     """
-    #     assert type(label) == str, ".labels only accepts a single string now"
-    #     if self.entity() in (VoidedNode, VoidedEdge):
-    #         return self.filter(self.entity().label == label)
-
-    #     potential_subclasses = [Node.get_subclass(label)]
-    #     potential_subclasses += Edge._get_subclasses_labeled(label)
-    #     # filter Nones
-    #     potential_subclasses = [cls for cls in potential_subclasses if cls]
-    #     if not potential_subclasses:
-    #         raise RuntimeError("No classes found with label {}".format(label))
-    #     q = self.with_entities(potential_subclasses[0])
-    #     q = q.union_all(*[self.with_entities(cls) for cls in potential_subclasses[1:]])
-    #     return q
 
     # ======== Properties ========
     def props(self, props={}, **kwargs):
@@ -430,6 +403,54 @@ class GraphQuery(Query):
         assert isinstance(props, dict)
         kwargs.update(props)
         return self.filter(not_(self.entity()._props.contains(kwargs)))
+
+    def null_props(self, keys=[], *args):
+        """Filter query results by key, value pairs where either (a) the key
+        is not present or (b) the key is present but the value is None
+
+        This is necessary because a JSONB contains query (like
+        `.props(key1=None)`) will emit a statement like
+
+        .. code-block:: SQL
+
+            select count(*) from node_test where _props @> '{"key1": null}'
+
+        which will not match entries where `'key1'` is not present in
+        the JSONB document.  This function will consider both cases
+        (present but null/not preset)
+
+        :param keys:
+            A string or list of string keys to filter by null values
+            or missing keys.  Additional keys can be added as
+            :param:`*args`
+
+        :param *args:
+            A list of keys to filter by null values or missing keys.
+            Additional keys can be added as :param:`keys`
+
+        :returns: |qobj|
+
+        .. code-block:: python
+
+            # Count the number of nodes with null keys
+            g.null_props('key1').count()
+            g.null_props(['key1', 'key2']).count()
+            g.null_props(['key1', 'key2', 'key3']).count()
+
+        """
+
+        keys = keys if hasattr(keys, '__iter__') else [keys]
+        keys += args
+
+        assert keys, 'No keys provided to `null_prop()` filter'
+
+        for key in keys:
+            self = self.filter(or_(
+                self.entity()._props.contains({key: None}),
+                not_(self.entity()._props.has_key(key)),
+            ))
+
+        return self
 
     def prop_in(self, key, values):
         """Filter on entities that have a value corresponding to `key` that is

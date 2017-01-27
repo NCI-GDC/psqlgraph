@@ -508,3 +508,31 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
         finally:
             Test._session_hooks_before_delete = []
+
+    def test_null_props_unset(self):
+        self._clear_tables()
+
+        with g.session_scope() as session:
+            session.merge(Test('a'))
+            session.merge(Test('b', key1='1', key2='2', key3='3'))
+
+        with g.session_scope() as session:
+            g.nodes(Test).null_props('key1').one()
+            g.nodes(Test).null_props(['key1', 'key2']).one()
+            g.nodes(Test).null_props('key1', 'key2').one()
+            g.nodes(Test).null_props(['key1', 'key2'], 'key3').one()
+            g.nodes(Test).null_props('key1').one()
+
+    def test_null_props_set(self):
+        self._clear_tables()
+
+        with g.session_scope() as session:
+            session.merge(Test('a', key1=None, key2=None, key3=None))
+            session.merge(Test('b', key1='1', key2='2', key3='3'))
+
+        with g.session_scope() as session:
+            g.nodes(Test).null_props('key1').one()
+            g.nodes(Test).null_props(['key1', 'key2']).one()
+            g.nodes(Test).null_props('key1', 'key2').one()
+            g.nodes(Test).null_props(['key1', 'key2'], 'key3').one()
+            g.nodes(Test).null_props('key1').one()

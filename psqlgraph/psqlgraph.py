@@ -265,8 +265,10 @@ class PsqlGraphDriver(object):
                    label=None, system_annotations={}, properties={},
                    session=None, max_retries=DEFAULT_RETRIES,
                    backoff=default_backoff):
+
         with self.session_scope() as local:
             if not node and not label:
+                assert node_id, 'node_id cannot be None'
                 node = self.nodes().ids(node_id).scalar()
 
             elif not node and label:

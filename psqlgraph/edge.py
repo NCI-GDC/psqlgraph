@@ -1,15 +1,20 @@
-from sqlalchemy import Column, Text, ForeignKey, Index
+from sqlalchemy import Column, ForeignKey, Index
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
-
-from base import ORMBase, EDGE_TABLENAME_SCHEME, NODE_TABLENAME_SCHEME
 from voided_edge import VoidedEdge
+
+from base import (
+    EDGE_TABLENAME_SCHEME,
+    NODE_ID_TYPE,
+    NODE_TABLENAME_SCHEME,
+    ORMBase,
+)
 
 
 def IDColumn(tablename):
     return Column(
-        Text,
+        NODE_ID_TYPE,
         ForeignKey(
             '{}.node_id'.format(tablename),
             ondelete="CASCADE",

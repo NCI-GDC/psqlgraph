@@ -1,6 +1,7 @@
 import uuid
 import unittest
 import logging
+
 from psqlgraph import PsqlGraphDriver, VoidedNode
 from psqlgraph import Node
 from psqlgraph.exc import ValidationError
@@ -8,22 +9,32 @@ from psqlgraph.exc import SessionClosedError
 import socket
 import sqlalchemy as sa
 
+# We have to import models here, even if we don't use them
+from models import Test, Foo, Edge1, Edge2, FooBar
+
 host = 'localhost'
 user = 'test'
 password = 'test'
 database = 'automated_test'
 g = PsqlGraphDriver(host, user, password, database)
 
+#: random uuid4 for consistent UUID5 production
+UUID_NAMESPACE = uuid.UUID('113cc98e-cfe5-4334-8da3-e435311613c5')
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
-# We have to import models here, even if we don't use them
-from models import Test, Foo, Edge1, Edge2, FooBar
+
+def uuid_hash(text):
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, text))
 
 
 def _props(target, updates):
     return Test().property_template(updates)
+
+ID_A = uuid_hash('a')
+ID_B = uuid_hash('b')
+ID_C = uuid_hash('c')
 
 
 class TestPsqlGraphDriver(unittest.TestCase):
@@ -50,7 +61,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_default_application_name(self):
         cmd = "select application_name from pg_stat_activity;"
         with g.session_scope() as s:
-            s.merge(Test('a'))
+            s.merge(Test(ID_A))
             app_names = {r[0] for r in g.engine.execute(cmd)}
         self.assertIn(socket.gethostname(), app_names)
 
@@ -60,7 +71,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         g_ = PsqlGraphDriver(host, user, password, database,
                              application_name=custom_name)
         with g_.session_scope() as s:
-            s.merge(Test('a'))
+            s.merge(Test(ID_A))
             app_names = {r[0] for r in g.engine.execute(cmd)}
         self.assertIn(custom_name, app_names)
 
@@ -86,18 +97,18 @@ class TestPsqlGraphDriver(unittest.TestCase):
                 g.nodes().ids(self.nid).one().properties, expected)
 
     def test_property_merge(self):
-        node = Test('a')
+        node = Test(ID_A)
         node.key1 = 'first'
         node.key2 = 'first'
         with g.session_scope() as session:
             session.merge(node)
-        node = Test('a')
+        node = Test(ID_A)
         node.key1 = 'second'
         node.key1 = 'third'
         with g.session_scope() as session:
             session.merge(node)
         with g.session_scope() as session:
-            node = g.nodes(Test).ids('a').one()
+            node = g.nodes(Test).ids(ID_A).one()
         self.assertEqual(node.key1, 'third')
         self.assertEqual(node.key2, 'first')
 
@@ -192,13 +203,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
             g.edges().filter(Edge1.src_id == src_id).one()
 
     def test_edge_attributes(self):
-        foo = Foo('foonode')
-        edge = Edge2(self.nid, 'foonode')
+        foo_id = uuid_hash('foonode')
+        foo = Foo(foo_id)
+        edge = Edge2(self.nid, foo_id)
         with g.session_scope() as s:
             s.add_all((edge, foo))
         with g.session_scope() as s:
             n = g.nodes().ids(self.nid).one()
-            self.assertEqual(n.foos[0].node_id, 'foonode')
+            self.assertEqual(n.foos[0].node_id, foo_id)
 
     def test_type_enum(self):
         with self.assertRaises(ValidationError):
@@ -212,32 +224,32 @@ class TestPsqlGraphDriver(unittest.TestCase):
             n.baz = 'not allowed'
 
     def test_association_proxy(self):
-        a = Test('a')
-        b = Foo('b')
-        c = Test('c')
+        a = Test(ID_A)
+        b = Foo(ID_B)
+        c = Test(ID_C)
         a.foos.append(b)
         a.tests = [c]
         with g.session_scope() as s:
             a, b, c = map(s.merge, (a, b, c))
         with g.session_scope() as s:
-            a = g.nodes(Test).ids('a').one()
+            a = g.nodes(Test).ids(ID_A).one()
             self.assertTrue(b in a.foos)
             self.assertEqual(a.tests, [c])
 
     def test_relationship_population_setter(self):
-        a = Test('a')
-        b = Foo('b')
+        a = Test(ID_A)
+        b = Foo(ID_B)
         e = Edge2()
         e.src = a
         e.dst = b
         with g.session_scope() as s:
             a, b = map(s.merge, (a, b))
-            e2 = s.query(Edge2).src('a').dst('b').one()
+            e2 = s.query(Edge2).src(ID_A).dst(ID_B).one()
             e = a._Edge2_out[0]
             self.assertEqual(e2, e)
 
     def test_nonnull(self):
-        a = FooBar('a')
+        a = FooBar(ID_A)
         a.bar = None
         a.props['bar'] = None
         a.properties = {'bar': None}
@@ -249,38 +261,38 @@ class TestPsqlGraphDriver(unittest.TestCase):
             s.merge(a)
 
     def test_relationship_population_constructer(self):
-        a = Test('a')
-        b = Foo('b')
+        a = Test(ID_A)
+        b = Foo(ID_B)
         e = Edge2(src=a, dst=b)
         with g.session_scope() as s:
             a, b = map(s.merge, (a, b))
-            e2 = s.query(Edge2).src('a').dst('b').one()
+            e2 = s.query(Edge2).src(ID_A).dst(ID_B).one()
             e = a._Edge2_out[0]
             self.assertEqual(e2, e)
 
     def test_cascade_delete(self):
-        a = Test('a')
-        b = Foo('b')
+        a = Test(ID_A)
+        b = Foo(ID_B)
         a.foos = [b]
         with g.session_scope() as s:
             a, b = map(s.merge, (a, b))
         with g.session_scope() as s:
-            s.delete(g.nodes(Test).ids('a').one())
+            s.delete(g.nodes(Test).ids(ID_A).one())
         with g.session_scope() as s:
-            self.assertIsNone(g.nodes(Test).ids('a').scalar())
-            self.assertIsNone(g.edges(Edge2).src('a').dst('b').scalar())
+            self.assertIsNone(g.nodes(Test).ids(ID_A).scalar())
+            self.assertIsNone(g.edges(Edge2).src(ID_A).dst(ID_B).scalar())
 
     def test_set_sysan(self):
-        a = Test('a')
+        a = Test(ID_A)
         with g.session_scope() as s:
             a = s.merge(a)
         with g.session_scope() as s:
-            a = g.nodes(Test).ids('a').one()
+            a = g.nodes(Test).ids(ID_A).one()
             a = s.merge(a)
             a.sysan['key1'] = True
             s.merge(a)
         with g.session_scope() as s:
-            n = g.nodes(Test).ids('a').one()
+            n = g.nodes(Test).ids(ID_A).one()
             print n.sysan
             self.assertTrue(n.sysan['key1'])
 
@@ -364,12 +376,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_session_timestamp(self):
         with g.session_scope() as s:
             self.assertIsNone(s._flush_timestamp)
-            s.merge(Test(""))
+            s.merge(Test(ID_A))
             s.flush()
             self.assertIsNotNone(s._flush_timestamp)
         g.set_flush_timestamps = False
         with g.session_scope() as s:
-            s.merge(Test(""))
+            s.merge(Test(ID_A))
             s.flush()
             self.assertIsNone(s._flush_timestamp)
 
@@ -377,7 +389,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """Test that all custom insert hooks are called."""
 
         self._clear_tables()
-        node_id = 'test_insert'
+        node_id = uuid_hash('test_insert')
 
         def add_key1(target, session, *args, **kwargs):
             target.key1 = 'value1'
@@ -407,7 +419,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """Test that all custom hooks affect single classes."""
 
         self._clear_tables()
-        node_id = 'test_locality'
+        node_id = uuid_hash('test_locality')
 
         def bad_hook(target, session, *args, **kwargs):
             raise RuntimeError
@@ -438,7 +450,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """Test that all custom insert hooks are called."""
 
         self._clear_tables()
-        node_id = 'test_update'
+        node_id = uuid_hash('test_update')
 
         def add_key1(target, session, *args, **kwargs):
             target.key1 = 'value1'
@@ -478,9 +490,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
         """Test that all custom pre-delete hooks are called."""
 
         self._clear_tables()
-        node_id = 'test_update'
-        new_node_id1 = 'pre-delete-1'
-        new_node_id2 = 'pre-delete-2'
+        node_id = uuid_hash('test_update')
+        new_node_id1 = uuid_hash('pre-delete-1')
+        new_node_id2 = uuid_hash('pre-delete-2')
 
         def add_new_node1(target, session, *args, **kwargs):
             session.merge(Test(new_node_id1))

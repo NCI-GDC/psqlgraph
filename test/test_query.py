@@ -4,6 +4,10 @@ import uuid
 from psqlgraph import Node, Edge, PsqlGraphDriver
 from psqlgraph import PolyNode, PolyEdge
 
+from models import Test, Foo, Edge1, Edge2, Edge3
+from test_psqlgraph2 import uuid_hash
+
+
 host = 'localhost'
 user = 'test'
 password = 'test'
@@ -11,8 +15,6 @@ database = 'automated_test'
 g = PsqlGraphDriver(host, user, password, database)
 
 logging.basicConfig(level=logging.INFO)
-
-from models import Test, Foo, Edge1, Edge2, Edge3
 
 
 class TestPsqlGraphDriver(unittest.TestCase):
@@ -146,8 +148,9 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_subq_without_path_filter(self):
         with self.g.session_scope():
+            node_id = uuid_hash('test')
             self.assertEqual(self.g.nodes(Foo)
                              .subq_without_path(
                                  'tests',
-                                 [lambda q: q.ids('test')])
+                                 [lambda q: q.ids(node_id)])
                              .count(), self.g.nodes(Foo).count())

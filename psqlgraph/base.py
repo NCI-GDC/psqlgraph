@@ -163,12 +163,9 @@ class CommonBase(object):
         """Returns a list of hybrid_properties defined on the subclass model
 
         """
-        return [
-            attr for attr in dir(cls)
-            if attr in cls.__dict__
-            and isinstance(cls.__dict__[attr], hybrid_property)
-            and getattr(getattr(cls, attr), '_is_pg_property', True)
-        ]
+        return [attr for attr in dir(cls)
+                if attr in cls.__dict__
+                and isinstance(cls.__dict__[attr], hybrid_property)]
 
     @classmethod
     def has_property(cls, key):

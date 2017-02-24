@@ -3,14 +3,13 @@ This is a one-time use script to set up a fresh install of Postgres 9.4
 Needs to be run as the postgres user.
 """
 
-import argparse
 from sqlalchemy import create_engine
-import logging
-
-
 from psqlgraph import create_all
 from psqlgraph import PsqlGraphDriver
 from models import *
+
+import conftest
+import logging
 
 
 def try_drop_test_data(user, database, root_user='postgres', host=''):
@@ -78,25 +77,24 @@ def create_tables(host, user, password, database):
     create_all(driver.engine)
 
 
-def create_indexes(host, user, password, database):
-    """
-    create a table
-    """
-    return
+def destroy_and_setup_database(host, user, password, database):
+    setup_database(user, password, database)
+    create_tables(host, user, password, database)
+
+
+def setup_databases():
+    destroy_and_setup_database(
+        conftest.PG_SOURCE_HOST,
+        conftest.PG_SOURCE_USER,
+        conftest.PG_SOURCE_PASSWORD,
+        conftest.PG_SOURCE_DATABASE)
+
+    destroy_and_setup_database(
+        conftest.PG_DESTINATION_HOST,
+        conftest.PG_DESTINATION_USER,
+        conftest.PG_DESTINATION_PASSWORD,
+        conftest.PG_DESTINATION_DATABASE)
+
 
 if __name__ == '__main__':
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--host", type=str, action="store",
-                        default='localhost', help="psql-server host")
-    parser.add_argument("--user", type=str, action="store",
-                        default='test', help="psql test user")
-    parser.add_argument("--password", type=str, action="store",
-                        default='test', help="psql test password")
-    parser.add_argument("--database", type=str, action="store",
-                        default='automated_test', help="psql test database")
-
-    args = parser.parse_args()
-    setup_database(args.user, args.password, args.database)
-    create_tables(args.host, args.user, args.password, args.database)
-    create_indexes(args.host, args.user, args.password, args.database)
+    setup_databases()

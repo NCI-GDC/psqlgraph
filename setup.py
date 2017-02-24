@@ -3,8 +3,12 @@ from setuptools import setup
 setup(
     version='0.0.2',
     name='psqlgraph',
-    packages=["psqlgraph"],
+    packages=[
+        "psqlgraph",
+        "psqlgraph.copier",
+    ],
     install_requires=[
+        'pytest==2.7.2',
         'psycopg2==2.5.4',
         'sqlalchemy==0.9.9',
         'py2neo==2.0.1',

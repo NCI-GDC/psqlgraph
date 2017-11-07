@@ -5,7 +5,7 @@ setup(
     name='psqlgraph',
     packages=["psqlgraph"],
     install_requires=[
-        'psycopg2==2.5.4',
+        'psycopg2==2.7.3',
         'sqlalchemy==0.9.9',
         'py2neo==2.0.1',
         'progressbar',

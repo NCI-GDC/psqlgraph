@@ -1,4 +1,4 @@
-[![Build Status](https://magnum.travis-ci.com/NCI-GDC/psqlgraph.svg?token=LApTVTN34FyXpxo5zU44&branch=master)](https://magnum.travis-ci.com/NCI-GDC/psqlgraph)
+![Build Status](https://travis-ci.org/NCI-GDC/psqlgraph.svg?branch=develop)
 
 # Overview
 
@@ -42,6 +42,8 @@ build succeeded.
 Build finished. The HTML pages are in build/html.
 ```
 
+# Tests
+Ideally run these within a virtual environment as to not globally install pytest.
 ## Test Setup
 
 Running the setup script will:
@@ -49,16 +51,13 @@ Running the setup script will:
 1. Setup the test postgres tables
 
 ```
-❯ python psqlgraph/setup_psql_graph.py
+❯ python setup.py install
+❯ python test/setup_test_psqlgraph.py
 Setting up test database
 Dropping old test data
 Creating tables in test database
 ```
-# Contributing
-Read how to contribute [here](https://github.com/NCI-GDC/gdcapi/blob/master/CONTRIBUTING.md)
-
-# Tests
-
+## Run Tests
 Running the setup script will test the library against a local postgres installation
 
 ```
@@ -66,3 +65,6 @@ Running the setup script will test the library against a local postgres installa
 ❯  cd test
 ❯  py.test -v
 ```
+
+# Contributing
+Read how to contribute [here](https://github.com/NCI-GDC/gdcapi/blob/master/CONTRIBUTING.md)

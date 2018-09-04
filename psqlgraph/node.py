@@ -206,10 +206,23 @@ class Node(AbstractConcreteBase, ORMBase):
                       .order_by(VoidedNode.voided.desc())
 
     def _snapshot_existing(self, session, old_props, old_sysan):
-        temp = self.__class__(self.node_id, old_props, self.acl,
-                              old_sysan, self.label)
+        temp = TmpNode(self.node_id, old_props, self.acl,
+                              old_sysan, self.label, self.created)
         voided = VoidedNode(temp)
         session.add(voided)
+
+
+class TmpNode(object):
+    """
+    Temporary object to hold a node information
+    """
+    def __init__(self, node_id, props, acl, sysan, label, created):
+        self.node_id = node_id
+        self._props = props
+        self.acl = acl
+        self.system_annotations = sysan
+        self.label = label
+        self.created = created
 
 
 def PolyNode(node_id=None, label=None, acl=[], system_annotations={},

@@ -9,7 +9,7 @@ setup(
         'sqlalchemy==0.9.9',
         'py2neo==2.0.1',
         'progressbar',
-        'avro==1.7.7',
+        'avro==1.8.2',
         'xlocal==0.5',
         'requests>=2.5.2, <=2.7.0'
     ]

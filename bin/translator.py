@@ -115,7 +115,7 @@ def translate_edge_range(_args):
         args.dest_host, args.dest_user, args.dest_password,
         args.dest, **driver_kwargs)
 
-    print '{}-{}'.format(offset, offset+BLOCK)
+    print('{}-{}'.format(offset, offset+BLOCK))
     sys.stdout.flush()
     with src.session_scope() as session:
         with dst.session_scope() as session:
@@ -130,7 +130,7 @@ def translate_edge_range(_args):
                 try:
                     Type = dst.get_edge_by_labels(
                         old.src.label, old.label, old.dst.label)
-                    print Type.__name__
+                    print(Type.__name__)
                     new = Type(
                         src_id=old.src_id,
                         dst_id=old.dst_id,

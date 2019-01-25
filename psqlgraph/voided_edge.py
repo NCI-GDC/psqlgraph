@@ -1,6 +1,6 @@
-from sqlalchemy.dialects.postgres import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy import Column, Text, DateTime, BigInteger, text
-from base import VoidedBase
+from psqlgraph.base import VoidedBase
 
 
 class VoidedEdge(VoidedBase):
@@ -10,7 +10,8 @@ class VoidedEdge(VoidedBase):
     key = Column(
         BigInteger,
         primary_key=True,
-        nullable=False
+        nullable=False,
+        autoincrement=True
     )
 
     src_id = Column(

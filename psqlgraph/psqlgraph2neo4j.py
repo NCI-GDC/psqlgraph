@@ -1,14 +1,14 @@
-from __future__ import print_function
+
 from datetime import datetime
-import psqlgraph
-from psqlgraph import Node, Edge
+from . import psql
+from .psql import Node, Edge
 import progressbar
 import os
 import py2neo
 
 def create_index():
     graph = py2neo.Graph()
-    for node_class in psqlgraph.Node.get_subclasses():
+    for node_class in psql.Node.get_subclasses():
         label = node_class.get_label()
         graph.cypher.execute("create index on :{}(id)".format(label))
 
@@ -19,7 +19,7 @@ class PsqlGraph2Neo4j(object):
         self.files = dict()
 
     def connect_to_psql(self, host, user, password, database):
-        self.psqlgraphDriver = psqlgraph.PsqlGraphDriver(
+        self.psqlgraphDriver = psql.PsqlGraphDriver(
             host, user, password, database
         )
 
@@ -29,7 +29,7 @@ class PsqlGraph2Neo4j(object):
         return int(delta.total_seconds() * 1000)
 
     def try_parse_doc(self, doc):
-        for key, val in doc.iteritems():
+        for key, val in doc.items():
             try:
                 ts = datetime.strptime(val, "%Y-%m-%d %H:%M:%S.%f")
                 doc[key] = self.datetime2ms_epoch(ts)
@@ -41,10 +41,10 @@ class PsqlGraph2Neo4j(object):
 
     def create_node_files(self, data_dir):
         type_conversion = {str: 'String', bool: 'boolean', int: 'int',
-                           float: 'float', long: 'long'}
+                           float: 'float', int: 'long'}
         with self.psqlgraphDriver.session_scope():
             count = 0
-            for node_class in psqlgraph.Node.get_subclasses():
+            for node_class in psql.Node.get_subclasses():
                 properties = node_class.get_pg_properties()
                 label = node_class.get_label()
                 f = open(
@@ -53,18 +53,17 @@ class PsqlGraph2Neo4j(object):
                 self.files[label] = [f]
                 keys = []
                 title = 'i:id\tid\tl:label\t'
-                for key, value in properties.iteritems():
+                for key, value in properties.items():
                     keys.append(key)
                     if not value:
                         typ = 'String'
                     else:
                         typ = type_conversion[value[0]]
                     title += (key + ':' + typ + '\t')
-                print(title, file=f)
                 self.files[label].append(keys)
 
     def close_files(self):
-        for f in self.files.values():
+        for f in list(self.files.values()):
             f[0].close()
 
     def start_pbar(self, maxval):
@@ -82,13 +81,12 @@ class PsqlGraph2Neo4j(object):
         f = node_file[0]
         result = id+'\t'+node.node_id + '\t' + node.label + '\t'
         for key in node_file[1]:
-            value = unicode(node.properties.get(key, ''))\
+            value = str(node.properties.get(key, ''))\
                 .replace('\r', '\\\\r').replace('\n', '\\\\n')\
                 .replace('"', '\\"')
             if value == 'None':
                 value = ''
             result += value+'\t'
-        print(result.encode('utf-8'), file=f)
 
     def export_to_csv(self, data_dir, silent=False):
         node_ids = dict()
@@ -100,7 +98,6 @@ class PsqlGraph2Neo4j(object):
                 pbar = self.start_pbar(node_count)
 
         edge_file = open(os.path.join(data_dir, 'rels.csv'), 'w')
-        print('start\tend\ttype\t', file=edge_file)
         self.create_node_files(data_dir)
         batch_size = 1000
         id_count = 0

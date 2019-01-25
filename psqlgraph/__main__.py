@@ -1,7 +1,7 @@
 import argparse
 import getpass
-import psqlgraph
-from psqlgraph import *
+from . import psql
+from .psql import *
 from sqlalchemy import *
 
 
@@ -9,9 +9,9 @@ try:
     import IPython
     ipython = True
 except Exception as e:
-    print(('{}, using standard interactive console. '
+    print((('{}, using standard interactive console. '
            'If you install IPython, then it will automatically '
-           'be used for this repl.').format(e))
+           'be used for this repl.').format(e)))
     import code
     ipython = False
 
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     if args.password is None:
         args.password = getpass.getpass()
 
-    g = psqlgraph.PsqlGraphDriver(
+    g = psql.PsqlGraphDriver(
         args.host, args.user, args.password, args.database)
 
     with g.session_scope() as s:

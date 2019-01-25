@@ -1,4 +1,4 @@
-from util import sanitize
+from psqlgraph.util import sanitize
 
 
 class PropertiesDictError(Exception):
@@ -15,9 +15,12 @@ class SystemAnnotationDict(dict):
         self.source = source
         super(SystemAnnotationDict, self).__init__(sanitize(source._sysan))
 
-    def update(self, system_annotations={}):
+    def update(self, system_annotations=None, **kwargs):
+
         if system_annotations == self:
             return
+
+        system_annotations = system_annotations or {}
         system_annotations = sanitize(system_annotations)
         temp = sanitize(self.source._sysan)
         temp.update(system_annotations)
@@ -46,11 +49,14 @@ class PropertiesDict(dict):
         super(PropertiesDict, self).__init__(
             source.property_template(source._props))
 
-    def update(self, properties={}):
+    def update(self, properties=None, **kwargs):
+
         if properties == self:
             return
+
+        properties = properties or {}
         properties = sanitize(properties)
-        for key, val in properties.iteritems():
+        for key, val in properties.items():
             if not self.source.has_property(key):
                 raise AttributeError('{} has no property {}'.format(
                     self.source, key))

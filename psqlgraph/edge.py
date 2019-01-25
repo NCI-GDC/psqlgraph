@@ -1,13 +1,16 @@
 from sqlalchemy import Column, Text, ForeignKey, Index
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
-from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 
-from base import ORMBase, EDGE_TABLENAME_SCHEME, NODE_TABLENAME_SCHEME
-from voided_edge import VoidedEdge
+from psqlgraph.base import ORMBase, EDGE_TABLENAME_SCHEME, NODE_TABLENAME_SCHEME
+from psqlgraph.voided_edge import VoidedEdge
 
 
-def IDColumn(tablename):
+def id_column(tablename, class_name):
+
+    if class_name == "Edge":
+        return Column(Text, nullable=True)
+
     return Column(
         Text,
         ForeignKey(
@@ -29,34 +32,33 @@ class Edge(AbstractConcreteBase, ORMBase):
 
     @declared_attr
     def src_id(cls):
-        if cls.__name__ == 'Edge':
-            return
-        src_table = cls.__src_table__ or NODE_TABLENAME_SCHEME.format(
-            class_name=cls.__src_class__.lower())
-        src_id = IDColumn(src_table)
-        return src_id
+        src_table = cls.__src_table__
+
+        if not src_table and hasattr(cls, "__src_class__"):
+            src_table = NODE_TABLENAME_SCHEME.format(class_name=cls.__src_class__.lower())
+
+        return id_column(src_table, cls.__name__)
 
     @declared_attr
     def dst_id(cls):
-        if cls.__name__ == 'Edge':
-            return
-        dst_table = cls.__dst_table__ or NODE_TABLENAME_SCHEME.format(
-            class_name=cls.__dst_class__.lower())
-        dst_id = IDColumn(dst_table)
-        return dst_id
+
+        dst_table = cls.__dst_table__
+
+        if not dst_table and hasattr(cls, "__dst_class__"):
+            dst_table = NODE_TABLENAME_SCHEME.format(class_name=cls.__dst_class__.lower())
+        return id_column(dst_table, cls.__name__)
 
     @classmethod
     def __declare_last__(cls):
-        if cls == Edge:
-            return
-        assert hasattr(cls, '__src_class__'),\
-            'You must declare __src_class__ for {}'.format(cls)
-        assert hasattr(cls, '__dst_class__'),\
-            'You must declare __dst_class__ for {}'.format(cls)
-        assert hasattr(cls, '__src_dst_assoc__'),\
-            'You must declare __src_dst_assoc__ for {}'.format(cls)
-        assert hasattr(cls, '__dst_src_assoc__'),\
-            'You must declare __dst_src_assoc__ for {}'.format(cls)
+        for scls in Edge.get_subclasses():
+            assert hasattr(scls, '__src_class__'),\
+                'You must declare __src_class__ for {}'.format(scls)
+            assert hasattr(scls, '__dst_class__'),\
+                'You must declare __dst_class__ for {}'.format(scls)
+            assert hasattr(scls, '__src_dst_assoc__'),\
+                'You must declare __src_dst_assoc__ for {}'.format(scls)
+            assert hasattr(scls, '__dst_src_assoc__'),\
+                'You must declare __dst_src_assoc__ for {}'.format(scls)
 
     @declared_attr
     def __table_args__(cls):
@@ -71,13 +73,13 @@ class Edge(AbstractConcreteBase, ORMBase):
     def __tablename__(cls):
         return EDGE_TABLENAME_SCHEME.format(class_name=cls.__name__.lower())
 
-    def __init__(self, src_id=None, dst_id=None, properties={},
-                 acl=[], system_annotations={}, label=None,
+    def __init__(self, src_id=None, dst_id=None, properties=None,
+                 acl=None, system_annotations=None, label=None,
                  src=None, dst=None, **kwargs):
         self._props = {}
-        self.system_annotations = system_annotations
-        self.acl = acl
-        self.properties = properties
+        self.system_annotations = system_annotations or {}
+        self.acl = acl or []
+        self.properties = properties or {}
         self.properties.update(kwargs)
 
         if src is not None:
@@ -102,7 +104,7 @@ class Edge(AbstractConcreteBase, ORMBase):
 
     def to_json(self):
         assert self.src and self.dst, (
-            "src or dst is not set on the edge. Sync with the database first"
+            "src or dst is not set on the edge. Sync with the database first "
             "to set the src and dst association proxy.")
 
         return {
@@ -144,10 +146,14 @@ class Edge(AbstractConcreteBase, ORMBase):
             isinstance(other, self.__class__)
             and self.src_id == other.src_id
             and self.dst_id == other.dst_id
+            and self.label == other.label
         )
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.src_id, self.dst_id, self.label))
 
     @classmethod
     def get_subclass(cls, label):
@@ -197,8 +203,8 @@ class Edge(AbstractConcreteBase, ORMBase):
         return [c for c in cls.__subclasses__()
                 if c.__dst_class__ == dst_class_name]
 
-    @classmethod
-    def get_subclass_table_names(label):
+    @staticmethod
+    def get_subclass_table_names():
         return [s.__tablename__ for s in Edge.__subclasses__()]
 
     @classmethod
@@ -228,11 +234,12 @@ class Edge(AbstractConcreteBase, ORMBase):
                 self.get_label(), label))
 
 
-def PolyEdge(src_id=None, dst_id=None, label=None, acl=[],
-             system_annotations={}, properties={}):
-    assert label, 'You cannot create a PolyEdge without a label.'
+def PolyEdge(src_id=None, dst_id=None, label=None, acl=None, system_annotations=None, properties=None):
+
+    if not label:
+        raise AttributeError('You cannot create a PolyEdge without a label.')
     try:
-        Type = Edge.get_subclass(label)
+        edge_type_class = Edge.get_subclass(label)
     except Exception as e:
         raise RuntimeError((
             "{}: Unable to determine edge type. If there are more than one "
@@ -240,14 +247,15 @@ def PolyEdge(src_id=None, dst_id=None, label=None, acl=[],
             "using the PsqlGraphDriver.get_PolyEdge())"
         ).format(e, label))
 
-    return Type(
+    return edge_type_class(
         src_id=src_id,
         dst_id=dst_id,
-        properties=properties,
-        acl=acl,
-        system_annotations=system_annotations,
+        properties=properties or {},
+        acl=acl or [],
+        system_annotations=system_annotations or {},
         label=label
     )
 
-# Node and Edge classes depend on eachother so this needs to be done down here
-from node import Node
+
+# Node and Edge classes depend on each other so this needs to be done down here
+from psqlgraph.node import Node

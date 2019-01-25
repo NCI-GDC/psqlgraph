@@ -1,19 +1,20 @@
 language: python
+
 python:
-    - "2.7"
-# command to run tests
-jdk:
-  - oraclejdk7
+  - "2.7"
+  - "3.5"
+  - "3.6"
 
 addons:
   postgresql: '9.4'
 
 before_script:
-  - "echo $JAVA_OPTS"
-  - "export JAVA_OPTS=-Xmx512m"
-  - echo -e 'Host github.com\n\tStrictHostKeyChecking no\n' >> ~/.ssh/config
-  - pip uninstall --yes psqlgraph || true
+  - psql -U postgres -c "create user test with superuser password 'test';"
+  - psql -U postgres -c "create database automated_test with owner test;"
+
+install:
+  - pip install -r requirements.txt
   - pip install -r dev-requirements.txt
-  - yes | python setup.py install
-  - cd test; python setup_test_psqlgraph.py
-script: "cd test; py.test -vv"
+
+script:
+  - "python -m pytest -vvs"

@@ -1,10 +1,8 @@
 # from edge import Edge, PsqlEdge, PsqlVoidedEdge
-from node import Node
-from voided_node import VoidedNode
-from voided_edge import VoidedEdge
-from edge import Edge
+from psqlgraph.node import Node
+from psqlgraph.edge import Edge
 from sqlalchemy.orm import Query
-from sqlalchemy import not_, or_
+from sqlalchemy import func, not_, or_
 from copy import copy
 
 """
@@ -93,6 +91,8 @@ class GraphQuery(Query):
             g.nodes().src(node1.node_id).filter(...
 
         """
+        if isinstance(ids, str):
+            ids = [ids]
 
         assert hasattr(self.entity(), 'src_id')
         if hasattr(ids, '__iter__'):
@@ -112,6 +112,8 @@ class GraphQuery(Query):
             g.nodes().dst('id1').filter(...
 
         """
+        if isinstance(ids, str):
+            ids = [ids]
 
         assert hasattr(self.entity(), 'dst_id')
         if hasattr(ids, '__iter__'):
@@ -133,6 +135,8 @@ class GraphQuery(Query):
             g.nodes().ids(['id1', 'id2']).filter(...
 
         """
+        if isinstance(ids, str):
+            ids = [ids]
 
         _id = self.entity().node_id
         if hasattr(ids, '__iter__'):
@@ -155,10 +159,9 @@ class GraphQuery(Query):
         """
 
         _id = self.entity().node_id
-        if hasattr(ids, '__iter__'):
-            return self.filter(not_(_id.in_(ids)))
-        else:
-            return self.filter(not_(_id == str(ids)))
+
+        ids = [ids] if isinstance(ids, str) else ids
+        return self.filter(not_(_id.in_(ids)))
 
     # ======== Traversals ========
     def path(self, *paths):
@@ -404,7 +407,7 @@ class GraphQuery(Query):
         kwargs.update(props)
         return self.filter(not_(self.entity()._props.contains(kwargs)))
 
-    def null_props(self, keys=[], *args):
+    def null_props(self, keys=None, *args):
         """Filter query results by key, value pairs where either (a) the key
         is not present or (b) the key is present but the value is None
 
@@ -438,16 +441,14 @@ class GraphQuery(Query):
             g.null_props(['key1', 'key2', 'key3']).count()
 
         """
-
-        keys = keys if hasattr(keys, '__iter__') else [keys]
-        keys += args
+        keys = [keys] if isinstance(keys, str) else keys
+        keys += args if args else []
 
         assert keys, 'No keys provided to `null_prop()` filter'
 
         for key in keys:
-            self = self.filter(or_(
-                self.entity()._props.contains({key: None}),
-                not_(self.entity()._props.has_key(key)),
+            self = self.filter(or_(self.entity()._props[key].astext == None,
+                not_(self.entity()._props.has_key(key))
             ))
 
         return self
@@ -545,5 +546,5 @@ class GraphQuery(Query):
         if isinstance(keys, str):
             keys = [keys]
         for key in keys:
-            self = self.filter(self.entity()._sysan.has_key(key))
+            self = self.filter(key in self.entity()._sysan)
         return self

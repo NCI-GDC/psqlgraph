@@ -48,8 +48,8 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'psqlgraph'
-copyright = u'2014, The University of Chicago'
+project = 'psqlgraph'
+copyright = '2014, The University of Chicago'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -201,8 +201,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ('index', 'psqlgraph.tex', u'psqlgraph Documentation',
-     u'Center for Data Intensive Science', 'manual'),
+    ('index', 'psqlgraph.tex', 'psqlgraph Documentation',
+     'Center for Data Intensive Science', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -231,8 +231,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'psqlgraph', u'psqlgraph Documentation',
-     [u'University of Chicago'], 1)
+    ('index', 'psqlgraph', 'psqlgraph Documentation',
+     ['University of Chicago'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -245,8 +245,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    ('index', 'psqlgraph', u'psqlgraph Documentation',
-     u'University of Chicago', 'psqlgraph',
+    ('index', 'psqlgraph', 'psqlgraph Documentation',
+     'University of Chicago', 'psqlgraph',
      'Library for simple graph representation interaction in Postgresql.',
      'Miscellaneous'),
 ]

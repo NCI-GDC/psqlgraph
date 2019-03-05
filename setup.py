@@ -6,7 +6,7 @@ setup(
     packages=["psqlgraph"],
     install_requires=[
         'psycopg2==2.7.3.2',
-        'sqlalchemy==0.9.9',
+        'sqlalchemy==1.3.0',
         'py2neo==2.0.1',
         'progressbar',
         'avro==1.7.7',

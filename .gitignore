@@ -62,3 +62,5 @@ target/
 # IDEs
 .idea/
 *.swp
+
+*.DS_Store

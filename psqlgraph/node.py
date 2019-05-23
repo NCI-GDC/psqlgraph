@@ -109,6 +109,30 @@ class Node(AbstractConcreteBase, ORMBase):
         for edge_out in self.edges_out:
             yield edge_out
 
+    def bfs_children(self, child_predicate=None):
+        if not callable(child_predicate):
+            def child_predicate(n):
+                return True
+
+        traversal = []
+        visited = set()
+        queue = [self]
+
+        visited.add(self.node_id)
+
+        while queue:
+            current = queue.pop(0)
+            traversal.append(current)
+
+            for edge in current.edges_in:
+                src = edge.src
+
+                if child_predicate(src) and src.node_id not in visited:
+                    queue.append(src)
+                    visited.add(src.node_id)
+
+        return traversal
+
     def __init__(self, node_id=None, properties={}, acl=[],
                  system_annotations={}, label=None, **kwargs):
         self._props = {}

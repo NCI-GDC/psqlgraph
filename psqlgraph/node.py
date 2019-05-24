@@ -109,10 +109,27 @@ class Node(AbstractConcreteBase, ORMBase):
         for edge_out in self.edges_out:
             yield edge_out
 
-    def bfs_children(self, child_predicate=None):
-        if not callable(child_predicate):
-            def child_predicate(n):
+    def bfs_children(self, edge_predicate=None, transform=None):
+        """
+        Perform a BFS, with `self` being the root node and perform arbitrary
+        node transformation along the way
+
+        :param edge_predicate: a predicate performed on an `edge` object in
+            order to decided whether to walk that edge or not
+        :type edge_predicate: func
+        :param transform: a transformation that needs to be done on the node
+        :type transform: func
+
+        :return: List[str]
+        """
+
+        if not callable(edge_predicate):
+            def edge_predicate(e):
                 return True
+
+        if not callable(transform):
+            def transform(node):
+                return node
 
         traversal = []
         visited = set()
@@ -122,12 +139,17 @@ class Node(AbstractConcreteBase, ORMBase):
 
         while queue:
             current = queue.pop(0)
-            traversal.append(current)
+            traversal.append(current.node_id)
+
+            transform(current)
 
             for edge in current.edges_in:
+                if not edge_predicate(edge):
+                    continue
+
                 src = edge.src
 
-                if child_predicate(src) and src.node_id not in visited:
+                if src.node_id not in visited:
                     queue.append(src)
                     visited.add(src.node_id)
 

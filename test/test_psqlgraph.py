@@ -11,6 +11,7 @@ from multiprocessing import Process
 from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError, EdgeCreationError
 from sqlalchemy.orm.exc import FlushError
+from sqlalchemy.orm.attributes import flag_modified
 
 from datetime import datetime
 from copy import deepcopy
@@ -1320,6 +1321,22 @@ class TestPsqlGraphDriver(BasePsqlGraphTestCase):
             g.node_lookup(node_id=id1).one()
 
 
+def no_allowed_2_please(edge):
+    if not isinstance(edge.src, Foo):
+        return True
+
+    node = edge.src
+    if node.baz == 'allowed_2':
+        return False
+
+    return True
+
+
+def set_sysan_flag(node):
+    node.sysan['sysan_flag'] = True
+    flag_modified(node, '_sysan')
+
+
 class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
 
     def setUp(self):
@@ -1346,32 +1363,56 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
 
             session.merge(root_node)
 
-    def test_psql_graph_default_traversal(self):
-        with g.session_scope():
-            traversal = g.nodes(FooBar).first().bfs_children()
-
-            nodes_all = g.nodes().all()
-
-        self.assertEqual(set(traversal), set(nodes_all))
-
-    def test_psql_graph_traversal_with_predicate(self):
-        def no_allowed_2_please(node):
-            if not isinstance(node, Foo):
-                return True
-
-            if node.baz == 'allowed_2':
-                return False
-
-            return True
-
+    def _get_expected_nodes(self):
         with g.session_scope():
             root = g.nodes(FooBar).first()
-            traversal = root.bfs_children(no_allowed_2_please)
-
             foos = g.nodes(Foo).not_props(baz='allowed_2').all()
             tests = [test for foo in foos for test in foo.tests]
 
-        self.assertEqual(set([root] + foos + tests), set(traversal))
+        return [root] + foos + tests
+
+    def test_default_traversal(self):
+        with g.session_scope():
+            traversal = g.nodes(FooBar).first().bfs_children()
+
+            nodes_all = [n.node_id for n in g.nodes().all()]
+
+        self.assertEqual(set(traversal), set(nodes_all))
+
+    def test_default_traversal_with_transform(self):
+        with g.session_scope():
+            root = g.nodes(FooBar).first()
+            traversal = root.bfs_children(transform=set_sysan_flag)
+
+        with g.session_scope():
+            all_nodes = g.nodes().all()
+
+        self.assertEqual(set(traversal), set(n.node_id for n in all_nodes))
+        self.assertTrue(all(n.sysan['sysan_flag'] for n in all_nodes))
+
+    def test_traversal_with_predicate(self):
+        with g.session_scope():
+            root = g.nodes(FooBar).first()
+
+            traversal = root.bfs_children(edge_predicate=no_allowed_2_please)
+
+        expected = self._get_expected_nodes()
+
+        expected_ids = [n.node_id for n in expected]
+        self.assertEqual(set(expected_ids), set(traversal))
+
+    def test_traversal_with_predicate_and_transform(self):
+        with g.session_scope():
+            root = g.nodes(FooBar).first()
+            traversal = root.bfs_children(edge_predicate=no_allowed_2_please,
+                                          transform=set_sysan_flag)
+
+        expected = self._get_expected_nodes()
+
+        expected_ids = [n.node_id for n in expected]
+
+        self.assertEqual(set(expected_ids), set(traversal))
+        self.assertTrue(all(n.sysan['sysan_flag'] for n in expected))
 
 
 if __name__ == '__main__':

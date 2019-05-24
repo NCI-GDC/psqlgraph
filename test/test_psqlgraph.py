@@ -16,7 +16,7 @@ from datetime import datetime
 from copy import deepcopy
 
 # We have to import models here, even if we don't use them
-from models import Test, Foo, Edge1, Edge2, Edge3
+from models import Test, Foo, Edge1, Edge2, Edge3, FooBar
 
 
 host = 'localhost'
@@ -33,14 +33,10 @@ def timestamp():
     return str(datetime.now())
 
 
-class TestPsqlGraphDriver(unittest.TestCase):
-
+class BasePsqlGraphTestCase(unittest.TestCase):
     def setUp(self):
         self.logger = logging.getLogger(__name__)
         self.REPEAT_COUNT = 20
-        self._clear_tables()
-
-    def tearDown(self):
         self._clear_tables()
 
     def _clear_tables(self):
@@ -55,6 +51,12 @@ class TestPsqlGraphDriver(unittest.TestCase):
         conn.execute('delete from _voided_nodes')
         conn.execute('delete from _voided_edges')
         conn.close()
+
+    def tearDown(self):
+        self._clear_tables()
+
+
+class TestPsqlGraphDriver(BasePsqlGraphTestCase):
 
     def test_getitem(self):
         """Test that indexing nodes/edges accesses their properties"""
@@ -1318,6 +1320,60 @@ class TestPsqlGraphDriver(unittest.TestCase):
             g.node_lookup(node_id=id1).one()
 
 
+class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
+
+    def setUp(self):
+        super(TestPsqlGraphTraversal, self).setUp()
+
+        with g.session_scope() as session:
+            root_node = FooBar(node_id=str(uuid.uuid4()), bar='root')
+
+            foo1 = Foo(node_id=str(uuid.uuid4()), bar='foo1', baz='allowed_2')
+            foo2 = Foo(node_id=str(uuid.uuid4()), bar='foo2', baz='allowed_1')
+            foo3 = Foo(node_id=str(uuid.uuid4()), bar='foo3', baz='allowed_1')
+
+            test1 = Test(node_id=str(uuid.uuid4()), key1='test1')
+            test2 = Test(node_id=str(uuid.uuid4()), key1='test2')
+            test3 = Test(node_id=str(uuid.uuid4()), key1='test3')
+
+            for foo in [foo1, foo2, foo3]:
+                root_node.foos.append(foo)
+
+            for test in [test1, test2]:
+                foo1.tests.append(test)
+
+            foo2.tests.append(test3)
+
+            session.merge(root_node)
+
+    def test_psql_graph_default_traversal(self):
+        with g.session_scope():
+            traversal = g.nodes(FooBar).first().bfs_children()
+
+            nodes_all = g.nodes().all()
+
+        self.assertEqual(set(traversal), set(nodes_all))
+
+    def test_psql_graph_traversal_with_predicate(self):
+        def no_allowed_2_please(node):
+            if not isinstance(node, Foo):
+                return True
+
+            if node.baz == 'allowed_2':
+                return False
+
+            return True
+
+        with g.session_scope():
+            root = g.nodes(FooBar).first()
+            traversal = root.bfs_children(no_allowed_2_please)
+
+            foos = g.nodes(Foo).not_props(baz='allowed_2').all()
+            tests = [test for foo in foos for test in foo.tests]
+
+        self.assertEqual(set([root] + foos + tests), set(traversal))
+
+
 if __name__ == '__main__':
 
     def run_test(test):
@@ -1325,3 +1381,5 @@ if __name__ == '__main__':
         unittest.TextTestRunner(verbosity=2).run(suite)
 
     run_test(TestPsqlGraphDriver)
+
+    run_test(TestPsqlGraphTraversal)

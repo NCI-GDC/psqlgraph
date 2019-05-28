@@ -139,9 +139,8 @@ class Node(AbstractConcreteBase, ORMBase):
 
         while queue:
             current = queue.pop(0)
-            traversal.append(current.node_id)
-
             transform(current)
+            traversal.append(current)
 
             for edge in current.edges_in:
                 if not edge_predicate(edge):

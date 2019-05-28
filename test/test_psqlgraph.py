@@ -1374,6 +1374,7 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
     def test_default_traversal(self):
         with g.session_scope():
             traversal = g.nodes(FooBar).first().bfs_children()
+            traversal = [n.node_id for n in traversal]
 
             nodes_all = [n.node_id for n in g.nodes().all()]
 
@@ -1383,6 +1384,7 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
         with g.session_scope():
             root = g.nodes(FooBar).first()
             traversal = root.bfs_children(transform=set_sysan_flag)
+            traversal = [n.node_id for n in traversal]
 
         with g.session_scope():
             all_nodes = g.nodes().all()
@@ -1395,6 +1397,7 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
             root = g.nodes(FooBar).first()
 
             traversal = root.bfs_children(edge_predicate=no_allowed_2_please)
+            traversal = [n.node_id for n in traversal]
 
         expected = self._get_expected_nodes()
 
@@ -1406,6 +1409,7 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
             root = g.nodes(FooBar).first()
             traversal = root.bfs_children(edge_predicate=no_allowed_2_please,
                                           transform=set_sysan_flag)
+            traversal = [n.node_id for n in traversal]
 
         expected = self._get_expected_nodes()
 

@@ -1,3 +1,5 @@
+from collections import deque
+
 from base import ORMBase, NODE_TABLENAME_SCHEME
 from edge import Edge
 from sqlalchemy import Column, Text, UniqueConstraint, Index
@@ -133,12 +135,12 @@ class Node(AbstractConcreteBase, ORMBase):
 
         traversal = []
         visited = set()
-        queue = [self]
+        queue = deque([self])
 
         visited.add(self.node_id)
 
         while queue:
-            current = queue.pop(0)
+            current = queue.popleft()
             transform(current)
             traversal.append(current)
 

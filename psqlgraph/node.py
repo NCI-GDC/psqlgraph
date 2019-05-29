@@ -126,10 +126,10 @@ class Node(AbstractConcreteBase, ORMBase):
             def edge_predicate(e):
                 return True
 
-        visited = set()
+        marked = set()
         queue = deque([self])
 
-        visited.add(self.node_id)
+        marked.add(self.node_id)
 
         while queue:
             current = queue.popleft()
@@ -142,9 +142,9 @@ class Node(AbstractConcreteBase, ORMBase):
 
                 src = edge.src
 
-                if src.node_id not in visited:
+                if src.node_id not in marked:
                     queue.append(src)
-                    visited.add(src.node_id)
+                    marked.add(src.node_id)
 
     def __init__(self, node_id=None, properties={}, acl=[],
                  system_annotations={}, label=None, **kwargs):

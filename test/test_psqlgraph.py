@@ -1364,21 +1364,21 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
     def test_default_traversal(self):
         with g.session_scope():
             root = g.nodes(FooBar).first()
-            traversal = [n for n in root.bfs_children()]
+            traversal = {n.node_id for n in root.bfs_children()}
 
             nodes_all_set = {n.node_id for n in g.nodes().all()}
 
-        self.assertEqual({n.node_id for n in traversal}, nodes_all_set)
+        self.assertEqual(traversal, nodes_all_set)
 
     def test_traversal_with_predicate(self):
         with g.session_scope():
             root = g.nodes(FooBar).first()
 
             gen = root.bfs_children(edge_predicate=no_allowed_2_please)
-            traversal = [n for n in gen]
+            traversal = {n.node_id for n in gen}
 
         expected_ids = {n.node_id for n in self.sysan_flag_nodes}
-        self.assertEqual(expected_ids, {n.node_id for n in traversal})
+        self.assertEqual(expected_ids, traversal)
 
 
 if __name__ == '__main__':

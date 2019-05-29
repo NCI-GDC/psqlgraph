@@ -1332,11 +1332,6 @@ def no_allowed_2_please(edge):
     return True
 
 
-def set_sysan_flag(node):
-    node.sysan['sysan_flag'] = True
-    flag_modified(node, '_sysan')
-
-
 class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
 
     def setUp(self):
@@ -1375,22 +1370,6 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
 
         self.assertEqual({n.node_id for n in traversal}, nodes_all_set)
 
-    def test_default_traversal_with_transform(self):
-        with g.session_scope():
-            root = g.nodes(FooBar).first()
-            traversal = root.bfs_children()
-            for node in traversal:
-                set_sysan_flag(node)
-
-        with g.session_scope():
-            root = g.nodes(FooBar).first()
-            traversal = [n for n in root.bfs_children()]
-            all_nodes = g.nodes().all()
-
-        self.assertEqual({n.node_id for n in traversal},
-                         {n.node_id for n in all_nodes})
-        self.assertTrue(all(n.sysan['sysan_flag'] for n in all_nodes))
-
     def test_traversal_with_predicate(self):
         with g.session_scope():
             root = g.nodes(FooBar).first()
@@ -1400,36 +1379,6 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
 
         expected_ids = {n.node_id for n in self.sysan_flag_nodes}
         self.assertEqual(expected_ids, {n.node_id for n in traversal})
-
-    def test_traversal_with_predicate_and_transform(self):
-        with g.session_scope():
-            root = g.nodes(FooBar).first()
-            gen = root.bfs_children(edge_predicate=no_allowed_2_please)
-            for node in gen:
-                set_sysan_flag(node)
-
-        with g.session_scope():
-            sysan_nodes = g.nodes().ids(
-                [n.node_id for n in self.sysan_flag_nodes]
-            ).all()
-            not_sysan_nodes = g.nodes().ids(
-                [n.node_id for n in self.not_sysan_flag_nodes]
-            ).all()
-
-            root = g.nodes(FooBar).first()
-            traversal = [
-                n for n in root.bfs_children(edge_predicate=no_allowed_2_please)
-            ]
-
-        expected_ids = {n.node_id for n in self.sysan_flag_nodes}
-
-        self.assertEqual(expected_ids, {n.node_id for n in traversal})
-        self.assertTrue(
-            all(n.sysan['sysan_flag'] is True for n in sysan_nodes)
-        )
-        self.assertTrue(
-            not any(n.sysan.get('sysan_flag') is True for n in not_sysan_nodes)
-        )
 
 
 if __name__ == '__main__':

@@ -364,17 +364,17 @@ class PsqlGraphDriver(object):
                                            session=None,
                                            max_retries=DEFAULT_RETRIES,
                                            backoff=default_backoff):
+        # with self.session_scope(session) as local:
+        #     if not node:
+        #         node = self.node_lookup_one(node_id=node_id)
+        #
+        #     if not node:
+        #         raise QueryError('Node not found')
+        #
+        #     for key in system_annotation_keys:
+        #         del node.system_annotations[key]
+        #     local.merge(node)
         raise NotImplementedError()
-        with self.session_scope(session) as local:
-            if not node:
-                node = self.node_lookup_one(node_id=node_id)
-
-            if not node:
-                raise QueryError('Node not found')
-
-            for key in system_annotation_keys:
-                del node.system_annotations[key]
-            local.merge(node)
 
     @retryable
     def node_delete(self, node_id=None, node=None,

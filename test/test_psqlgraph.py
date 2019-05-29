@@ -1363,60 +1363,73 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
 
             session.merge(root_node)
 
-    def _get_expected_nodes(self):
-        with g.session_scope():
-            root = g.nodes(FooBar).first()
-            foos = g.nodes(Foo).not_props(baz='allowed_2').all()
-            tests = [test for foo in foos for test in foo.tests]
-
-        return [root] + foos + tests
+        self.sysan_flag_nodes = [root_node, foo2, foo3, test3]
+        self.not_sysan_flag_nodes = [foo1, test1, test2]
 
     def test_default_traversal(self):
         with g.session_scope():
-            traversal = g.nodes(FooBar).first().bfs_children()
-            traversal = [n.node_id for n in traversal]
+            root = g.nodes(FooBar).first()
+            traversal = [n for n in root.bfs_children()]
 
-            nodes_all = [n.node_id for n in g.nodes().all()]
+            nodes_all_set = {n.node_id for n in g.nodes().all()}
 
-        self.assertEqual(set(traversal), set(nodes_all))
+        self.assertEqual({n.node_id for n in traversal}, nodes_all_set)
 
     def test_default_traversal_with_transform(self):
         with g.session_scope():
             root = g.nodes(FooBar).first()
-            traversal = root.bfs_children(transform=set_sysan_flag)
-            traversal = [n.node_id for n in traversal]
+            traversal = root.bfs_children()
+            for node in traversal:
+                set_sysan_flag(node)
 
         with g.session_scope():
+            root = g.nodes(FooBar).first()
+            traversal = [n for n in root.bfs_children()]
             all_nodes = g.nodes().all()
 
-        self.assertEqual(set(traversal), set(n.node_id for n in all_nodes))
+        self.assertEqual({n.node_id for n in traversal},
+                         {n.node_id for n in all_nodes})
         self.assertTrue(all(n.sysan['sysan_flag'] for n in all_nodes))
 
     def test_traversal_with_predicate(self):
         with g.session_scope():
             root = g.nodes(FooBar).first()
 
-            traversal = root.bfs_children(edge_predicate=no_allowed_2_please)
-            traversal = [n.node_id for n in traversal]
+            gen = root.bfs_children(edge_predicate=no_allowed_2_please)
+            traversal = [n for n in gen]
 
-        expected = self._get_expected_nodes()
-
-        expected_ids = [n.node_id for n in expected]
-        self.assertEqual(set(expected_ids), set(traversal))
+        expected_ids = {n.node_id for n in self.sysan_flag_nodes}
+        self.assertEqual(expected_ids, {n.node_id for n in traversal})
 
     def test_traversal_with_predicate_and_transform(self):
         with g.session_scope():
             root = g.nodes(FooBar).first()
-            traversal = root.bfs_children(edge_predicate=no_allowed_2_please,
-                                          transform=set_sysan_flag)
-            traversal = [n.node_id for n in traversal]
+            gen = root.bfs_children(edge_predicate=no_allowed_2_please)
+            for node in gen:
+                set_sysan_flag(node)
 
-        expected = self._get_expected_nodes()
+        with g.session_scope():
+            sysan_nodes = g.nodes().ids(
+                [n.node_id for n in self.sysan_flag_nodes]
+            ).all()
+            not_sysan_nodes = g.nodes().ids(
+                [n.node_id for n in self.not_sysan_flag_nodes]
+            ).all()
 
-        expected_ids = [n.node_id for n in expected]
+            root = g.nodes(FooBar).first()
+            traversal = [
+                n for n in root.bfs_children(edge_predicate=no_allowed_2_please)
+            ]
 
-        self.assertEqual(set(expected_ids), set(traversal))
-        self.assertTrue(all(n.sysan['sysan_flag'] for n in expected))
+        expected_ids = {n.node_id for n in self.sysan_flag_nodes}
+
+        self.assertEqual(expected_ids, {n.node_id for n in traversal})
+        self.assertTrue(
+            all(n.sysan['sysan_flag'] is True for n in sysan_nodes)
+        )
+        self.assertTrue(
+            not any(n.sysan.get('sysan_flag') is True for n in not_sysan_nodes)
+        )
 
 
 if __name__ == '__main__':

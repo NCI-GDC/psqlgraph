@@ -1,3 +1,5 @@
+from collections import deque
+
 from base import ORMBase, NODE_TABLENAME_SCHEME
 from edge import Edge
 from sqlalchemy import Column, Text, UniqueConstraint, Index
@@ -108,6 +110,41 @@ class Node(AbstractConcreteBase, ORMBase):
             yield edge_in
         for edge_out in self.edges_out:
             yield edge_out
+
+    def bfs_children(self, edge_predicate=None):
+        """
+        Perform a BFS, with `self` being the root node
+
+        :param edge_predicate: a predicate performed on an `edge` object in
+            order to decided whether to walk that edge or not
+        :type edge_predicate: func
+
+        :return: generator
+        """
+
+        if not callable(edge_predicate):
+            def edge_predicate(e):
+                return True
+
+        marked = set()
+        queue = deque([self])
+
+        marked.add(self.node_id)
+
+        while queue:
+            current = queue.popleft()
+
+            yield current
+
+            for edge in current.edges_in:
+                if not edge_predicate(edge):
+                    continue
+
+                src = edge.src
+
+                if src.node_id not in marked:
+                    queue.append(src)
+                    marked.add(src.node_id)
 
     def __init__(self, node_id=None, properties={}, acl=[],
                  system_annotations={}, label=None, **kwargs):

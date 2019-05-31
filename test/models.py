@@ -1,6 +1,51 @@
 from psqlgraph import Node, Edge, pg_property
 
 
+class FakeDictionary(object):
+    def __init__(self):
+        self.schema = {
+            'test': {
+                'required': ['key1'],
+                'properties': {
+                    'key1': {'type': 'string'},
+                    'key2': {'type': 'string'},
+                    'key3': {'type': 'string'},
+                    'new_key': {'type': 'string'},
+                    'timestamp': {
+                        'oneOf': [
+                            {'type': 'string', 'format': 'date-time'},
+                            {'type': 'integer'},
+                        ]
+                    }
+                },
+                'links': [
+                    {'name': 'tests'},
+                    {'name': 'foos'},
+                ],
+            },
+            'foo': {
+                'properties': {
+                    'bar': {'type': 'string'},
+                    'baz': {'enum': ['allowed_1', 'allowed_2']},
+                    'fobble': {
+                        'type': 'integer',
+                        'minimum': 20,
+                        'maximum': 30,
+                    }
+                },
+                'links': [
+                    {'name': 'foobars'},
+                ],
+            },
+            'foo_bar': {
+                'properties': {
+                    'bar': {'type': 'string'}
+                },
+                'links': [],
+            }
+        }
+
+
 class Edge1(Edge):
 
     __src_class__ = 'Test'
@@ -48,6 +93,8 @@ class TestToFooBarEdge(Edge):
 
 class Test(Node):
 
+    _pg_edges = {}
+
     @pg_property
     def key1(self, value):
         assert isinstance(value, (str, type(None)))
@@ -75,6 +122,8 @@ class Foo(Node):
 
     __label__ = 'foo'
 
+    _pg_edges = {}
+
     @pg_property
     def bar(self, value):
         self._set_property('bar', value)
@@ -93,6 +142,38 @@ class FooBar(Node):
     __label__ = 'foo_bar'
     __nonnull_properties__ = ['bar']
 
+    _pg_edges = {}
+
     @pg_property
     def bar(self, value):
         self._set_property('bar', value)
+
+
+Test._pg_edges.update({
+    'tests': {
+        'backref': '_tests',
+        'type': Test,
+    },
+    'foos': {
+        'backref': 'tests',
+        'type': Foo,
+    }
+})
+
+Foo._pg_edges.update({
+    'foobars': {
+        'backref': 'foos',
+        'type': FooBar,
+    },
+    'tests': {
+        'backref': 'foos',
+        'type': Test,
+    }
+})
+
+FooBar._pg_edges.update({
+    'foos': {
+        'backref': 'foobars',
+        'type': Foo,
+    }
+})

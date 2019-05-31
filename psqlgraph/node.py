@@ -111,13 +111,15 @@ class Node(AbstractConcreteBase, ORMBase):
         for edge_out in self.edges_out:
             yield edge_out
 
-    def bfs_children(self, edge_predicate=None):
+    def bfs_children(self, edge_predicate=None, max_depth=None):
         """
         Perform a BFS, with `self` being the root node
 
         :param edge_predicate: a predicate performed on an `edge` object in
             order to decided whether to walk that edge or not
         :type edge_predicate: func
+        :param max_depth: maximum distance to traverse
+        :type max_depth: int
 
         :return: generator
         """
@@ -127,14 +129,17 @@ class Node(AbstractConcreteBase, ORMBase):
                 return True
 
         marked = set()
-        queue = deque([self])
+        queue = deque([(self, 0)])
 
         marked.add(self.node_id)
 
         while queue:
-            current = queue.popleft()
+            current, depth = queue.popleft()
 
             yield current
+
+            if max_depth is not None and depth + 1 > max_depth:
+                continue
 
             for edge in current.edges_in:
                 if not edge_predicate(edge):
@@ -143,7 +148,7 @@ class Node(AbstractConcreteBase, ORMBase):
                 src = edge.src
 
                 if src.node_id not in marked:
-                    queue.append(src)
+                    queue.append((src, depth + 1))
                     marked.add(src.node_id)
 
     def __init__(self, node_id=None, properties={}, acl=[],

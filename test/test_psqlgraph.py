@@ -1360,6 +1360,11 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
 
         self.sysan_flag_nodes = [root_node, foo2, foo3, test3]
         self.not_sysan_flag_nodes = [foo1, test1, test2]
+        self.depths = {
+            0: [root_node],
+            1: [root_node, foo1, foo2, foo3],
+            2: [root_node, foo1, foo2, foo3, test1, test2, test3],
+        }
 
     def test_default_traversal(self):
         with g.session_scope():
@@ -1379,6 +1384,17 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
 
         expected_ids = {n.node_id for n in self.sysan_flag_nodes}
         self.assertEqual(expected_ids, traversal)
+
+    def test_traversal_with_max_depth(self):
+        for depth in range(3):
+            with g.session_scope():
+                root = g.nodes(FooBar).first()
+
+                gen = root.bfs_children(max_depth=depth)
+                traversal = {n.node_id for n in gen}
+
+            expected_ids = {n.node_id for n in self.depths[depth]}
+            self.assertEqual(expected_ids, traversal)
 
 
 if __name__ == '__main__':

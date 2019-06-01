@@ -7,6 +7,7 @@ from psqlgraph import PsqlGraphDriver, Node, Edge, PolyNode, sanitize,\
 from psqlgraph import PolyNode as PsqlNode
 from psqlgraph import PolyEdge as PsqlEdge
 
+from parameterized import parameterized
 from multiprocessing import Process
 from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError, EdgeCreationError
@@ -1360,7 +1361,7 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
 
         self.sysan_flag_nodes = [root_node, foo2, foo3, test3]
         self.not_sysan_flag_nodes = [foo1, test1, test2]
-        self.depths = {
+        self.depths_results = {
             0: [root_node],
             1: [root_node, foo1, foo2, foo3],
             2: [root_node, foo1, foo2, foo3, test1, test2, test3],
@@ -1385,16 +1386,20 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
         expected_ids = {n.node_id for n in self.sysan_flag_nodes}
         self.assertEqual(expected_ids, traversal)
 
-    def test_traversal_with_max_depth(self):
-        for depth in range(3):
-            with g.session_scope():
-                root = g.nodes(FooBar).first()
+    @parameterized.expand([
+        ('zero', 0),
+        ('one', 1),
+        ('two', 2),
+    ])
+    def test_traversal_with_max_depth(self, _, depth):
+        with g.session_scope():
+            root = g.nodes(FooBar).first()
 
-                gen = root.bfs_children(max_depth=depth)
-                traversal = {n.node_id for n in gen}
+            gen = root.bfs_children(max_depth=depth)
+            traversal = {n.node_id for n in gen}
 
-            expected_ids = {n.node_id for n in self.depths[depth]}
-            self.assertEqual(expected_ids, traversal)
+        expected_ids = {n.node_id for n in self.depths_results[depth]}
+        self.assertEqual(expected_ids, traversal)
 
 
 if __name__ == '__main__':

@@ -1336,6 +1336,19 @@ def no_allowed_2_please(edge):
 class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
 
     def setUp(self):
+        """
+        Setting up a subgraph that we can later traverse.
+        NOTE: Edge direction is as follows: Test->Foo->FooBar, i.e. Foo will be
+        in FooBar's edges_in and Test will be in Foo's edges_in.
+
+        Edges look like this:
+        root_node <- foo1
+        root_node <- foo2
+        root_node <- foo3
+        foo1 <- test1
+        foo1 <- test2
+        foo2 <- test3
+        """
         super(TestPsqlGraphTraversal, self).setUp()
 
         with g.session_scope() as session:
@@ -1359,8 +1372,11 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
 
             session.merge(root_node)
 
+        # These nodes should have the sysan_flag set, when predicate active
         self.sysan_flag_nodes = [root_node, foo2, foo3, test3]
+        # These nodes shouldn't have sysan_flag set, when predicate active
         self.not_sysan_flag_nodes = [foo1, test1, test2]
+        # These are expected nodes for a given depth
         self.depths_results = {
             0: [root_node],
             1: [root_node, foo1, foo2, foo3],
@@ -1368,6 +1384,9 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
         }
 
     def test_default_traversal(self):
+        """
+        Default traversal should return all nodes
+        """
         with g.session_scope():
             root = g.nodes(FooBar).first()
             traversal = {n.node_id for n in root.bfs_children()}
@@ -1377,6 +1396,9 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
         self.assertEqual(traversal, nodes_all_set)
 
     def test_traversal_with_predicate(self):
+        """
+        Traversal with predicate should return only self.sysan_flag_nodes
+        """
         with g.session_scope():
             root = g.nodes(FooBar).first()
 
@@ -1392,6 +1414,9 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
         ('two', 2),
     ])
     def test_traversal_with_max_depth(self, _, depth):
+        """
+        Traversal should return only self.depths_results[depth] nodes
+        """
         with g.session_scope():
             root = g.nodes(FooBar).first()
 

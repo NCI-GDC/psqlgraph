@@ -128,6 +128,9 @@ class Node(AbstractConcreteBase, ORMBase):
             def edge_predicate(e):
                 return True
 
+        if max_depth is None:
+            max_depth = float('inf')
+
         marked = set()
         queue = deque([(self, 0)])
 
@@ -138,7 +141,7 @@ class Node(AbstractConcreteBase, ORMBase):
 
             yield current
 
-            if max_depth is not None and depth + 1 > max_depth:
+            if depth + 1 > max_depth:
                 continue
 
             for edge in current.edges_in:

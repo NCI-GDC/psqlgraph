@@ -1338,8 +1338,9 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
     def setUp(self):
         """
         Setting up a subgraph that we can later traverse.
-        NOTE: Edge direction is as follows: Test->Foo->FooBar, i.e. Foo will be
-        in FooBar's edges_in and Test will be in Foo's edges_in.
+        NOTE: Edge directions are as follows: Test->Test->Foo->FooBar and
+        Test->FooBar, i.e. Foo/Test will be in FooBar's edges_in, Test will be
+        in Foo's edges_in and Test will be in Test's edges_in
 
         Edges look like this:
         root_node <- foo1
@@ -1366,7 +1367,7 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
             test2 = Test(node_id=str(uuid.uuid4()), key1='test2')
             test3 = Test(node_id=str(uuid.uuid4()), key1='test3')
             test4 = Test(node_id=str(uuid.uuid4()), key1='test4')
-            test5 = Test(node_id=str(uuid.uuid4()), key1='test4')
+            test5 = Test(node_id=str(uuid.uuid4()), key1='test5')
 
             root_node.tests.append(test1)
 

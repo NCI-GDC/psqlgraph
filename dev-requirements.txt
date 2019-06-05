@@ -1,0 +1,3 @@
+pytest==4.5.0
+parameterized==0.7.0
+

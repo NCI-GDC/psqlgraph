@@ -7,6 +7,7 @@ from psqlgraph import PsqlGraphDriver, Node, Edge, PolyNode, sanitize,\
 from psqlgraph import PolyNode as PsqlNode
 from psqlgraph import PolyEdge as PsqlEdge
 
+from parameterized import parameterized
 from multiprocessing import Process
 from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError, EdgeCreationError
@@ -1335,6 +1336,24 @@ def no_allowed_2_please(edge):
 class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
 
     def setUp(self):
+        """
+        Setting up a subgraph that we can later traverse.
+        NOTE: Edge directions are as follows: Test->Test->Foo->FooBar and
+        Test->FooBar, i.e. Foo/Test will be in FooBar's edges_in, Test will be
+        in Foo's edges_in and Test will be in Test's edges_in
+
+        Edges look like this:
+        root_node <- foo1
+        root_node <- foo2
+        root_node <- foo3
+        root_node <- test1
+        foo1 <- test1
+        foo1 <- test2
+        foo2 <- test3
+        test1 <- test4
+        test2 <- test5
+
+        """
         super(TestPsqlGraphTraversal, self).setUp()
 
         with g.session_scope() as session:
@@ -1347,6 +1366,10 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
             test1 = Test(node_id=str(uuid.uuid4()), key1='test1')
             test2 = Test(node_id=str(uuid.uuid4()), key1='test2')
             test3 = Test(node_id=str(uuid.uuid4()), key1='test3')
+            test4 = Test(node_id=str(uuid.uuid4()), key1='test4')
+            test5 = Test(node_id=str(uuid.uuid4()), key1='test5')
+
+            root_node.tests.append(test1)
 
             for foo in [foo1, foo2, foo3]:
                 root_node.foos.append(foo)
@@ -1354,14 +1377,30 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
             for test in [test1, test2]:
                 foo1.tests.append(test)
 
+            test1.sub_tests.append(test4)
+
             foo2.tests.append(test3)
+
+            test2.sub_tests.append(test5)
 
             session.merge(root_node)
 
-        self.sysan_flag_nodes = [root_node, foo2, foo3, test3]
-        self.not_sysan_flag_nodes = [foo1, test1, test2]
+        # These nodes should have the sysan_flag set, when predicate active
+        self.sysan_flag_nodes = [root_node, foo2, foo3, test1, test3, test4]
+        # These nodes shouldn't have sysan_flag set, when predicate active
+        self.not_sysan_flag_nodes = [foo1, test2, test5]
+        # These are expected nodes for a given depth
+        self.depths_results = {
+            0: [root_node],
+            1: [root_node, foo1, foo2, foo3, test1],
+            2: [root_node, foo1, foo2, foo3, test1, test2, test3, test4],
+            3: [root_node, foo1, foo2, foo3, test1, test2, test3, test4, test5]
+        }
 
     def test_default_traversal(self):
+        """
+        Default traversal should return all nodes
+        """
         with g.session_scope():
             root = g.nodes(FooBar).first()
             traversal = {n.node_id for n in root.bfs_children()}
@@ -1371,6 +1410,9 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
         self.assertEqual(traversal, nodes_all_set)
 
     def test_traversal_with_predicate(self):
+        """
+        Traversal with predicate should return only self.sysan_flag_nodes
+        """
         with g.session_scope():
             root = g.nodes(FooBar).first()
 
@@ -1379,6 +1421,29 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
 
         expected_ids = {n.node_id for n in self.sysan_flag_nodes}
         self.assertEqual(expected_ids, traversal)
+
+    @parameterized.expand([
+        ('zero', 0),
+        ('one', 1),
+        ('two', 2),
+        ('three', 3),
+    ])
+    def test_traversal_with_max_depth(self, _, depth):
+        """
+        Traversal should return only self.depths_results[depth] nodes
+        """
+        with g.session_scope():
+            root = g.nodes(FooBar).first()
+
+            gen = root.bfs_children(max_depth=depth)
+            traversal = [n for n in gen]
+
+        expected_ids = {n.node_id for n in self.depths_results[depth]}
+        traversal_ids = {n.node_id for n in traversal}
+        # make sure that traversal size is as expected
+        self.assertEqual(len(self.depths_results[depth]), len(traversal))
+        # make sure the results of the traversal are as expected
+        self.assertEqual(expected_ids, traversal_ids)
 
 
 if __name__ == '__main__':

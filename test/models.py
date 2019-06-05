@@ -6,7 +6,7 @@ class Edge1(Edge):
     __src_class__ = 'Test'
     __dst_class__ = 'Test'
     __src_dst_assoc__ = 'tests'
-    __dst_src_assoc__ = '_tests'
+    __dst_src_assoc__ = 'sub_tests'
 
     @pg_property(str, int)
     def test(self, value):
@@ -36,6 +36,14 @@ class Edge3(Edge):
     __dst_class__ = 'FooBar'
     __src_dst_assoc__ = 'foobars'
     __dst_src_assoc__ = 'foos'
+
+
+class TestToFooBarEdge(Edge):
+
+    __src_class__ = 'Test'
+    __dst_class__ = 'FooBar'
+    __src_dst_assoc__ = 'foobars'
+    __dst_src_assoc__ = 'tests'
 
 
 class Test(Node):

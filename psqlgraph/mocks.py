@@ -1,9 +1,9 @@
 import abc
 import copy
+import logging
 import random
-import re
 import uuid
-from collections import deque, defaultdict
+from collections import defaultdict, deque
 
 import rstr
 
@@ -105,10 +105,10 @@ class PropertyFactory(object):
                     self.properties.get(name, {})
                 )
             except ValueError as ve:
-                # print(
-                #     "Property: '{}' is most likely a relationship. Error: {}"
-                #     "".format(name, ve)
-                # )
+                logging.debug(
+                    "Property: '{}' is most likely a relationship. Error: {}"
+                    "".format(name, ve)
+                )
                 pass
 
     def create(self, name, override=None):
@@ -211,7 +211,7 @@ class NodeFactory(object):
                 _, value = self.property_factories[label].create(
                     prop, override_val)
             except (KeyError, ValueError):
-                # print("No factory for property: '{}'".format(prop))
+                logging.debug("No factory for property: '{}'".format(prop))
                 continue
 
             node_json['properties'][prop] = value
@@ -294,8 +294,10 @@ class GraphFactory(object):
             node2 = nodes_map.get(sub_id2)
 
             if not node1 or not node2:
-                print("Couldn't find nodes for edge: '{}'<->'{}'".format(
-                    sub_id1, sub_id2)
+                logging.debug(
+                    "Could not find nodes for edge: '{}'<->'{}'".format(
+                        sub_id1, sub_id2
+                    )
                 )
                 continue
 
@@ -477,9 +479,8 @@ class GraphFactory(object):
                 break
 
         if not link_found:
-            print(
-                "Couldn't find direct relation between '{}'<->'{}'".format(
-                    node1.label,
-                    node2.label,
+            logging.debug(
+                "Could not find a direct relation between '{}'<->'{}'".format(
+                    node1.label, node2.label
                 )
             )

@@ -1295,7 +1295,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
 
 
 def no_allowed_2_please(edge):
-    if not isinstance(edge.src, Foo):
+    if not isinstance(edge.src, models.Foo):
         return True
 
     node = edge.src
@@ -1305,7 +1305,7 @@ def no_allowed_2_please(edge):
     return True
 
 
-class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
+class TestPsqlGraphTraversal(PsqlgraphBaseTest):
 
     def setUp(self):
         """
@@ -1328,18 +1328,18 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
         """
         super(TestPsqlGraphTraversal, self).setUp()
 
-        with g.session_scope() as session:
-            root_node = FooBar(node_id=str(uuid.uuid4()), bar='root')
+        with self.g.session_scope() as session:
+            root_node = models.FooBar(node_id=str(uuid.uuid4()), bar='root')
 
-            foo1 = Foo(node_id=str(uuid.uuid4()), bar='foo1', baz='allowed_2')
-            foo2 = Foo(node_id=str(uuid.uuid4()), bar='foo2', baz='allowed_1')
-            foo3 = Foo(node_id=str(uuid.uuid4()), bar='foo3', baz='allowed_1')
+            foo1 = models.Foo(node_id=str(uuid.uuid4()), bar='foo1', baz='allowed_2')
+            foo2 = models.Foo(node_id=str(uuid.uuid4()), bar='foo2', baz='allowed_1')
+            foo3 = models.Foo(node_id=str(uuid.uuid4()), bar='foo3', baz='allowed_1')
 
-            test1 = Test(node_id=str(uuid.uuid4()), key1='test1')
-            test2 = Test(node_id=str(uuid.uuid4()), key1='test2')
-            test3 = Test(node_id=str(uuid.uuid4()), key1='test3')
-            test4 = Test(node_id=str(uuid.uuid4()), key1='test4')
-            test5 = Test(node_id=str(uuid.uuid4()), key1='test5')
+            test1 = models.Test(node_id=str(uuid.uuid4()), key1='test1')
+            test2 = models.Test(node_id=str(uuid.uuid4()), key1='test2')
+            test3 = models.Test(node_id=str(uuid.uuid4()), key1='test3')
+            test4 = models.Test(node_id=str(uuid.uuid4()), key1='test4')
+            test5 = models.Test(node_id=str(uuid.uuid4()), key1='test5')
 
             root_node.tests.append(test1)
 
@@ -1373,11 +1373,11 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
         """
         Default traversal should return all nodes
         """
-        with g.session_scope():
-            root = g.nodes(FooBar).first()
+        with self.g.session_scope():
+            root = self.g.nodes(models.FooBar).first()
             traversal = {n.node_id for n in root.bfs_children()}
 
-            nodes_all_set = {n.node_id for n in g.nodes().all()}
+            nodes_all_set = {n.node_id for n in self.g.nodes().all()}
 
         self.assertEqual(traversal, nodes_all_set)
 
@@ -1385,8 +1385,8 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
         """
         Traversal with predicate should return only self.sysan_flag_nodes
         """
-        with g.session_scope():
-            root = g.nodes(FooBar).first()
+        with self.g.session_scope():
+            root = self.g.nodes(models.FooBar).first()
 
             gen = root.bfs_children(edge_predicate=no_allowed_2_please)
             traversal = {n.node_id for n in gen}
@@ -1404,8 +1404,8 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
         """
         Traversal should return only self.depths_results[depth] nodes
         """
-        with g.session_scope():
-            root = g.nodes(FooBar).first()
+        with self.g.session_scope():
+            root = self.g.nodes(models.FooBar).first()
 
             gen = root.bfs_children(max_depth=depth)
             traversal = [n for n in gen]

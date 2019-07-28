@@ -5,3 +5,4 @@ xlocal==0.5
 progressbar==2.5
 py2neo==4.3.0
 requests==2.22.0
+rstr

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Text, ForeignKey, Index
+import sqlalchemy
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 
@@ -7,13 +7,12 @@ from psqlgraph.voided_edge import VoidedEdge
 
 
 def id_column(tablename, class_name):
-
     if class_name == "Edge":
-        return Column(Text, nullable=True)
+        return sqlalchemy.Column(sqlalchemy.Text, nullable=True)
 
-    return Column(
-        Text,
-        ForeignKey(
+    return sqlalchemy.Column(
+        sqlalchemy.Text,
+        sqlalchemy.ForeignKey(
             '{}.node_id'.format(tablename),
             ondelete="CASCADE",
             deferrable=True,
@@ -24,7 +23,6 @@ def id_column(tablename, class_name):
 
 
 class Edge(AbstractConcreteBase, ORMBase):
-
     __src_table__ = None
     __dst_table__ = None
 
@@ -51,22 +49,22 @@ class Edge(AbstractConcreteBase, ORMBase):
     @classmethod
     def __declare_last__(cls):
         for scls in Edge.get_subclasses():
-            assert hasattr(scls, '__src_class__'),\
+            assert hasattr(scls, '__src_class__'), \
                 'You must declare __src_class__ for {}'.format(scls)
-            assert hasattr(scls, '__dst_class__'),\
+            assert hasattr(scls, '__dst_class__'), \
                 'You must declare __dst_class__ for {}'.format(scls)
-            assert hasattr(scls, '__src_dst_assoc__'),\
+            assert hasattr(scls, '__src_dst_assoc__'), \
                 'You must declare __src_dst_assoc__ for {}'.format(scls)
-            assert hasattr(scls, '__dst_src_assoc__'),\
+            assert hasattr(scls, '__dst_src_assoc__'), \
                 'You must declare __dst_src_assoc__ for {}'.format(scls)
 
     @declared_attr
     def __table_args__(cls):
         return (
-            Index('{}_dst_id_src_id_idx'.format(cls.__tablename__),
-                  "src_id", "dst_id"),
-            Index('{}_dst_id'.format(cls.__tablename__), "dst_id"),
-            Index('{}_src_id'.format(cls.__tablename__), "src_id"),
+            sqlalchemy.Index('{}_dst_id_src_id_idx'.format(cls.__tablename__),
+                             "src_id", "dst_id"),
+            sqlalchemy.Index('{}_dst_id'.format(cls.__tablename__), "dst_id"),
+            sqlalchemy.Index('{}_src_id'.format(cls.__tablename__), "src_id"),
         )
 
     @declared_attr
@@ -126,16 +124,16 @@ class Edge(AbstractConcreteBase, ORMBase):
                                             edge_json['dst_label'])
             if not Type:
                 raise KeyError('Edge has no subclass named {}'
-                                  .format(edge_json['label']))
+                               .format(edge_json['label']))
         else:
             Type = cls
 
         return Type(src_id=edge_json['src_id'],
-                   dst_id=edge_json['dst_id'],
-                   label=edge_json['label'],
-                   acl=edge_json['acl'],
-                   properties=edge_json['properties'],
-                   system_annotations=edge_json['system_annotations'])
+                    dst_id=edge_json['dst_id'],
+                    label=edge_json['label'],
+                    acl=edge_json['acl'],
+                    properties=edge_json['properties'],
+                    system_annotations=edge_json['system_annotations'])
 
     def __repr__(self):
         return '<{}(({})-[{}]->({})>'.format(
@@ -143,10 +141,10 @@ class Edge(AbstractConcreteBase, ORMBase):
 
     def __eq__(self, other):
         return (
-            isinstance(other, self.__class__)
-            and self.src_id == other.src_id
-            and self.dst_id == other.dst_id
-            and self.label == other.label
+                isinstance(other, self.__class__)
+                and self.src_id == other.src_id
+                and self.dst_id == other.dst_id
+                and self.label == other.label
         )
 
     def __ne__(self, other):
@@ -178,8 +176,8 @@ class Edge(AbstractConcreteBase, ORMBase):
         dst_class = Node.get_subclass(dst_label).__name__
         scls = [c for c in cls.__subclasses__()
                 if c.get_label() == label
-                   and c.__src_class__ == src_class
-                   and c.__dst_class__ == dst_class]
+                and c.__src_class__ == src_class
+                and c.__dst_class__ == dst_class]
         if len(scls) > 1:
             raise KeyError(
                 'More than one Edge with label {} found: {}'.format(
@@ -227,25 +225,24 @@ class Edge(AbstractConcreteBase, ORMBase):
         """Custom setter as an application level ban from changing labels.
 
         """
-        if not isinstance(self.label, Column)\
-           and self.get_label() is not None\
-           and self.get_label() != label:
+        if not isinstance(self.label, sqlalchemy.Column) \
+                and self.get_label() is not None \
+                and self.get_label() != label:
             raise AttributeError('Cannot change label from {} to {}'.format(
                 self.get_label(), label))
 
 
 def PolyEdge(src_id=None, dst_id=None, label=None, acl=None, system_annotations=None, properties=None):
-
     if not label:
         raise AttributeError('You cannot create a PolyEdge without a label.')
     try:
         edge_type_class = Edge.get_subclass(label)
     except Exception as e:
         raise RuntimeError((
-            "{}: Unable to determine edge type. If there are more than one "
-            "edges with label {}, you need to specify src_label and dst_label"
-            "using the PsqlGraphDriver.get_PolyEdge())"
-        ).format(e, label))
+                               "{}: Unable to determine edge type. If there are more than one "
+                               "edges with label {}, you need to specify src_label and dst_label"
+                               "using the PsqlGraphDriver.get_PolyEdge())"
+                           ).format(e, label))
 
     return edge_type_class(
         src_id=src_id,

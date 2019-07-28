@@ -7,7 +7,7 @@ import pytest
 
 from psqlgraph import Node
 from psqlgraph.mocks import GraphFactory, NodeFactory
-from models import FakeDictionary, Test, Foo, FooBar
+from test import models
 
 
 STRING_MATCH = '[a-zA-Z0-9]{32}'
@@ -17,9 +17,9 @@ DATE_MATCH = '^[0-9]{4}-[0-9]{2}-[0-9]{2}T00:00:00'
 class FakeModels(object):
     def __init__(self):
         self.Node = Node
-        self.Test = Test
-        self.Foo = Foo
-        self.FooBar = FooBar
+        self.Test = models.Test
+        self.Foo = models.Foo
+        self.FooBar = models.FooBar
 
 
 @pytest.fixture(scope='session')
@@ -29,7 +29,7 @@ def gdcmodels():
 
 @pytest.fixture(scope='session')
 def gdcdictionary():
-    return FakeDictionary()
+    return models.FakeDictionary()
 
 
 @pytest.fixture
@@ -43,14 +43,14 @@ def patched_randrange(monkeypatch):
 
 
 def validate_test(node):
-    assert isinstance(node, Test)
+    assert isinstance(node, models.Test)
     for key in ['key1', 'key2', 'key3', 'new_key']:
         assert re.match(STRING_MATCH, getattr(node, key))
     assert re.match(DATE_MATCH, node.timestamp)
 
 
 def validate_foo(node):
-    assert isinstance(node, Foo)
+    assert isinstance(node, models.Foo)
     assert isinstance(node.fobble, int)
     assert 20 <= node.fobble <= 30
     assert re.match(STRING_MATCH, node.bar)
@@ -58,7 +58,7 @@ def validate_foo(node):
 
 
 def validate_foo_bar(node):
-    assert isinstance(node, FooBar)
+    assert isinstance(node, models.FooBar)
     assert re.match(STRING_MATCH, node.bar)
 
 

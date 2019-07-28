@@ -3,7 +3,7 @@ import logging
 import argparse
 from gdcdatamodel import models
 from sqlalchemy import UniqueConstraint
-from sqlalchemy.dialects.postgres import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.orm import relationship, joinedload
 from psqlgraph import Base

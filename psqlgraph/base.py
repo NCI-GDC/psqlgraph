@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Text, DateTime, text, event
+import sqlalchemy
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative import declared_attr
@@ -21,25 +21,25 @@ class CommonBase(object):
     _session_hooks_before_delete = []
 
     # ======== Columns ========
-    created = Column(
-        DateTime(timezone=True),
+    created = sqlalchemy.Column(
+        sqlalchemy.DateTime(timezone=True),
         nullable=False,
-        server_default=text('now()'),
+        server_default=sqlalchemy.text('now()'),
     )
 
-    acl = Column(
-        ARRAY(Text),
+    acl = sqlalchemy.Column(
+        ARRAY(sqlalchemy.Text),
         default=list(),
     )
 
-    _sysan = Column(
+    _sysan = sqlalchemy.Column(
         # WARNING: Do not update this column directly. See
         # `.system_annotations`
         JSONB,
         server_default='{}',
     )
 
-    _props = Column(
+    _props = sqlalchemy.Column(
         # WARNING: Do not update this column directly.
         # See `.properties` or `.props`
         JSONB,
@@ -184,7 +184,7 @@ class CommonBase(object):
         """Custom setter as an application level ban from changing labels.
 
         """
-        if not isinstance(self.label, Column)\
+        if not isinstance(self.label, sqlalchemy.Column)\
            and self.get_label() is not None\
            and self.get_label() != label:
             raise AttributeError('Cannot change label from {} to {}'.format(
@@ -288,7 +288,7 @@ def create_hybrid_property(name, fset):
     return hybrid_prop
 
 
-@event.listens_for(CommonBase, 'mapper_configured', propagate=True)
+@sqlalchemy.event.listens_for(CommonBase, 'mapper_configured', propagate=True)
 def create_hybrid_properties(mapper, cls):
     # This dictionary will be a property name to allowed types
     # dictionary.  It will be populated at mapper configuration using

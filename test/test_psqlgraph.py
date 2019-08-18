@@ -1093,7 +1093,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             self.assertEqual(self.g.node_lookup(nid).one().label, 'test')
         self.assertFalse(self.g.has_session())
 
-    def omatic_nested_session(self):
+    def test_automatic_nested_session(self):
         """test_automatic_nested_session
 
         Make sure that given a call to explicitly nest session scopes,
@@ -1355,7 +1355,7 @@ class TestPsqlGraphTraversal(PsqlgraphBaseTest):
 
             test2.sub_tests.append(test5)
 
-            session.merge(root_node)
+            session.add(root_node)
 
         # These nodes should have the sysan_flag set, when predicate active
         self.sysan_flag_nodes = [root_node, foo2, foo3, test1, test3, test4]
@@ -1368,6 +1368,11 @@ class TestPsqlGraphTraversal(PsqlgraphBaseTest):
             2: [root_node, foo1, foo2, foo3, test1, test2, test3, test4],
             3: [root_node, foo1, foo2, foo3, test1, test2, test3, test4, test5]
         }
+
+    def tearDown(self):
+        print("tear down in progress")
+        super(TestPsqlGraphTraversal, self).tearDown()
+
 
     def test_default_traversal(self):
         """

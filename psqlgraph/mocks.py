@@ -31,15 +31,23 @@ class Randomizer(object):
         pass
 
 
+    @abc.abstractmethod
+    def validate_value(self, value):
+        pass
+
+
 class EnumRand(Randomizer):
     def __init__(self, values):
         super(EnumRand, self).__init__()
         self.values = values
 
     def random_value(self, override=None):
-        if override in self.values:
+        if self.validate_value(override):
             return override
         return random.choice(self.values)
+
+    def validate_value(self, value):
+        return value in self.values
 
 
 class NumberRand(Randomizer):
@@ -49,10 +57,13 @@ class NumberRand(Randomizer):
         self.maximum = type_def.get('maximum', 10000)
 
     def random_value(self, override=None):
-        if isinstance(override, int) and \
-                self.minimum <= override <= self.maximum:
+        if self.validate_value(override):
             return override
         return random.randrange(self.minimum, self.maximum + 1)
+
+    def validate_value(self, value):
+        return isinstance(value, int) and \
+                self.minimum <= value <= self.maximum
 
 
 class StringRand(Randomizer):
@@ -64,16 +75,22 @@ class StringRand(Randomizer):
             self.pattern = type_def.get('pattern', '[A-Za-z0-9]{32}')
 
     def random_value(self, override=None):
-        if isinstance(override, basestring):
+        if self.validate_value(override):
             return override
         return rstr.xeger(self.pattern)
+
+    def validate_value(self, value):
+        return isinstance(value, basestring)
 
 
 class BooleanRand(Randomizer):
     def random_value(self, override=None):
-        if isinstance(override, bool):
+        if self.validate_value(override):
             return override
         return random.choice([True, False])
+
+    def validate_value(self, value):
+        return isinstance(value, bool)
 
 
 class TypeRandFactory(object):
@@ -205,8 +222,9 @@ class NodeFactory(object):
                 continue
 
             try:
-                override_val = self.get_global_value(prop) or \
-                    override.get(prop)
+                override_val = self.validate_override_value(
+                    prop, label, override) or \
+                    self.get_global_value(prop)
 
                 _, value = self.property_factories[label].create(
                     prop, override_val)
@@ -222,6 +240,20 @@ class NodeFactory(object):
 
     def get_global_value(self, prop):
         return self.graph_globals.get('properties', {}).get(prop)
+
+    def validate_override_value(self, prop, label, override):
+        # we allow specific passed values to override if they are valid
+        if not override:
+            return
+
+        override_val = override.get(prop)
+        try:
+            if self.property_factories[label].type_factories.get(
+                    prop).validate_value(override_val):
+                return override_val
+        except (KeyError, ValueError):
+            # if this fails for whatever reason, we'll default to random value
+            return
 
 
 class GraphFactory(object):

@@ -76,7 +76,7 @@ class CommonBase(object):
         property setter.
 
         """
-        for key, val in list(sanitize(properties).items()):
+        for key, val in sanitize(properties).items():
             setattr(self, key, val)
 
     @hybrid_property
@@ -226,7 +226,7 @@ class CommonBase(object):
         properties = properties or {}
         system_annotations = system_annotations or {}
         self.system_annotations.update(system_annotations)
-        for key, value in list(properties.items()):
+        for key, value in properties.items():
             setattr(self, key, value)
         if acl is not None:
             self.acl = acl

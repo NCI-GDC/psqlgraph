@@ -7,7 +7,7 @@ setup(
     install_requires=[
         'psycopg2-binary',
         'sqlalchemy',
-        'py2neo==2.0.1',
+        'py2neo',
         'progressbar',
         'avro',
         'xlocal',

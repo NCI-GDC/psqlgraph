@@ -1,8 +1,6 @@
 import argparse
 import getpass
-from . import psql
-from .psql import *
-from sqlalchemy import *
+from psqlgraph import psql
 
 
 try:

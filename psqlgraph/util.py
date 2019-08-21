@@ -1,10 +1,12 @@
-from sqlalchemy.exc import IntegrityError
 import time
 import random
 import logging
 from functools import wraps
-from psqlgraph.exc import ValidationError
+
 from types import FunctionType
+
+from sqlalchemy.exc import IntegrityError
+from psqlgraph.exc import ValidationError
 
 #  PsqlNode modules
 DEFAULT_RETRIES = 0
@@ -54,7 +56,7 @@ def pg_property(*pg_args, **pg_kwargs):
 
 def sanitize(properties):
     sanitized = {}
-    for key, value in list(properties.items()):
+    for key, value in properties.items():
         v_type = type(value).__name__
         if v_type in ['list', 'int', 'str', 'bool', 'long', 'float', 'NoneType']:
             sanitized[str(key)] = value

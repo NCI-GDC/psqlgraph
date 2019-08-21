@@ -1,7 +1,8 @@
 
 from datetime import datetime
-from . import psql
-from .psql import Node, Edge
+
+from psqlgraph import psql
+from psqlgraph.psql import Node, Edge
 import progressbar
 import os
 import py2neo
@@ -40,8 +41,8 @@ class PsqlGraph2Neo4j(object):
             self.try_parse_doc(node.properties)
 
     def create_node_files(self, data_dir):
-        type_conversion = {str: 'String', bool: 'boolean', int: 'int',
-                           float: 'float', int: 'long'}
+        type_conversion = {'str': 'String', 'bool': 'boolean', 'int': 'int',
+                           'float': 'float', 'long': 'long'}
         with self.psqlgraphDriver.session_scope():
             count = 0
             for node_class in psql.Node.get_subclasses():
@@ -58,7 +59,8 @@ class PsqlGraph2Neo4j(object):
                     if not value:
                         typ = 'String'
                     else:
-                        typ = type_conversion[value[0]]
+                        _type = value[0].__name__
+                        typ = type_conversion[_type]
                     title += (key + ':' + typ + '\t')
                 self.files[label].append(keys)
 

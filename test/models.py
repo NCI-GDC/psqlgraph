@@ -1,3 +1,5 @@
+from builtins import int
+
 from psqlgraph import Node, Edge, pg_property
 
 

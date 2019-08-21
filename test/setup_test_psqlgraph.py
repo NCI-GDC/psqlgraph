@@ -10,7 +10,7 @@ import logging
 
 from psqlgraph import create_all
 from psqlgraph import PsqlGraphDriver
-from test.models import *
+from test import models
 
 
 def try_drop_test_data(user, database, root_user='postgres', host=''):

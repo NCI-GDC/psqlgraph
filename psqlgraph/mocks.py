@@ -248,8 +248,8 @@ class NodeFactory(object):
 
         override_val = override.get(prop)
         try:
-            if self.property_factories[label].type_factories.get(
-                    prop).validate_value(override_val):
+            if self.property_factories[label]. \
+                    type_factories[prop].validate_value(override_val):
                 return override_val
         except (KeyError, ValueError):
             # if this fails for whatever reason, we'll default to random value

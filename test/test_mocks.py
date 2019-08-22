@@ -194,12 +194,12 @@ def test_graph_factory_with_globals(gdcmodels, gdcdictionary,
     assert all([val == 1 for val in prop_counts.values()]), prop_counts
 
 
-def test_graph_factory_with_valid_override_globals(gdcmodels, gdcdictionary):
+def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
 
     graph_globals = {
         'properties': {
             'baz': 'allowed_1',
-            'bar': '012345abcdefghijklmnopqrstuvwxyz',
+            'bar': '012345abcdefghijklmnopqrstuvwxyz'
         }
     }
 
@@ -207,24 +207,24 @@ def test_graph_factory_with_valid_override_globals(gdcmodels, gdcdictionary):
 
     nodes = [
         dict(label='foo', node_id='id_1'),
-        dict(label='foo', baz='allowed_2', node_id='id_2'),
-        dict(label='foo', baz='disallowed', node_id='id_3')
+        dict(label='foo', node_id='id_2', baz='allowed_2', bar='hello', fobble=30),
+        dict(label='foo', node_id='id_3', baz='disallowed'),
+        dict(label='foo', node_id='id_4', bar=1, fobble='hello'),
+    ]
+
+    # valid passed values get set
+    # invalid passed values are overridden by global if set
+    # otherwise, we use random valid value
+    expected_values = [
+        dict(node_id='id_1', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1'),
+        dict(node_id='id_2', bar='hello', baz='allowed_2', fobble=30),
+        dict(node_id='id_3', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1'),
+        dict(node_id='id_4', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1')
     ]
 
     created_nodes = gf.create_from_nodes_and_edges(nodes, edges=[], all_props=True,
                                                    unique_key='node_id')
 
-    prop_counts = defaultdict(int)
-    for created_node in created_nodes:
-
-        # check that the right nodes are overridden (or not)
-        if created_node.node_id in ['id_1', 'id_3']:
-            assert created_node.baz == 'allowed_1'
-        else:
-            assert created_node.baz == 'allowed_2'
-
-        for key_val in created_node.props.items():
-            prop_counts[key_val] += 1
-
-    # 3 nodes have property 'bar' and should be set
-    assert prop_counts.pop(('bar', '012345abcdefghijklmnopqrstuvwxyz')) == 3
+    for created_node, expected in zip(sorted(created_nodes), expected_values):
+        for k, v in expected.items():
+            assert created_node[k] == v

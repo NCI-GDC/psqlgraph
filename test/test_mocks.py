@@ -224,7 +224,8 @@ def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
 
     created_nodes = gf.create_from_nodes_and_edges(nodes, edges=[], all_props=True,
                                                    unique_key='node_id')
+    created_nodes.sort(key=lambda x: x.node_id)
 
-    for created_node, expected in zip(sorted(created_nodes), expected_values):
+    for created_node, expected in zip(created_nodes, expected_values):
         for k, v in expected.items():
             assert created_node[k] == v

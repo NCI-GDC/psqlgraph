@@ -95,10 +95,7 @@ class GraphQuery(Query):
             ids = [ids]
 
         assert hasattr(self.entity(), 'src_id')
-        if hasattr(ids, '__iter__'):
-            return self.filter(self.entity().src_id.in_(ids))
-        else:
-            return self.filter(self.entity().src_id == str(ids))
+        return self.filter(self.entity().src_id.in_(ids))
 
     def dst(self, ids):
         """Filter edges by dst_id
@@ -116,10 +113,7 @@ class GraphQuery(Query):
             ids = [ids]
 
         assert hasattr(self.entity(), 'dst_id')
-        if hasattr(ids, '__iter__'):
-            return self.filter(self.entity().dst_id.in_(ids))
-        else:
-            return self.filter(self.entity().dst_id == str(ids))
+        return self.filter(self.entity().dst_id.in_(ids))
 
     # ====== Nodes ========
     def ids(self, ids):
@@ -139,10 +133,7 @@ class GraphQuery(Query):
             ids = [ids]
 
         _id = self.entity().node_id
-        if hasattr(ids, '__iter__'):
-            return self.filter(_id.in_(ids))
-        else:
-            return self.filter(_id == str(ids))
+        return self.filter(_id.in_(ids))
 
     def not_ids(self, ids):
         """Filter node such that returned nodes do not have node_id
@@ -320,12 +311,12 @@ class GraphQuery(Query):
         return self.filter(entity.node_id == this_id)\
                    .filter(next_id == next_node_sq.c.node_id)
 
-    def subq_without_path(self, path, filters=[], __recurse_level=0):
+    def subq_without_path(self, path, filters=None, __recurse_level=0):
         """This function is similar to ``subq_path`` but will filter for
         results that **do not** have the given path/filter combination
 
         """
-
+        filters = filters or []
         return self.except_(self.subq_path(path, filters))
 
     def path_via_assoc_proxy(self, *entities):
@@ -447,7 +438,7 @@ class GraphQuery(Query):
         assert keys, 'No keys provided to `null_prop()` filter'
 
         for key in keys:
-            self = self.filter(or_(self.entity()._props[key].astext == None,
+            self = self.filter(or_(self.entity()._props.contains({key: None}),
                 not_(self.entity()._props.has_key(key))
             ))
 

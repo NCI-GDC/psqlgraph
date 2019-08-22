@@ -167,6 +167,7 @@ def test_graph_factory_random_subgraph(gdcmodels, gdcdictionary,
 
 def test_graph_factory_with_globals(gdcmodels, gdcdictionary,
                                     patched_randrange):
+
     graph_globals = {
         'properties': {
             'key1': 'abcdefghijklmnopqrstuvwxyz012345',
@@ -191,3 +192,40 @@ def test_graph_factory_with_globals(gdcmodels, gdcdictionary,
     # 2 nodes have property 'bar' and should be set
     assert prop_counts.pop(('bar', '012345abcdefghijklmnopqrstuvwxyz')) == 2
     assert all([val == 1 for val in prop_counts.values()]), prop_counts
+
+
+def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
+
+    graph_globals = {
+        'properties': {
+            'baz': 'allowed_1',
+            'bar': '012345abcdefghijklmnopqrstuvwxyz'
+        }
+    }
+
+    gf = GraphFactory(gdcmodels, gdcdictionary, graph_globals=graph_globals)
+
+    nodes = [
+        dict(label='foo', node_id='id_1'),
+        dict(label='foo', node_id='id_2', baz='allowed_2', bar='hello', fobble=30),
+        dict(label='foo', node_id='id_3', baz='disallowed'),
+        dict(label='foo', node_id='id_4', bar=1, fobble='hello'),
+    ]
+
+    # valid passed values get set
+    # invalid passed values are overridden by global if set
+    # otherwise, we use random valid value
+    expected_values = [
+        dict(node_id='id_1', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1'),
+        dict(node_id='id_2', bar='hello', baz='allowed_2', fobble=30),
+        dict(node_id='id_3', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1'),
+        dict(node_id='id_4', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1')
+    ]
+
+    created_nodes = gf.create_from_nodes_and_edges(nodes, edges=[], all_props=True,
+                                                   unique_key='node_id')
+    created_nodes.sort(key=lambda x: x.node_id)
+
+    for created_node, expected in zip(created_nodes, expected_values):
+        for k, v in expected.items():
+            assert created_node[k] == v

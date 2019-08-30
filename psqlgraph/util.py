@@ -25,8 +25,9 @@ def validate(f, value, types, enum=None):
         return
     _types = types+(type(None),)
     # If type is str, accept unicode as well, it will be sanitized
-    if str in _types:
-        _types = _types+(str,)
+    if str in _types and type(value).__name__ == 'unicode':
+        return
+
     if not isinstance(value, _types):
         raise ValidationError((
             "Value '{}' is of type {} and is not one of the allowed types "

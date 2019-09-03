@@ -18,7 +18,7 @@ class GraphQuery(Query):
     """
 
     def _iterable(self, val):
-        if hasattr(val, '__iter__'):
+        if hasattr(val, '__iter__') and not isinstance(val, str):
             return val
         else:
             return (val,)
@@ -91,8 +91,10 @@ class GraphQuery(Query):
             g.nodes().src(node1.node_id).filter(...
 
         """
-        if isinstance(ids, str):
-            ids = [ids]
+        if type(ids).__name__ == 'unicode':
+            ids = str(ids)
+
+        ids = [ids] if isinstance(ids, str) else ids
 
         assert hasattr(self.entity(), 'src_id')
         return self.filter(self.entity().src_id.in_(ids))
@@ -109,8 +111,10 @@ class GraphQuery(Query):
             g.nodes().dst('id1').filter(...
 
         """
-        if isinstance(ids, str):
-            ids = [ids]
+        if type(ids).__name__ == 'unicode':
+            ids = str(ids)
+
+        ids = [ids] if isinstance(ids, str) else ids
 
         assert hasattr(self.entity(), 'dst_id')
         return self.filter(self.entity().dst_id.in_(ids))
@@ -129,8 +133,10 @@ class GraphQuery(Query):
             g.nodes().ids(['id1', 'id2']).filter(...
 
         """
-        if isinstance(ids, str):
-            ids = [ids]
+        if type(ids).__name__ == 'unicode':
+            ids = str(ids)
+
+        ids = [ids] if isinstance(ids, str) else ids
 
         _id = self.entity().node_id
         return self.filter(_id.in_(ids))
@@ -151,7 +157,11 @@ class GraphQuery(Query):
 
         _id = self.entity().node_id
 
+        if type(ids).__name__ == 'unicode':
+            ids = str(ids)
+
         ids = [ids] if isinstance(ids, str) else ids
+
         return self.filter(not_(_id.in_(ids)))
 
     # ======== Traversals ========
@@ -432,6 +442,9 @@ class GraphQuery(Query):
             g.null_props(['key1', 'key2', 'key3']).count()
 
         """
+        if type(keys).__name__ == 'unicode':
+            keys = str(keys)
+
         keys = [keys] if isinstance(keys, str) else keys
         keys += args if args else []
 
@@ -460,6 +473,9 @@ class GraphQuery(Query):
             g.prop_in('key1', ['Yes', 'yes', 'True', 'true']).count()
 
         """
+
+        if type(key).__name__ == 'unicode':
+            key = str(key)
 
         assert isinstance(key, str) and isinstance(values, list)
         return self.filter(self.entity()._props[key].astext.in_([

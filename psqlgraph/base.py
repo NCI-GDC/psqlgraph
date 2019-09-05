@@ -1,12 +1,12 @@
-from attributes import PropertiesDict, SystemAnnotationDict
-from sqlalchemy import Column, Text, DateTime, text, event
-from sqlalchemy.dialects.postgres import ARRAY, JSONB
+import sqlalchemy
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import object_session, sessionmaker
-from sqlalchemy.orm.util import polymorphic_union
-from util import sanitize, validate
+
+from psqlgraph.attributes import PropertiesDict, SystemAnnotationDict
+from psqlgraph.util import sanitize, validate
 
 
 abstract_classes = ['Node', 'Edge', 'Base']
@@ -21,29 +21,29 @@ class CommonBase(object):
     _session_hooks_before_delete = []
 
     # ======== Columns ========
-    created = Column(
-        DateTime(timezone=True),
+    created = sqlalchemy.Column(
+        sqlalchemy.DateTime(timezone=True),
         nullable=False,
-        server_default=text('now()'),
+        server_default=sqlalchemy.text('now()'),
     )
 
-    acl = Column(
-        ARRAY(Text),
+    acl = sqlalchemy.Column(
+        ARRAY(sqlalchemy.Text),
         default=list(),
     )
 
-    _sysan = Column(
+    _sysan = sqlalchemy.Column(
         # WARNING: Do not update this column directly. See
         # `.system_annotations`
         JSONB,
-        default={},
+        server_default='{}',
     )
 
-    _props = Column(
+    _props = sqlalchemy.Column(
         # WARNING: Do not update this column directly.
         # See `.properties` or `.props`
         JSONB,
-        default={},
+        server_default='{}',
     )
 
     @classmethod
@@ -53,23 +53,15 @@ class CommonBase(object):
     # ======== Table Attributes ========
     @declared_attr
     def __mapper_args__(cls):
-        name = cls.__name__
-        if name in abstract_classes:
-            pjoin = polymorphic_union({
-                scls.__tablename__: scls.__table__ for scls in
-                cls.get_subclasses()}, 'type')
-            return {
-                'polymorphic_identity': name,
-                'with_polymorphic': ('*', pjoin),
-            }
-        else:
-            return {
-                'polymorphic_identity': name,
-                'concrete': True,
-            }
+        name = cls.__tablename__
+
+        return {
+            'polymorphic_identity': name,
+            'concrete': True,
+        }
 
     def __init__(self, *args, **kwargs):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     # ======== Properties ========
     @hybrid_property
@@ -122,7 +114,7 @@ class CommonBase(object):
         """
         if not self.has_property(key):
             raise KeyError('{} has no property {}'.format(type(self), key))
-        self._props = {k: v for k, v in self._props.iteritems()}
+        self._props = {k: v for k, v in self._props.items()}
         self._props[key] = val
 
     def _get_property(self, key):
@@ -136,11 +128,12 @@ class CommonBase(object):
             return None
         return self._props[key]
 
-    def property_template(self, properties={}):
+    def property_template(self, properties=None):
         """Returns a dictionary of {key: None} templating all of the
         properties defined on the model.
 
         """
+        properties = properties or {}
         temp = {k: None for k in self.get_property_list()}
         temp.update(properties)
         return temp
@@ -191,7 +184,7 @@ class CommonBase(object):
         """Custom setter as an application level ban from changing labels.
 
         """
-        if not isinstance(self.label, Column)\
+        if not isinstance(self.label, sqlalchemy.Column)\
            and self.get_label() is not None\
            and self.get_label() != label:
             raise AttributeError('Cannot change label from {} to {}'.format(
@@ -225,11 +218,13 @@ class CommonBase(object):
         """
         return object_session(self)
 
-    def merge(self, acl=None, system_annotations={}, properties={}):
+    def merge(self, acl=None, system_annotations=None, properties=None):
         """Merge the model's system_annotations and properties.
 
         .. note: acl will be overwritten, merging acls is not supported
         """
+        properties = properties or {}
+        system_annotations = system_annotations or {}
         self.system_annotations.update(system_annotations)
         for key, value in properties.items():
             setattr(self, key, value)
@@ -293,7 +288,7 @@ def create_hybrid_property(name, fset):
     return hybrid_prop
 
 
-@event.listens_for(CommonBase, 'mapper_configured', propagate=True)
+@sqlalchemy.event.listens_for(CommonBase, 'mapper_configured', propagate=True)
 def create_hybrid_properties(mapper, cls):
     # This dictionary will be a property name to allowed types
     # dictionary.  It will be populated at mapper configuration using

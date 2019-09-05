@@ -2,8 +2,8 @@
 Session hooks
 """
 from sqlalchemy.inspection import inspect
-from node import Node
-from edge import Edge
+from psqlgraph.node import Node
+from psqlgraph.edge import Edge
 
 
 def history(target, column, attr):
@@ -49,7 +49,7 @@ def receive_before_flush(session, flush_context, instances):
     """Provide a session hook that gets called before the session is
     flushed.
 
-    A snaphot of a node is created if any of the following are true:
+    A snapshot of a node is created if any of the following are true:
 
     1. There are 'added' system_annotations
     2. There are 'added' properties

@@ -1,11 +1,12 @@
-from sqlalchemy.exc import IntegrityError
-from functools import wraps
 import time
 import random
 import logging
 from functools import wraps
-from exc import ValidationError
+
 from types import FunctionType
+
+from sqlalchemy.exc import IntegrityError
+from psqlgraph.exc import ValidationError
 
 #  PsqlNode modules
 DEFAULT_RETRIES = 0
@@ -24,8 +25,9 @@ def validate(f, value, types, enum=None):
         return
     _types = types+(type(None),)
     # If type is str, accept unicode as well, it will be sanitized
-    if str in _types:
-        _types = _types+(unicode,)
+    if str in _types and type(value).__name__ == 'unicode':
+        return
+
     if not isinstance(value, _types):
         raise ValidationError((
             "Value '{}' is of type {} and is not one of the allowed types "
@@ -56,9 +58,10 @@ def pg_property(*pg_args, **pg_kwargs):
 def sanitize(properties):
     sanitized = {}
     for key, value in properties.items():
-        if isinstance(value, (list, int, str, long, bool, float, type(None))):
+        v_type = type(value).__name__
+        if v_type in ['list', 'int', 'str', 'bool', 'long', 'float', 'NoneType']:
             sanitized[str(key)] = value
-        elif isinstance(value, unicode):
+        elif v_type == 'unicode':
             sanitized[str(key)] = value.encode('ascii', 'ignore')
         else:
             raise ValueError(

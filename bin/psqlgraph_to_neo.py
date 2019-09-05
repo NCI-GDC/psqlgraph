@@ -15,7 +15,7 @@ def export():
     try:
         from gdcdatamodel.models import *
     except:
-        print "psqlgraph_to_neo needs gdcdatamodel package to run"
+        print("psqlgraph_to_neo needs gdcdatamodel package to run")
         return
     cur_dir = os.getcwd()
 
@@ -32,13 +32,13 @@ def export():
     parser.add_argument("--index", action="store_true")
     args = parser.parse_args()
     if args.index:
-        print "create index"
+        print("create index")
         psqlgraph2neo4j.create_index()
         return 
     if not args.convert_only and not (args.user and args.name):
-        print '''please provide psqlgraph credentials with --host, --user, --password, --name
+        print('''please provide psqlgraph credentials with --host, --user, --password, --name
 or set GDC_PG_HOST, GDC_PG_USER, GDC_PG_PASSWORD,
-GDC_PB_DBNAME environment variables.'''
+GDC_PB_DBNAME environment variables.''')
         return
     driver = psqlgraph2neo4j.PsqlGraph2Neo4j()
     driver.connect_to_psql(args.host, args.user, args.password, args.name)
@@ -46,10 +46,10 @@ GDC_PB_DBNAME environment variables.'''
     if not os.path.exists(csv_dir):
         os.makedirs(csv_dir)
     if args.export_only or not (args.export_only or args.convert_only):
-        print "Exporting psqlgraph to csv"
+        print("Exporting psqlgraph to csv")
         with driver.psqlgraphDriver.session_scope():
             driver.export(csv_dir)
-        print "-Done"
+        print("-Done")
     data_dir = args.out
     if args.convert_only or not (args.export_only or args.convert_only):
         if not os.path.exists(data_dir):
@@ -70,7 +70,7 @@ def get_batch_importer(cur_dir, url=''):
     else:
         os.makedirs(importer)
         if url:
-            print "Downloading Neo4j batch importer"
+            print("Downloading Neo4j batch importer")
             r = requests.get(url, stream=True)
             zipfile = os.path.basename(url)
             with open(zipfile, "wb") as zipf:
@@ -89,16 +89,14 @@ def get_batch_importer(cur_dir, url=''):
         else:
             raise RuntimeError(
                 'Problem with batch importer retrieval or unzip')
-        print "-Done"
+        print("-Done")
 
 
 def convert_csv(csv_dir, data_dir, importer_dir):
     if not os.path.exists(csv_dir):
         raise RuntimeError("Can't find directory '%s'" % csv_dir)
-    node_files = filter(
-        lambda x: re.match('nodes.*\.csv$', x), os.listdir(csv_dir))
-    edge_files = filter(
-        lambda x: re.match('rels.*\.csv$', x), os.listdir(csv_dir))
+    node_files = [x for x in os.listdir(csv_dir) if re.match('nodes.*\.csv$', x)]
+    edge_files = [x for x in os.listdir(csv_dir) if re.match('rels.*\.csv$', x)]
     pwd = os.getcwd()
     os.chdir(importer_dir)
     cmd = ['bash', './import.sh', data_dir,

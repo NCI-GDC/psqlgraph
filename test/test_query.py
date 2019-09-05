@@ -4,22 +4,14 @@ import uuid
 from psqlgraph import Node, Edge, PsqlGraphDriver
 from psqlgraph import PolyNode, PolyEdge
 
-host = 'localhost'
-user = 'test'
-password = 'test'
-database = 'automated_test'
-g = PsqlGraphDriver(host, user, password, database)
+from test import models, PsqlgraphBaseTest
 
 logging.basicConfig(level=logging.INFO)
 
-from models import Test, Foo, Edge1, Edge2, Edge3
 
-
-class TestPsqlGraphDriver(unittest.TestCase):
+class TestPsqlGraphDriver(PsqlgraphBaseTest):
 
     def setUp(self):
-        self.logger = logging.getLogger(__name__)
-        self.g = g
         self.parent_id = str(uuid.uuid4())
         self.g.node_insert(PolyNode(self.parent_id, 'test'))
         self._create_subtree(self.parent_id)
@@ -43,23 +35,6 @@ class TestPsqlGraphDriver(unittest.TestCase):
             if level < 2:
                 self._create_subtree(node_id, level+1)
 
-    def tearDown(self):
-        self.g.engine.dispose()
-        self._clear_tables()
-
-    def _clear_tables(self):
-        conn = g.engine.connect()
-        conn.execute('commit')
-        for table in Node().get_subclass_table_names():
-            if table != Node.__tablename__:
-                conn.execute('delete from {}'.format(table))
-        for table in Edge().get_subclass_table_names():
-            if table != Edge.__tablename__:
-                conn.execute('delete from {}'.format(table))
-        conn.execute('delete from _voided_nodes')
-        conn.execute('delete from _voided_edges')
-        conn.close()
-
     def test_ids(self):
         with self.g.session_scope():
             self.assertTrue(self.g.nodes().ids(self.lone_id).one()
@@ -82,7 +57,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_not_props(self):
         with self.g.session_scope():
             for i in range(3):
-                ns = self.g.nodes(Test).not_props({'key2': i, 'key3': None})\
+                ns = self.g.nodes(models.Test).not_props({'key2': i, 'key3': None})\
                                        .all()
                 self.assertNotEqual(ns, [])
                 for n in ns:
@@ -91,7 +66,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_path(self):
         with self.g.session_scope():
-            self.assertEqual(self.g.nodes(Test)
+            self.assertEqual(self.g.nodes(models.Test)
                              .ids(self.parent_id)
                              .path('foos')
                              .props(bar=1)
@@ -99,21 +74,21 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_subq_path_no_filter(self):
         with self.g.session_scope():
-            self.assertEqual(self.g.nodes(Test)
+            self.assertEqual(self.g.nodes(models.Test)
                              .ids(self.parent_id)
                              .subq_path('foos')
                              .count(), 4)
 
     def test_subq_path_single_filter(self):
         with self.g.session_scope():
-            self.assertEqual(self.g.nodes(Test)
+            self.assertEqual(self.g.nodes(models.Test)
                              .ids(self.parent_id)
                              .subq_path('foos', lambda q: q.props(bar=1))
                              .count(), 1)
 
     def test_subq_path_single_filter_negative(self):
         with self.g.session_scope():
-            self.assertEqual(self.g.nodes(Test)
+            self.assertEqual(self.g.nodes(models.Test)
                              .ids(self.parent_id)
                              .subq_path('foos', lambda q: q.props(bar=-1))
                              .count(), 0)
@@ -121,7 +96,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_subq_path_multi_filters(self):
         with self.g.session_scope():
             self.assertEqual(
-                self.g.nodes(Foo)
+                self.g.nodes(models.Foo)
                 .subq_path('tests.foos.tests.foos', [
                     lambda q: q.props(bar=1),
                     lambda q: q.ids(self.parent_id),
@@ -131,7 +106,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_subq_path_multi_filters_negative(self):
         with self.g.session_scope():
             self.assertEqual(
-                self.g.nodes(Foo)
+                self.g.nodes(models.Foo)
                 .subq_path('tests.foos.tests.foos', [
                     lambda q: q.props(bar=-1),
                     lambda q: q.ids(self.parent_id),
@@ -140,14 +115,14 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_subq_without_path_no_filter(self):
         with self.g.session_scope():
-            self.assertEqual(self.g.nodes(Foo)
+            self.assertEqual(self.g.nodes(models.Foo)
                              .subq_without_path('tests')
                              .count(), 0)
 
     def test_subq_without_path_filter(self):
         with self.g.session_scope():
-            self.assertEqual(self.g.nodes(Foo)
+            self.assertEqual(self.g.nodes(models.Foo)
                              .subq_without_path(
                                  'tests',
                                  [lambda q: q.ids('test')])
-                             .count(), self.g.nodes(Foo).count())
+                             .count(), self.g.nodes(models.Foo).count())

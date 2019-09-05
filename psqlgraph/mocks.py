@@ -80,7 +80,7 @@ class StringRand(Randomizer):
         return rstr.xeger(self.pattern)
 
     def validate_value(self, value):
-        return isinstance(value, basestring)
+        return isinstance(value, str)
 
 
 class BooleanRand(Randomizer):
@@ -412,9 +412,9 @@ class GraphFactory(object):
                 child_cls = edge_info['type']
 
                 child_node = self.node_factory.create(
-                    child_cls.label, all_props=all_props)
+                    child_cls.get_label(), all_props=all_props)
 
-                label_node_map[child_node.label].add(child_node[unique_key])
+                label_node_map[child_node.get_label()].add(child_node[unique_key])
                 nodes_map[child_node[unique_key]] = child_node
 
                 adj_set[curr_node[unique_key]].add(child_node[unique_key])
@@ -424,7 +424,7 @@ class GraphFactory(object):
 
         for node_label, unique_key_set in label_node_map.items():
             # randomly merge half of the nodes of same type
-            for _ in range(len(unique_key_set) / 2):
+            for _ in range(len(unique_key_set) // 2):
                 unique_key1 = unique_key_set.pop()
                 unique_key2 = unique_key_set.pop()
 

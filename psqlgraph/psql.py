@@ -406,7 +406,7 @@ class PsqlGraphDriver(object):
         system_annotations = system_annotations or {}
         properties = properties or {}
         with self.session_scope(session) as local:
-            for key, val in list(system_annotations.items()):
+            for key, val in system_annotations.items():
                 edge.system_annotations[key] = val
             edge.properties.update(properties)
             local.merge(edge)

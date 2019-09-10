@@ -30,7 +30,6 @@ class Randomizer(object):
     def random_value(self, override=None):
         pass
 
-
     @abc.abstractmethod
     def validate_value(self, value):
         pass
@@ -80,6 +79,8 @@ class StringRand(Randomizer):
         return rstr.xeger(self.pattern)
 
     def validate_value(self, value):
+        if type(value).__name__ == 'unicode':
+            value = str(value)
         return isinstance(value, str)
 
 

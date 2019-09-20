@@ -12,6 +12,7 @@ setup(
         'avro',
         'xlocal',
         'rstr',
-        'requests'
+        'requests',
+        'six>=1.12.0'
     ]
 )

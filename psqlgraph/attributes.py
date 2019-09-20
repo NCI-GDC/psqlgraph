@@ -11,16 +11,9 @@ class JsonProperty(dict):
     """ Handles unicode to str conversion while retrieving properties"""
 
     def __setitem__(self, key, value):
-        if type(value).__name__ == "unicode":
-            value = value.encode("ascii", "ignore")
+
         self.set_item(key, value)
         super(JsonProperty, self).__setitem__(key, value)
-
-    def __getitem__(self, item):
-        val = super(JsonProperty, self).__getitem__(item)
-        if type(val).__name__ == "unicode":
-            return val.encode("ascii", "ignore")
-        return val
 
     @abstractmethod
     def set_item(self, key, value):

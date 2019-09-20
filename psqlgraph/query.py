@@ -1,9 +1,13 @@
 # from edge import Edge, PsqlEdge, PsqlVoidedEdge
-from psqlgraph.node import Node
-from psqlgraph.edge import Edge
-from sqlalchemy.orm import Query
-from sqlalchemy import func, not_, or_
+
 from copy import copy
+
+import six
+from sqlalchemy import not_, or_
+from sqlalchemy.orm import Query
+
+from psqlgraph.edge import Edge
+from psqlgraph.node import Node
 
 """
 
@@ -18,10 +22,9 @@ class GraphQuery(Query):
     """
 
     def _iterable(self, val):
-        if hasattr(val, '__iter__') and not isinstance(val, str):
+        if hasattr(val, '__iter__') and not isinstance(val, six.string_types):
             return val
-        else:
-            return (val,)
+        return val,
 
     def entity(self):
         """It is useful for us to be able to get the last entity in a chained
@@ -62,7 +65,7 @@ class GraphQuery(Query):
 
         :param edge_type:
             Edge model whose source is `target_node`
-        :param target_node:
+        :param source_node:
             The node that is a neighbor to other nodes through edge
             `edge_type`
         :returns: |qobj|
@@ -91,10 +94,8 @@ class GraphQuery(Query):
             g.nodes().src(node1.node_id).filter(...
 
         """
-        if type(ids).__name__ == 'unicode':
-            ids = str(ids)
-
-        ids = [ids] if isinstance(ids, str) else ids
+        if isinstance(ids, six.string_types):
+            ids = [ids]
 
         assert hasattr(self.entity(), 'src_id')
         return self.filter(self.entity().src_id.in_(ids))
@@ -111,10 +112,8 @@ class GraphQuery(Query):
             g.nodes().dst('id1').filter(...
 
         """
-        if type(ids).__name__ == 'unicode':
-            ids = str(ids)
-
-        ids = [ids] if isinstance(ids, str) else ids
+        if isinstance(ids, six.string_types):
+            ids = [ids]
 
         assert hasattr(self.entity(), 'dst_id')
         return self.filter(self.entity().dst_id.in_(ids))
@@ -133,10 +132,8 @@ class GraphQuery(Query):
             g.nodes().ids(['id1', 'id2']).filter(...
 
         """
-        if type(ids).__name__ == 'unicode':
-            ids = str(ids)
-
-        ids = [ids] if isinstance(ids, str) else ids
+        if isinstance(ids, six.string_types):
+            ids = [ids]
 
         _id = self.entity().node_id
         return self.filter(_id.in_(ids))
@@ -157,10 +154,8 @@ class GraphQuery(Query):
 
         _id = self.entity().node_id
 
-        if type(ids).__name__ == 'unicode':
-            ids = str(ids)
-
-        ids = [ids] if isinstance(ids, str) else ids
+        if isinstance(ids, six.string_types):
+            ids = [ids]
 
         return self.filter(not_(_id.in_(ids)))
 
@@ -274,7 +269,7 @@ class GraphQuery(Query):
 
         WARNING: Filters applied after calling this filter will be
         applied to the selection entity, not the end of the path.
-        There is not joinpoint.
+        There is not join point.
 
         example:
 
@@ -295,7 +290,7 @@ class GraphQuery(Query):
             return self
 
         # Munge arguments to lists
-        if isinstance(path, str):
+        if isinstance(path, six.string_types):
             path = path.strip().split('.')
         if not isinstance(filters, list):
             filters = [filters]
@@ -353,7 +348,7 @@ class GraphQuery(Query):
         return self
 
     # ======== Properties ========
-    def props(self, props={}, **kwargs):
+    def props(self, props=None, **kwargs):
         """Filter query results by properties.  Results in query will all
         contain given properties as a subset of _props.
 
@@ -376,12 +371,12 @@ class GraphQuery(Query):
             g.props({'key1': True}, key2='Yes').count()
 
         """
-
+        props = props or {}
         assert isinstance(props, dict)
         kwargs.update(props)
         return self.filter(self.entity()._props.contains(kwargs))
 
-    def not_props(self, props={}, **kwargs):
+    def not_props(self, props=None, **kwargs):
         """Filter query results by property exclusion. See :func:`props` for
         usage.
 
@@ -403,7 +398,7 @@ class GraphQuery(Query):
             g.props({'key1': True}, key2='Yes').count()
 
         """
-
+        props = props or {}
         assert isinstance(props, dict)
         kwargs.update(props)
         return self.filter(not_(self.entity()._props.contains(kwargs)))
@@ -442,10 +437,8 @@ class GraphQuery(Query):
             g.null_props(['key1', 'key2', 'key3']).count()
 
         """
-        if type(keys).__name__ == 'unicode':
-            keys = str(keys)
 
-        keys = [keys] if isinstance(keys, str) else keys
+        keys = [keys] if isinstance(keys, six.string_types) else keys
         keys += args if args else []
 
         assert keys, 'No keys provided to `null_prop()` filter'
@@ -474,10 +467,7 @@ class GraphQuery(Query):
 
         """
 
-        if type(key).__name__ == 'unicode':
-            key = str(key)
-
-        assert isinstance(key, str) and isinstance(values, list)
+        assert isinstance(key, six.string_types) and isinstance(values, list)
         return self.filter(self.entity()._props[key].astext.in_([
             str(v) for v in values]))
 
@@ -499,7 +489,7 @@ class GraphQuery(Query):
         return self.filter(self.entity()._props.contains({key: value}))
 
     # ======== System Annotations ========
-    def sysan(self, sysans={}, **kwargs):
+    def sysan(self, sysans=None, **kwargs):
         """Filter query results by system_annotations.  Results in query will
         all contain given properties as a subset of `system_annotations`.
 
@@ -520,6 +510,7 @@ class GraphQuery(Query):
 
         """
 
+        sysans = sysans or {}
         assert isinstance(sysans, dict)
         kwargs.update(sysans)
         return self.filter(self.entity()._sysan.contains(kwargs))
@@ -550,7 +541,7 @@ class GraphQuery(Query):
         :param str key: System annotation key
 
         """
-        if isinstance(keys, str):
+        if isinstance(keys, six.string_types):
             keys = [keys]
         for key in keys:
             self = self.filter(key in self.entity()._sysan)

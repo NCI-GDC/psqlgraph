@@ -336,7 +336,7 @@ class GraphFactory(object):
 
             self.make_association(node1, node2)
 
-        return nodes_map.values()
+        return list(nodes_map.values())
 
     def create_random_subgraph(self, label, max_depth=10, leaf_labels=None,
                                skip_relations=None, all_props=False):
@@ -460,7 +460,7 @@ class GraphFactory(object):
 
                 self.make_association(src_node, dst_node)
 
-        return nodes_map.values()
+        return list(nodes_map.values())
 
     def is_parent_relation(self, label, relation):
         """

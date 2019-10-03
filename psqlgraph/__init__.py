@@ -1,4 +1,3 @@
-from psqlgraph import psqlgraph2neo4j
 from psqlgraph.base import create_all
 from psqlgraph.edge import Edge, PolyEdge
 from psqlgraph.node import Node, PolyNode

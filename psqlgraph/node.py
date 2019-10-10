@@ -120,10 +120,10 @@ class Node(AbstractConcreteBase, ORMBase):
         :type edge_predicate: func
         :param max_depth: maximum distance to traverse
         :type max_depth: int
-        :param path_direction: possible values `in`, `out`, `both`
+        :param path_direction: possible values `in`, `out`
                             `in`: use node.edges_in, default behavior
                             `out`: use edges_out
-        :type path_direction: bool
+        :type path_direction: str
 
         :return: generator
         """

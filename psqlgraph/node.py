@@ -111,7 +111,32 @@ class Node(AbstractConcreteBase, ORMBase):
         for edge_out in self.edges_out:
             yield edge_out
 
-    def bfs_children(self, edge_predicate=None, max_depth=None, path_direction="in"):
+    def traverse(self, mode="bfs", max_depth=None, edge_pointer="in", edge_predicate=None):
+        """
+        Performs a traversal starting at the current node
+        Args:
+            mode (str): type of traversal, defaults to breadth first search
+            max_depth (int): maximum distance to traverse
+            edge_pointer (str): Determines what edge direction to use, possible values are `in`, `out`
+                            `in`: use node.edges_in, default behavior
+            edge_predicate (func): a predicate performed on an `edge` object in
+            order to decided whether to walk that edge or not
+
+        Returns:
+            generator: nodes found in the sub tree
+        """
+        if mode == "bfs":
+            return self._bfs(
+                edge_predicate=edge_predicate,
+                edge_pointer=edge_pointer,
+                max_depth=max_depth
+            )
+        raise NotImplementedError("Traversal mode {} is not implemented".format(mode))
+
+    def bfs_children(self, edge_predicate=None, max_depth=None):
+        return self.traverse(edge_predicate=edge_predicate, max_depth=max_depth)
+
+    def _bfs(self, edge_predicate=None, max_depth=None, edge_pointer="in"):
         """
         Perform a BFS, with `self` being the root node
 
@@ -120,10 +145,10 @@ class Node(AbstractConcreteBase, ORMBase):
         :type edge_predicate: func
         :param max_depth: maximum distance to traverse
         :type max_depth: int
-        :param path_direction: possible values `in`, `out`
+        :param edge_pointer: possible values `in`, `out`
                             `in`: use node.edges_in, default behavior
                             `out`: use edges_out
-        :type path_direction: str
+        :type edge_pointer: str
 
         :return: generator
         """
@@ -148,12 +173,12 @@ class Node(AbstractConcreteBase, ORMBase):
             if depth + 1 > max_depth:
                 continue
 
-            edges = current.edges_out if path_direction == "out" else current.edges_in
+            edges = current.edges_out if edge_pointer == "out" else current.edges_in
             for edge in edges:
                 if not edge_predicate(edge):
                     continue
 
-                n = edge.dst if path_direction == "out" else edge.src
+                n = edge.dst if edge_pointer == "out" else edge.src
 
                 if n.node_id not in marked:
                     queue.append((n, depth + 1))

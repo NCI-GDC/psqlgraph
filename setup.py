@@ -7,8 +7,6 @@ setup(
     install_requires=[
         'psycopg2-binary',
         'sqlalchemy',
-        'progressbar',
-        'avro',
         'xlocal',
         'rstr',
         'requests',

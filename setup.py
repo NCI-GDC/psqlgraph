@@ -7,9 +7,6 @@ setup(
     install_requires=[
         'psycopg2-binary',
         'sqlalchemy',
-        'py2neo',
-        'progressbar',
-        'avro',
         'xlocal',
         'rstr',
         'requests',

@@ -1446,17 +1446,17 @@ class TestPsqlGraphTraversal(BasePsqlGraphTestCase):
         self.assertEqual(expected_ids, traversal_ids)
 
     def test_directed_traversal(self):
-
+        """ Tests walking towards the root node from a leaf """
         with g.session_scope():
             leaf = g.nodes().props(key1="test5").first()
             expected = ['test5', 'test2', 'foo1', 'root']
             actual = [node.node_id for node in leaf.traverse(edge_pointer="out")]
-            assert expected == actual
+            self.assertListEqual(expected, actual)
 
             leaf = g.nodes().props(key1="test3").first()
             expected = ['test3', 'foo2', 'root']
             actual = [node.node_id for node in leaf.traverse(edge_pointer="out")]
-            assert expected == actual
+            self.assertListEqual(expected, actual)
 
 
 if __name__ == '__main__':

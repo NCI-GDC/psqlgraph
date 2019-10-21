@@ -9,9 +9,7 @@ from psqlgraph import PolyEdge as PsqlEdge
 from parameterized import parameterized
 from multiprocessing import Process
 from sqlalchemy.exc import IntegrityError
-from psqlgraph.exc import ValidationError, EdgeCreationError
-from sqlalchemy.orm.exc import FlushError
-from sqlalchemy.orm.attributes import flag_modified
+from psqlgraph.exc import ValidationError
 
 from datetime import datetime
 from copy import deepcopy
@@ -1373,7 +1371,6 @@ class TestPsqlGraphTraversal(PsqlgraphBaseTest):
         print("tear down in progress")
         super(TestPsqlGraphTraversal, self).tearDown()
 
-
     def test_default_traversal(self):
         """
         Default traversal should return all nodes
@@ -1424,13 +1421,13 @@ class TestPsqlGraphTraversal(PsqlgraphBaseTest):
 
     def test_directed_traversal(self):
         """ Tests walking towards the root node from a leaf """
-        with g.session_scope():
-            leaf = g.nodes().props(key1="test5").first()
+        with self.g.session_scope():
+            leaf = self.g.nodes().props(key1="test5").first()
             expected = ['test5', 'test2', 'foo1', 'root']
             actual = [node.node_id for node in leaf.traverse(edge_pointer="out")]
             self.assertListEqual(expected, actual)
 
-            leaf = g.nodes().props(key1="test3").first()
+            leaf = self.g.nodes().props(key1="test3").first()
             expected = ['test3', 'foo2', 'root']
             actual = [node.node_id for node in leaf.traverse(edge_pointer="out")]
             self.assertListEqual(expected, actual)

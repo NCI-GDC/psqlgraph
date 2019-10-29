@@ -46,10 +46,6 @@ class CommonBase(object):
         server_default='{}',
     )
 
-    @classmethod
-    def get_label(cls):
-        return getattr(cls, '__label__', cls.__name__.lower())
-
     # ======== Table Attributes ========
     @declared_attr
     def __mapper_args__(cls):
@@ -171,24 +167,14 @@ class CommonBase(object):
         return key in cls.get_property_list()
 
     # ======== Label ========
-    @hybrid_property
-    def label(self):
-        """Custom label on the model
 
-        .. note: This is not the polymorphic identity, see `_type`
-        """
-        return self.get_label()
+    @classmethod
+    def get_label(cls):
+        return getattr(cls, '__label__', cls.__name__.lower())
 
-    @label.setter
-    def label(self, label):
-        """Custom setter as an application level ban from changing labels.
-
-        """
-        if not isinstance(self.label, sqlalchemy.Column)\
-           and self.get_label() is not None\
-           and self.get_label() != label:
-            raise AttributeError('Cannot change label from {} to {}'.format(
-                self.get_label(), label))
+    @declared_attr
+    def label(cls):
+        return cls.get_label()
 
     # ======== System Annotations ========
     @hybrid_property

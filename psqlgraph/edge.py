@@ -219,22 +219,6 @@ class Edge(AbstractConcreteBase, ORMBase, DeclareLastEdgeMixin):
         voided = VoidedEdge(temp)
         session.add(voided)
 
-    # ======== Label ========
-    @hybrid_property
-    def label(self):
-        return self.get_label()
-
-    @label.setter
-    def label(self, label):
-        """Custom setter as an application level ban from changing labels.
-
-        """
-        if not isinstance(self.label, sqlalchemy.Column) \
-                and self.get_label() is not None \
-                and self.get_label() != label:
-            raise AttributeError('Cannot change label from {} to {}'.format(
-                self.get_label(), label))
-
 
 def PolyEdge(src_id=None, dst_id=None, label=None, acl=None, system_annotations=None, properties=None):
     if not label:

@@ -169,7 +169,6 @@ class Node(AbstractConcreteBase, ORMBase, NodeAssociationProxyMixin):
         self._props = {}
         self.system_annotations = system_annotations or {}
         self.acl = acl or []
-        self.label = label or self.get_label()
         self.properties = properties or {}
         self.properties.update(kwargs)
         self.node_id = node_id

@@ -9,9 +9,7 @@ from psqlgraph import PolyEdge as PsqlEdge
 from parameterized import parameterized
 from multiprocessing import Process
 from sqlalchemy.exc import IntegrityError
-from psqlgraph.exc import ValidationError, EdgeCreationError
-from sqlalchemy.orm.exc import FlushError
-from sqlalchemy.orm.attributes import flag_modified
+from psqlgraph.exc import ValidationError
 
 from datetime import datetime
 from copy import deepcopy
@@ -1329,17 +1327,17 @@ class TestPsqlGraphTraversal(PsqlgraphBaseTest):
         super(TestPsqlGraphTraversal, self).setUp()
 
         with self.g.session_scope() as session:
-            root_node = models.FooBar(node_id=str(uuid.uuid4()), bar='root')
+            root_node = models.FooBar(node_id="root", bar='root')
 
-            foo1 = models.Foo(node_id=str(uuid.uuid4()), bar='foo1', baz='allowed_2')
-            foo2 = models.Foo(node_id=str(uuid.uuid4()), bar='foo2', baz='allowed_1')
-            foo3 = models.Foo(node_id=str(uuid.uuid4()), bar='foo3', baz='allowed_1')
+            foo1 = models.Foo(node_id="foo1", bar='foo1', baz='allowed_2')
+            foo2 = models.Foo(node_id="foo2", bar='foo2', baz='allowed_1')
+            foo3 = models.Foo(node_id="foo3", bar='foo3', baz='allowed_1')
 
-            test1 = models.Test(node_id=str(uuid.uuid4()), key1='test1')
-            test2 = models.Test(node_id=str(uuid.uuid4()), key1='test2')
-            test3 = models.Test(node_id=str(uuid.uuid4()), key1='test3')
+            test1 = models.Test(node_id="", key1='test1')
+            test2 = models.Test(node_id="test2", key1='test2')
+            test3 = models.Test(node_id="test3", key1='test3')
             test4 = models.Test(node_id=str(uuid.uuid4()), key1='test4')
-            test5 = models.Test(node_id=str(uuid.uuid4()), key1='test5')
+            test5 = models.Test(node_id="test5", key1='test5')
 
             root_node.tests.append(test1)
 
@@ -1372,7 +1370,6 @@ class TestPsqlGraphTraversal(PsqlgraphBaseTest):
     def tearDown(self):
         print("tear down in progress")
         super(TestPsqlGraphTraversal, self).tearDown()
-
 
     def test_default_traversal(self):
         """
@@ -1421,6 +1418,19 @@ class TestPsqlGraphTraversal(PsqlgraphBaseTest):
         self.assertEqual(len(self.depths_results[depth]), len(traversal))
         # make sure the results of the traversal are as expected
         self.assertEqual(expected_ids, traversal_ids)
+
+    def test_directed_traversal(self):
+        """ Tests walking towards the root node from a leaf """
+        with self.g.session_scope():
+            leaf = self.g.nodes().props(key1="test5").first()
+            expected = ['test5', 'test2', 'foo1', 'root']
+            actual = [node.node_id for node in leaf.traverse(edge_pointer="out")]
+            self.assertListEqual(expected, actual)
+
+            leaf = self.g.nodes().props(key1="test3").first()
+            expected = ['test3', 'foo2', 'root']
+            actual = [node.node_id for node in leaf.traverse(edge_pointer="out")]
+            self.assertListEqual(expected, actual)
 
 
 if __name__ == '__main__':

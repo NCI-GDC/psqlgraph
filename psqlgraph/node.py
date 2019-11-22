@@ -121,32 +121,7 @@ class Node(AbstractConcreteBase, ORMBase, NodeAssociationProxyMixin):
             Index('{}_node_id_idx'.format(cls.__tablename__), 'node_id'),
         )
 
-    def traverse(self, mode="bfs", max_depth=None, edge_pointer="in", edge_predicate=None):
-        """
-        Performs a traversal starting at the current node
-        Args:
-            mode (str): type of traversal, defaults to breadth first search
-            max_depth (int): maximum distance to traverse
-            edge_pointer (str): Determines what edge direction to use, possible values are `in`, `out`
-                            `in`: use node.edges_in, default behavior
-            edge_predicate (func): a predicate performed on an `edge` object in
-            order to decided whether to walk that edge or not
-
-        Returns:
-            generator: nodes found in the sub tree
-        """
-        if mode == "bfs":
-            return self._bfs(
-                edge_predicate=edge_predicate,
-                edge_pointer=edge_pointer,
-                max_depth=max_depth
-            )
-        raise NotImplementedError("Traversal mode {} is not implemented".format(mode))
-
     def bfs_children(self, edge_predicate=None, max_depth=None):
-        return self.traverse(edge_predicate=edge_predicate, max_depth=max_depth)
-
-    def _bfs(self, edge_predicate=None, max_depth=None, edge_pointer="in"):
         """
         Perform a BFS, with `self` being the root node
 
@@ -155,10 +130,6 @@ class Node(AbstractConcreteBase, ORMBase, NodeAssociationProxyMixin):
         :type edge_predicate: func
         :param max_depth: maximum distance to traverse
         :type max_depth: int
-        :param edge_pointer: possible values `in`, `out`
-                            `in`: use node.edges_in, default behavior
-                            `out`: use edges_out
-        :type edge_pointer: str
 
         :return: generator
         """
@@ -183,16 +154,15 @@ class Node(AbstractConcreteBase, ORMBase, NodeAssociationProxyMixin):
             if depth + 1 > max_depth:
                 continue
 
-            edges = current.edges_out if edge_pointer == "out" else current.edges_in
-            for edge in edges:
+            for edge in current.edges_in:
                 if not edge_predicate(edge):
                     continue
 
-                n = edge.dst if edge_pointer == "out" else edge.src
+                src = edge.src
 
-                if n.node_id not in marked:
-                    queue.append((n, depth + 1))
-                    marked.add(n.node_id)
+                if src.node_id not in marked:
+                    queue.append((src, depth + 1))
+                    marked.add(src.node_id)
 
     def __init__(self, node_id=None, properties=None, acl=None,
                  system_annotations=None, label=None, **kwargs):

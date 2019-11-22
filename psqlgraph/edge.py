@@ -1,5 +1,6 @@
 import sqlalchemy
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from psqlgraph.base import ORMBase, EDGE_TABLENAME_SCHEME, NODE_TABLENAME_SCHEME
 from psqlgraph.voided_edge import VoidedEdge

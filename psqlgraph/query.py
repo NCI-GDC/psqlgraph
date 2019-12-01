@@ -269,7 +269,7 @@ class GraphQuery(Query):
 
         WARNING: Filters applied after calling this filter will be
         applied to the selection entity, not the end of the path.
-        There is not join point.
+        There is no join point.
 
         example:
 
@@ -423,7 +423,7 @@ class GraphQuery(Query):
             or missing keys.  Additional keys can be added as
             :param:`*args`
 
-        :param *args:
+        :param args:
             A list of keys to filter by null values or missing keys.
             Additional keys can be added as :param:`keys`
 
@@ -515,7 +515,7 @@ class GraphQuery(Query):
         kwargs.update(sysans)
         return self.filter(self.entity()._sysan.contains(kwargs))
 
-    def not_sysan(self, sysans={}, **kwargs):
+    def not_sysan(self, sysans=None, **kwargs):
         """Filter query results by system_annotation exclusion. See
         :func:`sysan` for usage.
 
@@ -529,7 +529,7 @@ class GraphQuery(Query):
         :returns: |qobj|
 
         """
-
+        sysans = sysans or {}
         assert isinstance(sysans, dict)
         kwargs.update(sysans)
         return self.filter(
@@ -537,12 +537,11 @@ class GraphQuery(Query):
 
     def has_sysan(self, keys):
         """Filter only entities that have a key `key` in system_annotations
-
-        :param str key: System annotation key
-
+        Args:
+            keys (str|list[str]): System annotation key(s)
         """
         if isinstance(keys, six.string_types):
             keys = [keys]
         for key in keys:
-            self = self.filter(key in self.entity()._sysan)
+            self = self.filter(self.entity()._sysan.has_key(key))
         return self

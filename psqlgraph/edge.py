@@ -1,6 +1,5 @@
 import sqlalchemy
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
-from sqlalchemy.ext.hybrid import hybrid_property
 
 from psqlgraph.base import ORMBase, EDGE_TABLENAME_SCHEME, NODE_TABLENAME_SCHEME
 from psqlgraph.voided_edge import VoidedEdge
@@ -226,11 +225,11 @@ def PolyEdge(src_id=None, dst_id=None, label=None, acl=None, system_annotations=
     try:
         edge_type_class = Edge.get_subclass(label)
     except Exception as e:
-        raise RuntimeError((
-                               "{}: Unable to determine edge type. If there are more than one "
-                               "edges with label {}, you need to specify src_label and dst_label"
-                               "using the PsqlGraphDriver.get_PolyEdge())"
-                           ).format(e, label))
+        raise RuntimeError(
+            "{}: Unable to determine edge type. If there are more than one "
+            "edges with label {}, you need to specify src_label and dst_label"
+            "using the PsqlGraphDriver.get_PolyEdge())"
+            .format(e, label))
 
     return edge_type_class(
         src_id=src_id,

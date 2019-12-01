@@ -1,7 +1,9 @@
 from setuptools import setup
 
+from psqlgraph import __version__
+
 setup(
-    version='1.3.0',
+    version=__version__,
     name='psqlgraph',
     packages=["psqlgraph"],
     install_requires=[

@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-import psqlgraph.util
+from psqlgraph.util import sanitize
 
 
 class PropertiesDictError(Exception):
@@ -28,7 +28,7 @@ class SystemAnnotationDict(JsonProperty):
 
     def __init__(self, source):
         self.source = source
-        super(SystemAnnotationDict, self).__init__(psqlgraph.util.sanitize(source._sysan))
+        super(SystemAnnotationDict, self).__init__(sanitize(source._sysan))
 
     def update(self, system_annotations=None, **kwargs):
 
@@ -36,8 +36,8 @@ class SystemAnnotationDict(JsonProperty):
             return
 
         system_annotations = system_annotations or {}
-        system_annotations = psqlgraph.util.sanitize(system_annotations)
-        temp = psqlgraph.util.sanitize(self.source._sysan)
+        system_annotations = sanitize(system_annotations)
+        temp = sanitize(self.source._sysan)
         temp.update(system_annotations)
         self.source._sysan = temp
         super(SystemAnnotationDict, self).update(self.source._sysan)
@@ -69,7 +69,7 @@ class PropertiesDict(JsonProperty):
             return
 
         properties = properties or {}
-        properties = psqlgraph.util.sanitize(properties)
+        properties = sanitize(properties)
         for key, val in properties.items():
             if not self.source.has_property(key):
                 raise AttributeError('{} has no property {}'.format(

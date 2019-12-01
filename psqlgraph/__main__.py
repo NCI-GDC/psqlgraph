@@ -2,17 +2,17 @@ import argparse
 import getpass
 from psqlgraph import psql
 
-
 try:
     import IPython
+
     ipython = True
 except Exception as e:
-    print((('{}, using standard interactive console. '
-           'If you install IPython, then it will automatically '
-           'be used for this repl.').format(e)))
+    print('{}, using standard interactive console. '
+          'If you install IPython, then it will automatically '
+          'be used for this repl.').format(e)
     import code
-    ipython = False
 
+    ipython = False
 
 message = """
 Entering psqlgraph console:
@@ -26,7 +26,6 @@ NOTE:
     `rb()` will rollback the session.
 """
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-d', '--database', default='test', type=str,
@@ -37,7 +36,7 @@ if __name__ == '__main__':
                         help='user to connect to postgres as')
     parser.add_argument('-p', '--password', default=None, type=str,
                         help='password for given user. If no '
-                        'password given, one will be prompted.')
+                             'password given, one will be prompted.')
 
     args = parser.parse_args()
 

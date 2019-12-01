@@ -66,7 +66,7 @@ def translate_node_range(_args):
     dst = PsqlGraphDriver(
         args.dest_host, args.dest_user, args.dest_password,
         args.dest, **driver_kwargs)
-    with src.session_scope() as session:
+    with src.session_scope():
         with dst.session_scope() as session:
             for old in src.nodes(OldNode).order_by(OldNode.node_id)\
                                          .offset(offset)\
@@ -117,12 +117,12 @@ def translate_edge_range(_args):
 
     print('{}-{}'.format(offset, offset+BLOCK))
     sys.stdout.flush()
-    with src.session_scope() as session:
+    with src.session_scope():
         with dst.session_scope() as session:
             for old in src.edges(OldEdge)\
-                          .order_by((OldEdge.src_id),
-                                    (OldEdge.dst_id),
-                                    (OldEdge.label))\
+                          .order_by(OldEdge.src_id,
+                                    OldEdge.dst_id,
+                                    OldEdge.label)\
                           .options(joinedload(OldEdge.src))\
                           .options(joinedload(OldEdge.dst))\
                           .offset(offset)\

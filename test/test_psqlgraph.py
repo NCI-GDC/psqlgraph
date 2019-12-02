@@ -164,14 +164,14 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
                        'timestamp': None, 'new_key': None}
         self.g.node_merge(node_id=node_id, properties=propertiesA,
                      label=label, max_retries=retries)
-        print('-- commited A')
+        print('-- committed A')
 
         # Add second node
         propertiesB = {'key1': '2', 'new_key': 'n',
                        'timestamp': timestamp()}
         self.g.node_merge(node_id=node_id, properties=propertiesB,
                      max_retries=retries)
-        print('-- commited B')
+        print('-- committed B')
 
         # Merge properties
         merged = deepcopy(propertiesA)
@@ -580,7 +580,6 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             node = self.g.node_lookup(node_id=tempid).one()
         self.assertEqual(propertiesB, node.properties)
 
-    @unittest.skip('not implemented')
     def test_node_delete_system_annotation_keys(self):
         """Test the ability to remove system annotation keys from nodes"""
 

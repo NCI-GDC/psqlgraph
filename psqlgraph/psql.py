@@ -4,13 +4,17 @@
 import logging
 # External modules
 from contextlib import contextmanager
+
+import six
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, configure_mappers
+from sqlalchemy.orm.attributes import flag_modified
 from xlocal import xlocal
 import socket
 
 # Custom modules
 from psqlgraph.edge import Edge
+from psqlgraph.exc import QueryError
 from psqlgraph.hooks import receive_before_flush
 from psqlgraph.node import PolyNode, Node
 from psqlgraph.query import GraphQuery
@@ -53,7 +57,7 @@ class PsqlGraphDriver(object):
         conn_str = 'postgresql://{user}:{password}@{host}/{database}'.format(
             user=user, password=password, host=host, database=database)
         if kwargs['isolation_level'] not in self.acceptable_isolation_levels:
-            logging.warn((
+            logging.warning((
                 "Using an isolation level '{}' that is not in the list of "
                 "acceptable isolation levels {} is not safe and should be "
                 "avoided.  Doing this can result in one session overwriting "
@@ -264,6 +268,9 @@ class PsqlGraphDriver(object):
                    session=None, max_retries=DEFAULT_RETRIES,
                    backoff=default_backoff):
 
+        properties = properties or {}
+        system_annotations = system_annotations or {}
+
         with self.session_scope() as local:
             if not node and not label:
                 node = self.nodes().ids([node_id]).scalar()
@@ -272,8 +279,6 @@ class PsqlGraphDriver(object):
                 cls = Node.get_subclass(label)
                 node = self.nodes(cls).ids([node_id]).scalar()
 
-            properties = properties or {}
-            system_annotations = system_annotations or {}
             if not node:
                 node = PolyNode(
                     node_id, label, acl, system_annotations, properties)
@@ -317,7 +322,7 @@ class PsqlGraphDriver(object):
             query = self.nodes(cls)
 
         if node_id is not None:
-            node_id = node_id.split(",") if isinstance(node_id, str) else node_id
+            node_id = node_id.split(",") if isinstance(node_id, six.string_types) else node_id
             query = query.ids(node_id)
         if property_matches is not None:
             query = query.props(property_matches)
@@ -370,17 +375,18 @@ class PsqlGraphDriver(object):
                                            session=None,
                                            max_retries=DEFAULT_RETRIES,
                                            backoff=default_backoff):
-        raise NotImplementedError()
-        # with self.session_scope(session) as local:
-        #     if not node:
-        #         node = self.node_lookup_one(node_id=node_id)
-        #
-        #     if not node:
-        #         raise QueryError('Node not found')
-        #
-        #     for key in system_annotation_keys:
-        #         del node.system_annotations[key]
-        #     local.merge(node)
+        with self.session_scope(session) as local:
+            if not node:
+                node = self.node_lookup_one(node_id=node_id)
+
+            if not node:
+                raise QueryError('Node not found')
+
+            for key in system_annotation_keys:
+                del node.system_annotations[key]
+
+            flag_modified(node, "_sysan")
+            local.merge(node)
 
     @retryable
     def node_delete(self, node_id=None, node=None,
@@ -473,15 +479,15 @@ class PsqlGraphDriver(object):
         return edges[0]
 
     def get_PsqlEdge(self, src_id=None, dst_id=None, label=None,
-                     acl=[], system_annotations={}, properties={},
+                     acl=None, system_annotations=None, properties=None,
                      src_label=None, dst_label=None):
         Type = self.get_edge_by_labels(src_label, label, dst_label)
         return Type(
             src_id=src_id,
             dst_id=dst_id,
-            properties=properties,
-            acl=acl,
-            system_annotations=system_annotations,
+            properties=properties or {},
+            acl=acl or [],
+            system_annotations=system_annotations or {},
             label=label
         )
 

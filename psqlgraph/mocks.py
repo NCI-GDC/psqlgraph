@@ -126,7 +126,6 @@ class PropertyFactory(object):
                     "Property: '{}' is most likely a relationship. Error: {}"
                     "".format(name, ve)
                 )
-                pass
 
     def create(self, name, override=None):
         """
@@ -222,9 +221,9 @@ class NodeFactory(object):
                 continue
 
             try:
-                override_val = self.validate_override_value(
-                    prop, label, override) or \
-                    self.get_global_value(prop)
+                supplied_value = override.get(prop)
+                override_val = supplied_value if self.validate_override_value(prop, label, supplied_value) \
+                    else self.get_global_value(prop)
 
                 _, value = self.property_factories[label].create(
                     prop, override_val)
@@ -243,17 +242,12 @@ class NodeFactory(object):
 
     def validate_override_value(self, prop, label, override):
         # we allow specific passed values to override if they are valid
-        if not override:
-            return
-
-        override_val = override.get(prop)
         try:
-            if self.property_factories[label]. \
-                    type_factories[prop].validate_value(override_val):
-                return override_val
+            return self.property_factories[label]. \
+                type_factories[prop].validate_value(override)
         except (KeyError, ValueError):
             # if this fails for whatever reason, we'll default to random value
-            return
+            return False
 
 
 class GraphFactory(object):

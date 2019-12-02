@@ -241,9 +241,6 @@ class NodeFactory(object):
 
     def validate_override_value(self, prop, label, override):
         # we allow specific passed values to override if they are valid
-        if not override:
-            return False
-
         try:
             return self.property_factories[label]. \
                 type_factories[prop].validate_value(override)

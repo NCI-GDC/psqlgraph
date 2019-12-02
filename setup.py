@@ -1,6 +1,6 @@
 from setuptools import setup
 
-from psqlgraph import __version__
+from PSQLGRAPH_VERSION import __version__
 
 setup(
     version=__version__,

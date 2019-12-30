@@ -1,12 +1,13 @@
 import sqlalchemy
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 
-from psqlgraph.base import ORMBase, EDGE_TABLENAME_SCHEME, NODE_TABLENAME_SCHEME
+from psqlgraph.base import ExtMixin, LocalConcreteBase, ORMBase, EDGE_TABLENAME_SCHEME, NODE_TABLENAME_SCHEME
 from psqlgraph.voided_edge import VoidedEdge
 
 
-def id_column(tablename, class_name):
-    if class_name == "Edge":
+def id_column(tablename):
+    if tablename is None:
+        # only happens for abstract classes
         return sqlalchemy.Column(sqlalchemy.Text, nullable=True)
 
     return sqlalchemy.Column(
@@ -24,7 +25,7 @@ def id_column(tablename, class_name):
 class DeclareLastEdgeMixin(object):
     @classmethod
     def __declare_last__(cls):
-        if cls.__name__ == 'Edge':
+        if cls.__name__ == 'Edge' or cls.is_abstract_base():
             return
 
         assert hasattr(cls, '__src_class__'), \
@@ -37,7 +38,8 @@ class DeclareLastEdgeMixin(object):
             'You must declare __dst_src_assoc__ for {}'.format(cls)
 
 
-class Edge(AbstractConcreteBase, ORMBase, DeclareLastEdgeMixin):
+class AbstractEdge(DeclareLastEdgeMixin, ExtMixin):
+
     __src_table__ = None
     __dst_table__ = None
 
@@ -50,7 +52,7 @@ class Edge(AbstractConcreteBase, ORMBase, DeclareLastEdgeMixin):
         if not src_table and hasattr(cls, "__src_class__"):
             src_table = NODE_TABLENAME_SCHEME.format(class_name=cls.__src_class__.lower())
 
-        return id_column(src_table, cls.__name__)
+        return id_column(src_table)
 
     @declared_attr
     def dst_id(cls):
@@ -59,7 +61,7 @@ class Edge(AbstractConcreteBase, ORMBase, DeclareLastEdgeMixin):
 
         if not dst_table and hasattr(cls, "__dst_class__"):
             dst_table = NODE_TABLENAME_SCHEME.format(class_name=cls.__dst_class__.lower())
-        return id_column(dst_table, cls.__name__)
+        return id_column(dst_table)
 
     @declared_attr
     def __table_args__(cls):
@@ -121,15 +123,14 @@ class Edge(AbstractConcreteBase, ORMBase, DeclareLastEdgeMixin):
 
     @classmethod
     def from_json(cls, edge_json):
-        if cls is Edge:
-            Type = Edge.get_unique_subclass(edge_json['src_label'],
+        abstract_edge_cls = cls.get_node_class().get_edge_class()
+        Type = abstract_edge_cls.get_unique_subclass(edge_json['src_label'],
                                             edge_json['label'],
                                             edge_json['dst_label'])
-            if not Type:
-                raise KeyError('Edge has no subclass named {}'
+        
+        if not Type:
+            raise KeyError('Edge has no subclass named {}'
                                .format(edge_json['label']))
-        else:
-            Type = cls
 
         return Type(src_id=edge_json['src_id'],
                     dst_id=edge_json['dst_id'],
@@ -175,9 +176,9 @@ class Edge(AbstractConcreteBase, ORMBase, DeclareLastEdgeMixin):
     def get_unique_subclass(cls, src_label, label, dst_label):
         """Determines a subclass based on the src and dst.
         """
-        src_class = Node.get_subclass(src_label).__name__
-        dst_class = Node.get_subclass(dst_label).__name__
-        scls = [c for c in cls.__subclasses__()
+        src_class = cls.get_node_class().get_subclass(src_label).__name__
+        dst_class = cls.get_node_class().get_subclass(dst_label).__name__
+        scls = [c for c in cls.get_subclasses()
                 if c.get_label() == label
                 and c.__src_class__ == src_class
                 and c.__dst_class__ == dst_class]
@@ -191,32 +192,32 @@ class Edge(AbstractConcreteBase, ORMBase, DeclareLastEdgeMixin):
 
     @classmethod
     def _get_subclasses_labeled(cls, label):
-        return [c for c in cls.__subclasses__()
+        return [c for c in cls.get_subclasses()
                 if c.get_label() == label]
 
     @classmethod
     def _get_edges_with_src(cls, src_class_name):
-        return [c for c in cls.__subclasses__()
+        return [c for c in cls.get_subclasses()
                 if c.__src_class__ == src_class_name]
 
     @classmethod
     def _get_edges_with_dst(cls, dst_class_name):
-        return [c for c in cls.__subclasses__()
+        return [c for c in cls.get_subclasses()
                 if c.__dst_class__ == dst_class_name]
-
-    @staticmethod
-    def get_subclass_table_names():
-        return [s.__tablename__ for s in Edge.__subclasses__()]
-
-    @classmethod
-    def get_subclasses(cls):
-        return [s for s in cls.__subclasses__()]
 
     def _snapshot_existing(self, session, old_props, old_sysan):
         temp = self.__class__(self.src_id, self.dst_id, old_props, self.acl,
                               old_sysan, self.label)
         voided = VoidedEdge(temp)
         session.add(voided)
+
+    @classmethod
+    def get_node_class(cls):
+        return Node
+
+
+class Edge(LocalConcreteBase, AbstractEdge, ORMBase):
+    pass
 
 
 def PolyEdge(src_id=None, dst_id=None, label=None, acl=None, system_annotations=None, properties=None):

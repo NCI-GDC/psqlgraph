@@ -1,6 +1,6 @@
 import sqlalchemy
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext.declarative import declarative_base, AbstractConcreteBase
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import object_session, sessionmaker
@@ -9,7 +9,6 @@ from psqlgraph.attributes import PropertiesDict, SystemAnnotationDict
 from psqlgraph.util import sanitize, validate
 
 
-abstract_classes = ['Node', 'Edge', 'Base']
 NODE_TABLENAME_SCHEME = 'node_{class_name}'
 EDGE_TABLENAME_SCHEME = 'edge_{class_name}'
 
@@ -329,6 +328,57 @@ VoidedBase = declarative_base(cls=VoidedBaseClass)
 ORMBase = declarative_base(cls=CommonBase)
 
 
-def create_all(engine):
-    ORMBase.metadata.create_all(engine)
+def create_all(engine, base=ORMBase):
+    """ Create tables
+    Args:
+        engine (sqlalchemy.engine.Engine): active engine instance
+        base (sqlalchemy.ext.declarative.DeclarativeMeta): a declarative base class
+    """
+    base.metadata.create_all(engine)
     VoidedBase.metadata.create_all(engine)
+
+
+def drop_all(engine, base=ORMBase):
+    """
+    Drops all tables
+    Args:
+        engine (sqlalchemy.engine.Engine): active engine instance
+        base (sqlalchemy.ext.declarative.DeclarativeMeta): a declarative base class
+    """
+    base.metadata.drop_all(engine)
+    VoidedBase.metadata.drop_all(engine)
+
+
+class ExtMixin(object):
+    """ Caches all child classes for the node or edge classes """
+
+    @classmethod
+    def is_subclass_loaded(cls, name):
+        return name in [c.__name__ for c in cls.get_subclasses()]
+
+    @classmethod
+    def add_subclass(cls, subclass):
+        if not issubclass(subclass, cls):
+            raise AttributeError("{} is not a subclass of {}".format(subclass, cls))
+
+    @classmethod
+    def get_subclasses(cls):
+        """ Limits the scope of subclasses to only those manually specified, else defaults to actual subclasses """
+        return cls.__subclasses__()
+
+    @classmethod
+    def get_subclass_table_names(cls):
+        return [s.__tablename__ for s in cls.get_subclasses()]
+
+    @classmethod
+    def is_abstract_base(cls):
+        return LocalConcreteBase in cls.__bases__
+
+
+class LocalConcreteBase(AbstractConcreteBase):
+
+    @classmethod
+    def _sa_decl_prepare_nocascade(cls):
+        if not cls.__subclasses__():
+            return
+        super(LocalConcreteBase, cls)._sa_decl_prepare_nocascade()

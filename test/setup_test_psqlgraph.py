@@ -10,7 +10,7 @@ import logging
 
 from psqlgraph import create_all
 from psqlgraph import PsqlGraphDriver
-from models import *
+from test import models
 
 
 def try_drop_test_data(user, database, root_user='postgres', host=''):
@@ -26,14 +26,14 @@ def try_drop_test_data(user, database, root_user='postgres', host=''):
     try:
         create_stmt = 'DROP DATABASE "{database}"'.format(database=database)
         conn.execute(create_stmt)
-    except Exception, msg:
-        logging.warn("Unable to drop test data:" + str(msg))
+    except Exception as msg:
+        logging.warning("Unable to drop test data:" + str(msg))
 
     try:
         user_stmt = "DROP USER {user}".format(user=user)
         conn.execute(user_stmt)
-    except Exception, msg:
-        logging.warn("Unable to drop test data:" + str(msg))
+    except Exception as msg:
+        logging.warning("Unable to drop test data:" + str(msg))
 
     conn.close()
 
@@ -63,8 +63,8 @@ def setup_database(user, password, database, root_user='postgres', host=''):
                     ''.format(database=database, password=password)
         conn.execute(perm_stmt)
         conn.execute("commit")
-    except Exception, msg:
-        logging.warn("Unable to add user:" + str(msg))
+    except Exception as msg:
+        logging.warning("Unable to add user:" + str(msg))
     conn.close()
 
 
@@ -83,6 +83,7 @@ def create_indexes(host, user, password, database):
     create a table
     """
     return
+
 
 if __name__ == '__main__':
 

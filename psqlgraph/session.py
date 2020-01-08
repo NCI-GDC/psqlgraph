@@ -1,13 +1,12 @@
-import sqlalchemy
 from sqlalchemy.orm.session import Session
 
-import exc
+from psqlgraph import exc
 
 
 # NOTE TODO Find a better way to handle method docstring inheritance?
 def inherit_docstring_from(cls):
     def docstring_inheriting_decorator(fn):
-        fn.__doc__ = getattr(cls,fn.__name__).__doc__
+        fn.__doc__ = getattr(cls, fn.__name__).__doc__
         return fn
     return docstring_inheriting_decorator
 
@@ -20,7 +19,7 @@ class GraphSession(Session):
 
         self._psqlgraph_closed = False
 
-        return super(GraphSession, self).__init__(*args, **kwargs)
+        super(GraphSession, self).__init__(*args, **kwargs)
 
     @inherit_docstring_from(Session)
     def connection(self, *args, **kwargs):
@@ -41,4 +40,4 @@ class GraphSession(Session):
 
         self._psqlgraph_closed = True
 
-        return super(GraphSession, self).close(*args, **kwargs)
+        return super(GraphSession, self).close()

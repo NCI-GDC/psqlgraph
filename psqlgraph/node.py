@@ -1,13 +1,14 @@
 from collections import deque
 
-from base import ORMBase, NODE_TABLENAME_SCHEME
-from edge import Edge
 from sqlalchemy import Column, Text, UniqueConstraint, Index
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
-from voided_node import VoidedNode
+
+from psqlgraph.edge import Edge
+from psqlgraph.base import ORMBase, NODE_TABLENAME_SCHEME
+from psqlgraph.voided_node import VoidedNode
 
 
 DST_SRC_ASSOC = '__dst_src_assoc__'
@@ -15,13 +16,12 @@ SRC_DST_ASSOC = '__src_dst_assoc__'
 
 
 def reverse_lookup(dictionary, search_val):
-    for key, val in dictionary.iteritems():
+    for key, val in dictionary.items():
         if val == search_val:
             yield key
 
 
-class Node(AbstractConcreteBase, ORMBase):
-
+class NodeAssociationProxyMixin(object):
     @declared_attr
     def _edges_out(self):
         return list()
@@ -30,6 +30,73 @@ class Node(AbstractConcreteBase, ORMBase):
     def _edges_in(self):
         return list()
 
+    @classmethod
+    def __declare_last__(cls):
+        """
+        Execute once after all mappings has been configured by sqlalchemy
+        Maps edges to nodes based on definitions.
+
+        NOTE: Had to be moved outside of Node class, because of:
+        https://github.com/zzzeek/sqlalchemy/blob/master/lib/sqlalchemy/ext/declarative/base.py#L87-L97
+        The actual change:
+        https://github.com/zzzeek/sqlalchemy/commit/4c931b2ec7e0f09ac8c3ebe28c794f5858d54efb
+        """
+        for scls in Edge.get_subclasses():
+
+            name = scls.__name__
+            name_in = '_{}_in'.format(name)
+            name_out = '_{}_out'.format(name)
+            src_assoc = getattr(scls, SRC_DST_ASSOC)
+            dst_assoc = getattr(scls, DST_SRC_ASSOC)
+
+            if scls.__dst_class__ == cls.__name__:
+                if not hasattr(cls, name_in):
+                    edge_in = relationship(
+                        name,
+                        foreign_keys=[scls.dst_id],
+                        backref='dst',
+                        cascade='all, delete, delete-orphan',
+                    )
+                    setattr(cls, name_in, edge_in)
+                    cls._edges_in.append(name_in)
+                cls._set_association_proxy(scls, dst_assoc, name_in, 'src')
+            if scls.__src_class__ == cls.__name__:
+                if not hasattr(cls, name_out):
+                    edge_out = relationship(
+                        name,
+                        foreign_keys=[scls.src_id],
+                        backref='src',
+                        cascade='all, delete, delete-orphan',
+                    )
+                    setattr(cls, name_out, edge_out)
+                    cls._edges_out.append(name_out)
+                cls._set_association_proxy(scls, src_assoc, name_out, 'dst')
+
+    @hybrid_property
+    def edges_in(self):
+        return [e for rel in self._edges_in for e in getattr(self, rel)]
+
+    @hybrid_property
+    def edges_out(self):
+        return [e for rel in self._edges_out for e in getattr(self, rel)]
+
+    @classmethod
+    def _set_association_proxy(cls, edge_cls, attr_name, edge_name, direction):
+        rel = association_proxy(
+            edge_name,
+            direction,
+            creator=lambda node: edge_cls(**{direction: node})
+        )
+        setattr(cls, attr_name, rel)
+
+    def get_edges(self):
+        for edge_in in self.edges_in:
+            yield edge_in
+        for edge_out in self.edges_out:
+            yield edge_out
+
+
+class Node(AbstractConcreteBase, ORMBase, NodeAssociationProxyMixin):
     node_id = Column(
         Text,
         primary_key=True,
@@ -53,63 +120,6 @@ class Node(AbstractConcreteBase, ORMBase):
                   '_sysan', postgresql_using='gin'),
             Index('{}_node_id_idx'.format(cls.__tablename__), 'node_id'),
         )
-
-    @hybrid_property
-    def edges_in(self):
-        return [e for rel in self._edges_in for e in getattr(self, rel)]
-
-    @hybrid_property
-    def edges_out(self):
-        return [e for rel in self._edges_out for e in getattr(self, rel)]
-
-    @classmethod
-    def __declare_last__(cls):
-        src_ids, dst_ids = [], []
-        for scls in Edge.get_subclasses():
-            name = scls.__name__
-            name_in = '_{}_in'.format(name)
-            name_out = '_{}_out'.format(name)
-            src_assoc = getattr(scls, SRC_DST_ASSOC)
-            dst_assoc = getattr(scls, DST_SRC_ASSOC)
-            if scls.__dst_class__ == cls.__name__:
-                if not hasattr(cls, name_in):
-                    edge_in = relationship(
-                        name,
-                        foreign_keys=[scls.dst_id],
-                        backref='dst',
-                        cascade='all, delete, delete-orphan',
-                    )
-                    setattr(cls, name_in, edge_in)
-                    cls._edges_in.append(name_in)
-                    dst_ids.append(scls.dst_id)
-                cls._set_association_proxy(scls, dst_assoc, name_in, 'src')
-            if scls.__src_class__ == cls.__name__:
-                if not hasattr(cls, name_out):
-                    edge_out = relationship(
-                        name,
-                        foreign_keys=[scls.src_id],
-                        backref='src',
-                        cascade='all, delete, delete-orphan',
-                    )
-                    setattr(cls, name_out, edge_out)
-                    cls._edges_out.append(name_out)
-                    src_ids.append(scls.src_id)
-                cls._set_association_proxy(scls, src_assoc, name_out, 'dst')
-
-    @classmethod
-    def _set_association_proxy(cls, edge_cls, attr_name, edge_name, direction):
-        rel = association_proxy(
-            edge_name,
-            direction,
-            creator=lambda node: edge_cls(**{direction: node})
-        )
-        setattr(cls, attr_name, rel)
-
-    def get_edges(self):
-        for edge_in in self.edges_in:
-            yield edge_in
-        for edge_out in self.edges_out:
-            yield edge_out
 
     def traverse(self, mode="bfs", max_depth=None, edge_pointer="in", edge_predicate=None):
         """
@@ -184,13 +194,12 @@ class Node(AbstractConcreteBase, ORMBase):
                     queue.append((n, depth + 1))
                     marked.add(n.node_id)
 
-    def __init__(self, node_id=None, properties={}, acl=[],
-                 system_annotations={}, label=None, **kwargs):
+    def __init__(self, node_id=None, properties=None, acl=None,
+                 system_annotations=None, label=None, **kwargs):
         self._props = {}
-        self.system_annotations = system_annotations
-        self.acl = acl
-        self.label = label or self.get_label()
-        self.properties = properties
+        self.system_annotations = system_annotations or {}
+        self.acl = acl or []
+        self.properties = properties or {}
         self.properties.update(kwargs)
         self.node_id = node_id
 
@@ -207,6 +216,9 @@ class Node(AbstractConcreteBase, ORMBase):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self.node_id, self.__class__))
 
     def copy(self):
         node = Node(
@@ -237,10 +249,10 @@ class Node(AbstractConcreteBase, ORMBase):
             Type = cls
 
         return Type(node_id=node_json['node_id'],
-                   properties=node_json['properties'],
-                   acl=node_json['acl'],
-                   system_annotations=node_json['system_annotations'],
-                   label=node_json['label'])
+                    properties=node_json['properties'],
+                    acl=node_json['acl'],
+                    system_annotations=node_json['system_annotations'],
+                    label=node_json['label'])
                    
     @classmethod
     def get_subclass(cls, label):
@@ -256,8 +268,8 @@ class Node(AbstractConcreteBase, ORMBase):
                 return c
         raise KeyError('Node has no subclass named {}'.format(name))
 
-    @classmethod
-    def get_subclass_table_names(label):
+    @staticmethod
+    def get_subclass_table_names():
         return [s.__tablename__ for s in Node.__subclasses__()]
 
     @classmethod
@@ -282,7 +294,7 @@ class Node(AbstractConcreteBase, ORMBase):
 
     def _snapshot_existing(self, session, old_props, old_sysan):
         temp = TmpNode(self.node_id, old_props, self.acl,
-                              old_sysan, self.label, self.created)
+                       old_sysan, self.label, self.created)
         voided = VoidedNode(temp)
         session.add(voided)
 
@@ -300,14 +312,14 @@ class TmpNode(object):
         self.created = created
 
 
-def PolyNode(node_id=None, label=None, acl=[], system_annotations={},
-             properties={}):
+def PolyNode(node_id=None, label=None, acl=None, system_annotations=None,
+             properties=None):
     assert label, 'You cannot create a PolyNode without a label.'
     Type = Node.get_subclass(label)
     return Type(
         node_id=node_id,
-        properties=properties,
-        acl=acl,
-        system_annotations=system_annotations,
+        properties=properties or {},
+        acl=acl or [],
+        system_annotations=system_annotations or {},
         label=label
     )

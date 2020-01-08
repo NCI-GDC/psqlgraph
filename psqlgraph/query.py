@@ -1,11 +1,13 @@
 # from edge import Edge, PsqlEdge, PsqlVoidedEdge
-from node import Node
-from voided_node import VoidedNode
-from voided_edge import VoidedEdge
-from edge import Edge
-from sqlalchemy.orm import Query
-from sqlalchemy import not_, or_
+
 from copy import copy
+
+import six
+from sqlalchemy import not_, or_
+from sqlalchemy.orm import Query
+
+from psqlgraph.edge import Edge
+from psqlgraph.node import Node
 
 """
 
@@ -20,10 +22,9 @@ class GraphQuery(Query):
     """
 
     def _iterable(self, val):
-        if hasattr(val, '__iter__'):
+        if hasattr(val, '__iter__') and not isinstance(val, six.string_types):
             return val
-        else:
-            return (val,)
+        return val,
 
     def entity(self):
         """It is useful for us to be able to get the last entity in a chained
@@ -64,7 +65,7 @@ class GraphQuery(Query):
 
         :param edge_type:
             Edge model whose source is `target_node`
-        :param target_node:
+        :param source_node:
             The node that is a neighbor to other nodes through edge
             `edge_type`
         :returns: |qobj|
@@ -93,12 +94,11 @@ class GraphQuery(Query):
             g.nodes().src(node1.node_id).filter(...
 
         """
+        if isinstance(ids, six.string_types):
+            ids = [ids]
 
         assert hasattr(self.entity(), 'src_id')
-        if hasattr(ids, '__iter__'):
-            return self.filter(self.entity().src_id.in_(ids))
-        else:
-            return self.filter(self.entity().src_id == str(ids))
+        return self.filter(self.entity().src_id.in_(ids))
 
     def dst(self, ids):
         """Filter edges by dst_id
@@ -112,12 +112,11 @@ class GraphQuery(Query):
             g.nodes().dst('id1').filter(...
 
         """
+        if isinstance(ids, six.string_types):
+            ids = [ids]
 
         assert hasattr(self.entity(), 'dst_id')
-        if hasattr(ids, '__iter__'):
-            return self.filter(self.entity().dst_id.in_(ids))
-        else:
-            return self.filter(self.entity().dst_id == str(ids))
+        return self.filter(self.entity().dst_id.in_(ids))
 
     # ====== Nodes ========
     def ids(self, ids):
@@ -133,12 +132,11 @@ class GraphQuery(Query):
             g.nodes().ids(['id1', 'id2']).filter(...
 
         """
+        if isinstance(ids, six.string_types):
+            ids = [ids]
 
         _id = self.entity().node_id
-        if hasattr(ids, '__iter__'):
-            return self.filter(_id.in_(ids))
-        else:
-            return self.filter(_id == str(ids))
+        return self.filter(_id.in_(ids))
 
     def not_ids(self, ids):
         """Filter node such that returned nodes do not have node_id
@@ -155,10 +153,11 @@ class GraphQuery(Query):
         """
 
         _id = self.entity().node_id
-        if hasattr(ids, '__iter__'):
-            return self.filter(not_(_id.in_(ids)))
-        else:
-            return self.filter(not_(_id == str(ids)))
+
+        if isinstance(ids, six.string_types):
+            ids = [ids]
+
+        return self.filter(not_(_id.in_(ids)))
 
     # ======== Traversals ========
     def path(self, *paths):
@@ -270,7 +269,7 @@ class GraphQuery(Query):
 
         WARNING: Filters applied after calling this filter will be
         applied to the selection entity, not the end of the path.
-        There is not joinpoint.
+        There is no join point.
 
         example:
 
@@ -291,7 +290,7 @@ class GraphQuery(Query):
             return self
 
         # Munge arguments to lists
-        if isinstance(path, str):
+        if isinstance(path, six.string_types):
             path = path.strip().split('.')
         if not isinstance(filters, list):
             filters = [filters]
@@ -317,12 +316,12 @@ class GraphQuery(Query):
         return self.filter(entity.node_id == this_id)\
                    .filter(next_id == next_node_sq.c.node_id)
 
-    def subq_without_path(self, path, filters=[], __recurse_level=0):
+    def subq_without_path(self, path, filters=None, __recurse_level=0):
         """This function is similar to ``subq_path`` but will filter for
         results that **do not** have the given path/filter combination
 
         """
-
+        filters = filters or []
         return self.except_(self.subq_path(path, filters))
 
     def path_via_assoc_proxy(self, *entities):
@@ -349,7 +348,7 @@ class GraphQuery(Query):
         return self
 
     # ======== Properties ========
-    def props(self, props={}, **kwargs):
+    def props(self, props=None, **kwargs):
         """Filter query results by properties.  Results in query will all
         contain given properties as a subset of _props.
 
@@ -372,12 +371,12 @@ class GraphQuery(Query):
             g.props({'key1': True}, key2='Yes').count()
 
         """
-
+        props = props or {}
         assert isinstance(props, dict)
         kwargs.update(props)
         return self.filter(self.entity()._props.contains(kwargs))
 
-    def not_props(self, props={}, **kwargs):
+    def not_props(self, props=None, **kwargs):
         """Filter query results by property exclusion. See :func:`props` for
         usage.
 
@@ -399,12 +398,12 @@ class GraphQuery(Query):
             g.props({'key1': True}, key2='Yes').count()
 
         """
-
+        props = props or {}
         assert isinstance(props, dict)
         kwargs.update(props)
         return self.filter(not_(self.entity()._props.contains(kwargs)))
 
-    def null_props(self, keys=[], *args):
+    def null_props(self, keys=None, *args):
         """Filter query results by key, value pairs where either (a) the key
         is not present or (b) the key is present but the value is None
 
@@ -424,7 +423,7 @@ class GraphQuery(Query):
             or missing keys.  Additional keys can be added as
             :param:`*args`
 
-        :param *args:
+        :param args:
             A list of keys to filter by null values or missing keys.
             Additional keys can be added as :param:`keys`
 
@@ -439,15 +438,14 @@ class GraphQuery(Query):
 
         """
 
-        keys = keys if hasattr(keys, '__iter__') else [keys]
-        keys += args
+        keys = [keys] if isinstance(keys, six.string_types) else keys
+        keys += args if args else []
 
         assert keys, 'No keys provided to `null_prop()` filter'
 
         for key in keys:
-            self = self.filter(or_(
-                self.entity()._props.contains({key: None}),
-                not_(self.entity()._props.has_key(key)),
+            self = self.filter(or_(self.entity()._props.contains({key: None}),
+                not_(self.entity()._props.has_key(key))
             ))
 
         return self
@@ -469,7 +467,7 @@ class GraphQuery(Query):
 
         """
 
-        assert isinstance(key, str) and isinstance(values, list)
+        assert isinstance(key, six.string_types) and isinstance(values, list)
         return self.filter(self.entity()._props[key].astext.in_([
             str(v) for v in values]))
 
@@ -491,7 +489,7 @@ class GraphQuery(Query):
         return self.filter(self.entity()._props.contains({key: value}))
 
     # ======== System Annotations ========
-    def sysan(self, sysans={}, **kwargs):
+    def sysan(self, sysans=None, **kwargs):
         """Filter query results by system_annotations.  Results in query will
         all contain given properties as a subset of `system_annotations`.
 
@@ -512,11 +510,12 @@ class GraphQuery(Query):
 
         """
 
+        sysans = sysans or {}
         assert isinstance(sysans, dict)
         kwargs.update(sysans)
         return self.filter(self.entity()._sysan.contains(kwargs))
 
-    def not_sysan(self, sysans={}, **kwargs):
+    def not_sysan(self, sysans=None, **kwargs):
         """Filter query results by system_annotation exclusion. See
         :func:`sysan` for usage.
 
@@ -530,7 +529,7 @@ class GraphQuery(Query):
         :returns: |qobj|
 
         """
-
+        sysans = sysans or {}
         assert isinstance(sysans, dict)
         kwargs.update(sysans)
         return self.filter(
@@ -538,11 +537,10 @@ class GraphQuery(Query):
 
     def has_sysan(self, keys):
         """Filter only entities that have a key `key` in system_annotations
-
-        :param str key: System annotation key
-
+        Args:
+            keys (str|list[str]): System annotation key(s)
         """
-        if isinstance(keys, str):
+        if isinstance(keys, six.string_types):
             keys = [keys]
         for key in keys:
             self = self.filter(self.entity()._sysan.has_key(key))

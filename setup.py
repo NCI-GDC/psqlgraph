@@ -1,17 +1,15 @@
 from setuptools import setup
 
 setup(
-    version='1.3.0',
+    version='2.0.0',
     name='psqlgraph',
     packages=["psqlgraph"],
     install_requires=[
-        'psycopg2==2.7.3.2',
-        'sqlalchemy==0.9.9',
-        'py2neo==2.0.1',
-        'progressbar',
-        'avro==1.7.7',
-        'xlocal==0.5',
-        'requests>=2.5.2, <=2.7.0',
+        'psycopg2-binary',
+        'sqlalchemy',
+        'xlocal',
         'rstr',
+        'requests',
+        'six>=1.12.0'
     ]
 )

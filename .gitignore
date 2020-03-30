@@ -47,6 +47,13 @@ htmlcov/
 nosetests.xml
 coverage.xml
 
+# Jenkins 
+.local/
+.eggs/
+.ssh/
+*/_version.py
+wait-for-it.sh
+
 # Translations
 *.mo
 *.pot

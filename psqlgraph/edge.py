@@ -1,18 +1,18 @@
-import sqlalchemy
-from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
+from sqlalchemy.sql import schema, sqltypes
+from sqlalchemy.ext.declarative import declared_attr
 
-from psqlgraph.base import ExtMixin, LocalConcreteBase, ORMBase, EDGE_TABLENAME_SCHEME, NODE_TABLENAME_SCHEME
+from psqlgraph import base
 from psqlgraph.voided_edge import VoidedEdge
 
 
 def id_column(tablename):
     if tablename is None:
         # only happens for abstract classes
-        return sqlalchemy.Column(sqlalchemy.Text, nullable=True)
+        return schema.Column(sqltypes.Text, nullable=True)
 
-    return sqlalchemy.Column(
-        sqlalchemy.Text,
-        sqlalchemy.ForeignKey(
+    return schema.Column(
+        sqltypes.Text,
+        schema.ForeignKey(
             '{}.node_id'.format(tablename),
             ondelete="CASCADE",
             deferrable=True,
@@ -23,6 +23,11 @@ def id_column(tablename):
 
 
 class DeclareLastEdgeMixin(object):
+
+    @classmethod
+    def is_abstract_base(cls):
+        return base.LocalConcreteBase in cls.__bases__
+
     @classmethod
     def __declare_last__(cls):
         if cls.__name__ == 'Edge' or cls.is_abstract_base():
@@ -38,7 +43,7 @@ class DeclareLastEdgeMixin(object):
             'You must declare __dst_src_assoc__ for {}'.format(cls)
 
 
-class AbstractEdge(DeclareLastEdgeMixin, ExtMixin):
+class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
 
     __src_table__ = None
     __dst_table__ = None
@@ -50,7 +55,7 @@ class AbstractEdge(DeclareLastEdgeMixin, ExtMixin):
         src_table = cls.__src_table__
 
         if not src_table and hasattr(cls, "__src_class__"):
-            src_table = NODE_TABLENAME_SCHEME.format(class_name=cls.__src_class__.lower())
+            src_table = base.NODE_TABLENAME_SCHEME.format(class_name=cls.__src_class__.lower())
 
         return id_column(src_table)
 
@@ -60,21 +65,21 @@ class AbstractEdge(DeclareLastEdgeMixin, ExtMixin):
         dst_table = cls.__dst_table__
 
         if not dst_table and hasattr(cls, "__dst_class__"):
-            dst_table = NODE_TABLENAME_SCHEME.format(class_name=cls.__dst_class__.lower())
+            dst_table = base.NODE_TABLENAME_SCHEME.format(class_name=cls.__dst_class__.lower())
         return id_column(dst_table)
 
     @declared_attr
     def __table_args__(cls):
         return (
-            sqlalchemy.Index('{}_dst_id_src_id_idx'.format(cls.__tablename__),
+            schema.Index('{}_dst_id_src_id_idx'.format(cls.__tablename__),
                              "src_id", "dst_id"),
-            sqlalchemy.Index('{}_dst_id'.format(cls.__tablename__), "dst_id"),
-            sqlalchemy.Index('{}_src_id'.format(cls.__tablename__), "src_id"),
+            schema.Index('{}_dst_id'.format(cls.__tablename__), "dst_id"),
+            schema.Index('{}_src_id'.format(cls.__tablename__), "src_id"),
         )
 
     @declared_attr
     def __tablename__(cls):
-        return EDGE_TABLENAME_SCHEME.format(class_name=cls.__name__.lower())
+        return base.EDGE_TABLENAME_SCHEME.format(class_name=cls.__name__.lower())
 
     def __init__(self, src_id=None, dst_id=None, properties=None,
                  acl=None, system_annotations=None, label=None,
@@ -216,7 +221,7 @@ class AbstractEdge(DeclareLastEdgeMixin, ExtMixin):
         return Node
 
 
-class Edge(LocalConcreteBase, AbstractEdge, ORMBase):
+class Edge(base.LocalConcreteBase, AbstractEdge, base.ORMBase):
     pass
 
 

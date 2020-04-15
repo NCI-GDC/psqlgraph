@@ -42,7 +42,7 @@ class PsqlGraphDriver(object):
         """
 
         # Parse kwargs
-        self.package_namespace = kwargs.pop("package_namespace", "_")
+        self.package_namespace = kwargs.pop("package_namespace", None)
         connect_args = kwargs.pop('connect_args', {})
         kwargs.pop('node_validator', None)
         kwargs.pop('edge_validator', None)

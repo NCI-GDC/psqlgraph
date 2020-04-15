@@ -6,8 +6,8 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
+from psqlgraph import base
 from psqlgraph.edge import Edge
-from psqlgraph.base import ExtMixin, LocalConcreteBase, ORMBase, NODE_TABLENAME_SCHEME
 from psqlgraph.voided_node import VoidedNode
 
 
@@ -105,7 +105,7 @@ class NodeAssociationProxyMixin(object):
         return Edge
 
 
-class AbstractNode(NodeAssociationProxyMixin, ExtMixin):
+class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
 
     node_id = Column(
         Text,
@@ -115,7 +115,7 @@ class AbstractNode(NodeAssociationProxyMixin, ExtMixin):
 
     @declared_attr
     def __tablename__(cls):
-        return NODE_TABLENAME_SCHEME.format(class_name=cls.__name__.lower())
+        return base.NODE_TABLENAME_SCHEME.format(class_name=cls.__name__.lower())
 
     @declared_attr
     def __table_args__(cls):
@@ -300,7 +300,7 @@ class AbstractNode(NodeAssociationProxyMixin, ExtMixin):
         session.add(voided)
 
 
-class Node(LocalConcreteBase, AbstractNode, ORMBase):
+class Node(base.LocalConcreteBase, AbstractNode, base.ORMBase):
     pass
 
 

@@ -1,7 +1,6 @@
 from collections import defaultdict
 
-import sqlalchemy
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.ext import declarative
 
 from psqlgraph import Node, Edge
 from psqlgraph.base import CommonBase, LocalConcreteBase
@@ -9,9 +8,9 @@ from psqlgraph.edge import AbstractEdge
 from psqlgraph.node import AbstractNode
 
 BASE_CLASSES = defaultdict(dict)
-BASE_CLASSES["_"] = {'node': Node, 'edge': Edge}
+BASE_CLASSES[None] = {'node': Node, 'edge': Edge}
 
-ORM_BASES = defaultdict(lambda: declarative_base(cls=CommonBase))
+ORM_BASES = defaultdict(lambda: declarative.declarative_base(cls=CommonBase))
 
 
 def get_orm_base(package_namespace):
@@ -23,12 +22,10 @@ def get_orm_base(package_namespace):
 
 
 def get_abstract_edge(package_namespace=None):
-    package_namespace = package_namespace or "_"
     return BASE_CLASSES[package_namespace]["edge"]
 
 
 def get_abstract_node(package_namespace=None):
-    package_namespace = package_namespace or "_"
     return BASE_CLASSES[package_namespace]["node"]
 
 
@@ -57,7 +54,7 @@ def create_base_class(pkg_namespace, is_node=True):
 
 
 def register_base_class(package_namespace=None):
-    """ Gets or returns proper base node and edge classes as tuple for the package namespace
+    """ Registers or returns a registered base node and edge classes as tuple for the package namespace
         Example:
             if package_namespace = `bio`
             This function will dynamically create and cache the following classes
@@ -75,7 +72,6 @@ def register_base_class(package_namespace=None):
         tuple (class, class):
     """
 
-    package_namespace = package_namespace or "_"
     abstract_node = BASE_CLASSES[package_namespace].get("node")
     abstract_edge = BASE_CLASSES[package_namespace].get("edge")
 

@@ -1,11 +1,12 @@
-import sqlalchemy
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlalchemy.ext.declarative import declarative_base, AbstractConcreteBase
+from sqlalchemy import event
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.ext import declarative
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import object_session, sessionmaker
+from sqlalchemy.sql import expression, schema, sqltypes
 
-from psqlgraph.attributes import PropertiesDict, SystemAnnotationDict
+from psqlgraph import attributes
 from psqlgraph.util import sanitize, validate
 
 
@@ -20,28 +21,28 @@ class CommonBase(object):
     _session_hooks_before_delete = []
 
     # ======== Columns ========
-    created = sqlalchemy.Column(
-        sqlalchemy.DateTime(timezone=True),
+    created = schema.Column(
+        sqltypes.DateTime(timezone=True),
         nullable=False,
-        server_default=sqlalchemy.text('now()'),
+        server_default=expression.text('now()'),
     )
 
-    acl = sqlalchemy.Column(
-        ARRAY(sqlalchemy.Text),
+    acl = schema.Column(
+        postgresql.ARRAY(sqltypes.Text),
         default=list(),
     )
 
-    _sysan = sqlalchemy.Column(
+    _sysan = schema.Column(
         # WARNING: Do not update this column directly. See
         # `.system_annotations`
-        JSONB,
+        postgresql.JSONB,
         server_default='{}',
     )
 
-    _props = sqlalchemy.Column(
+    _props = schema.Column(
         # WARNING: Do not update this column directly.
         # See `.properties` or `.props`
-        JSONB,
+        postgresql.JSONB,
         server_default='{}',
     )
 
@@ -61,7 +62,7 @@ class CommonBase(object):
     # ======== Properties ========
     @hybrid_property
     def properties(self):
-        return PropertiesDict(self)
+        return attributes.PropertiesDict(self)
 
     @properties.setter
     def properties(self, properties):
@@ -183,7 +184,7 @@ class CommonBase(object):
         column.
 
         """
-        return SystemAnnotationDict(self)
+        return attributes.SystemAnnotationDict(self)
 
     @system_annotations.setter
     def system_annotations(self, sysan):
@@ -273,7 +274,7 @@ def create_hybrid_property(name, fset):
     return hybrid_prop
 
 
-@sqlalchemy.event.listens_for(CommonBase, 'mapper_configured', propagate=True)
+@event.listens_for(CommonBase, 'mapper_configured', propagate=True)
 def create_hybrid_properties(mapper, cls):
     # This dictionary will be a property name to allowed types
     # dictionary.  It will be populated at mapper configuration using
@@ -324,12 +325,13 @@ class VoidedBaseClass(object):
         self.system_annotations = sysan
 
 
-VoidedBase = declarative_base(cls=VoidedBaseClass)
-ORMBase = declarative_base(cls=CommonBase)
+VoidedBase = declarative.declarative_base(cls=VoidedBaseClass)
+ORMBase = declarative.declarative_base(cls=CommonBase)
 
 
 def create_all(engine, base=ORMBase):
-    """ Create tables
+    """ Create all tables associated with the provided declarative base, defaults to
+        ORMBase if not specified
     Args:
         engine (sqlalchemy.engine.Engine): active engine instance
         base (sqlalchemy.ext.declarative.DeclarativeMeta): a declarative base class
@@ -339,8 +341,7 @@ def create_all(engine, base=ORMBase):
 
 
 def drop_all(engine, base=ORMBase):
-    """
-    Drops all tables
+    """ Drops all tables associated with a given delcarative base
     Args:
         engine (sqlalchemy.engine.Engine): active engine instance
         base (sqlalchemy.ext.declarative.DeclarativeMeta): a declarative base class
@@ -350,7 +351,7 @@ def drop_all(engine, base=ORMBase):
 
 
 class ExtMixin(object):
-    """ Caches all child classes for the node or edge classes """
+    """  An extension mixin used for """
 
     @classmethod
     def is_subclass_loaded(cls, name):
@@ -375,7 +376,7 @@ class ExtMixin(object):
         return LocalConcreteBase in cls.__bases__
 
 
-class LocalConcreteBase(AbstractConcreteBase):
+class LocalConcreteBase(declarative.AbstractConcreteBase):
 
     @classmethod
     def _sa_decl_prepare_nocascade(cls):

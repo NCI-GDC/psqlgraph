@@ -128,14 +128,18 @@ class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
 
     @classmethod
     def from_json(cls, edge_json):
-        abstract_edge_cls = cls.get_node_class().get_edge_class()
-        Type = abstract_edge_cls.get_unique_subclass(edge_json['src_label'],
-                                            edge_json['label'],
-                                            edge_json['dst_label'])
+
+        if cls.is_abstract_base():
+            abstract_edge_cls = cls.get_node_class().get_edge_class()
+            Type = abstract_edge_cls.get_unique_subclass(edge_json['src_label'],
+                                                edge_json['label'],
+                                                edge_json['dst_label'])
         
-        if not Type:
-            raise KeyError('Edge has no subclass named {}'
-                               .format(edge_json['label']))
+            if not Type:
+                raise KeyError('Edge has no subclass named {}'
+                                   .format(edge_json['label']))
+        else:
+            Type = cls
 
         return Type(src_id=edge_json['src_id'],
                     dst_id=edge_json['dst_id'],

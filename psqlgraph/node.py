@@ -250,12 +250,17 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
 
     @classmethod
     def from_json(cls, node_json):
-        abstract_node_cls = cls.get_edge_class().get_node_class()
-        Type = abstract_node_cls.get_subclass(node_json["label"])
+        """ loads a node instance from a json object """
 
-        if not Type:
-            raise KeyError('Node has no subclass named {}'
-                               .format(node_json['label']))
+        if cls.is_abstract_base():
+            abstract_node_cls = cls.get_edge_class().get_node_class()
+            Type = abstract_node_cls.get_subclass(node_json["label"])
+
+            if not Type:
+                raise KeyError('Node has no subclass named {}'
+                                   .format(node_json['label']))
+        else:
+            Type = cls
 
         return Type(node_id=node_json['node_id'],
                     properties=node_json['properties'],

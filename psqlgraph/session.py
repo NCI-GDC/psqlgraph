@@ -18,7 +18,7 @@ class GraphSession(Session):
     def __init__(self, *args, **kwargs):
 
         self._psqlgraph_closed = False
-        self.package_namespace = kwargs.pop("package_namespace", "_")
+        self.package_namespace = kwargs.pop("package_namespace", None)
         super(GraphSession, self).__init__(*args, **kwargs)
 
     @inherit_docstring_from(Session)

@@ -30,7 +30,7 @@ class DeclareLastEdgeMixin(object):
 
     @classmethod
     def __declare_last__(cls):
-        if cls.__name__ == 'Edge' or cls.is_abstract_base():
+        if cls.is_abstract_base():
             return
 
         assert hasattr(cls, '__src_class__'), \

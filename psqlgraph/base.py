@@ -351,7 +351,7 @@ def drop_all(engine, base=ORMBase):
 
 
 class ExtMixin(object):
-    """  An extension mixin used for """
+    """  An extension mixin used for retrieving child classes when needed """
 
     @classmethod
     def is_subclass_loaded(cls, name):

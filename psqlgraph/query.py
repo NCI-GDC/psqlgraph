@@ -1,13 +1,10 @@
-# from edge import Edge, PsqlEdge, PsqlVoidedEdge
-
 from copy import copy
 
 import six
 from sqlalchemy import not_, or_
 from sqlalchemy.orm import Query
 
-from psqlgraph.edge import Edge
-from psqlgraph.node import Node
+from psqlgraph import ext
 
 """
 
@@ -20,6 +17,10 @@ class GraphQuery(Query):
     .. |qobj| replace:: Returns a SQLAlchemy query object
 
     """
+
+    def __init__(self, entites, session=None, package_namespace=None):
+        super(GraphQuery, self).__init__(entites, session)
+        self.package_namespace = package_namespace
 
     def _iterable(self, val):
         if hasattr(val, '__iter__') and not isinstance(val, six.string_types):
@@ -212,14 +213,13 @@ class GraphQuery(Query):
 
         """
         entities = [p.strip() for path in paths for p in path.split('.')]
-        assert self.entity() != Node,\
+        assert not self.entity().is_abstract_base(),\
             'Please narrow your search by specifying a node subclass'
         for e in entities:
             self = self.join(*getattr(self.entity(), e).attr)
         return self
 
-    @staticmethod
-    def _get_link_details(entity, link_name):
+    def _get_link_details(self, entity, link_name):
         """"Lookup the (edge_class, left_edge_id, right_edge_id, node_class)
         for the given entity and link_name.
 
@@ -235,17 +235,19 @@ class GraphQuery(Query):
 
         # Look for the link_name in OUTBOUND edges from the current
         # entity
-        for edge in Edge._get_edges_with_src(entity.__name__):
+        node_cls = ext.get_abstract_node(self.package_namespace)
+        edge_cls = ext.get_abstract_edge(self.package_namespace)
+        for edge in edge_cls._get_edges_with_src(entity.__name__):
             if edge.__src_dst_assoc__ == link_name:
                 return (edge, edge.src_id, edge.dst_id,
-                        Node.get_subclass_named(edge.__dst_class__))
+                        node_cls.get_subclass_named(edge.__dst_class__))
 
         # Look for the link_name in INBOUND edges from the current
         # entity
-        for edge in Edge._get_edges_with_dst(entity.__name__):
+        for edge in edge_cls._get_edges_with_dst(entity.__name__):
             if edge.__dst_src_assoc__ == link_name:
                 return (edge, edge.dst_id, edge.src_id,
-                        Node.get_subclass_named(edge.__src_class__))
+                        node_cls.get_subclass_named(edge.__src_class__))
 
         raise AttributeError(
             "type object '{}' has no attribute '{}'"
@@ -283,7 +285,7 @@ class GraphQuery(Query):
             # we only want to mutate for recursive calls!
             filters = copy(filters)
 
-        assert self.entity() != Node,\
+        assert not self.entity().is_abstract_base(),\
             'Please narrow your search by specifying a node subclass'
 
         if not path:
@@ -303,7 +305,7 @@ class GraphQuery(Query):
         edge, this_id, next_id, target_class = link_details
 
         # Construct the next recursive level's base query and recurse
-        next_node_q = self.session.query(target_class)
+        next_node_q = self.session.query(target_class, package_namespace=self.package_namespace)
         next_node_q = next_node_q.subq_path(path, filters, __recurse_level+1)
 
         # Pop a filter from the filter stack and apply if non-null

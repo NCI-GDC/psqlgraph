@@ -13,10 +13,11 @@ from xlocal import xlocal
 import socket
 
 # Custom modules
-from psqlgraph.edge import Edge
+from psqlgraph import ext
+from psqlgraph.edge import AbstractEdge
 from psqlgraph.exc import QueryError
 from psqlgraph.hooks import receive_before_flush
-from psqlgraph.node import PolyNode, Node
+from psqlgraph.node import PolyNode
 from psqlgraph.query import GraphQuery
 from psqlgraph.util import retryable, default_backoff
 from psqlgraph.voided_edge import VoidedEdge
@@ -41,6 +42,7 @@ class PsqlGraphDriver(object):
         """
 
         # Parse kwargs
+        self.package_namespace = kwargs.pop("package_namespace", None)
         connect_args = kwargs.pop('connect_args', {})
         kwargs.pop('node_validator', None)
         kwargs.pop('edge_validator', None)
@@ -79,7 +81,7 @@ class PsqlGraphDriver(object):
     def _new_session(self):
         Session = sessionmaker(expire_on_commit=False, class_=GraphSession)
         Session.configure(bind=self.engine, query_cls=GraphQuery)
-        session = Session()
+        session = Session(package_namespace=self.package_namespace)
         session._flush_timestamp = None
         session._set_flush_timestamps = self.set_flush_timestamps
         event.listen(session, 'before_flush', receive_before_flush)
@@ -200,10 +202,11 @@ class PsqlGraphDriver(object):
                 local.expunge_all()
                 local.close()
 
-    def nodes(self, query=Node):
+    def nodes(self, query=None):
         """.. _nodes:
 
         """
+        query = query or ext.get_abstract_node(self.package_namespace)
         self._configure_driver_mappers()
         with self.session_scope(must_inherit=True) as local:
             if isinstance(query, list) or isinstance(query, tuple):
@@ -214,7 +217,8 @@ class PsqlGraphDriver(object):
     def __call__(self, *args, **kwargs):
         return self.nodes(*args, **kwargs)
 
-    def edges(self, query=Edge):
+    def edges(self, query=None):
+        query = query or ext.get_abstract_edge(self.package_namespace)
         self._configure_driver_mappers()
         with self.session_scope(must_inherit=True) as local:
             if isinstance(query, list) or isinstance(query, tuple):
@@ -276,7 +280,7 @@ class PsqlGraphDriver(object):
                 node = self.nodes().ids([node_id]).scalar()
 
             elif not node and label:
-                cls = Node.get_subclass(label)
+                cls = ext.get_abstract_node(self.package_namespace).get_subclass(label)
                 node = self.nodes(cls).ids([node_id]).scalar()
 
             if not node:
@@ -318,7 +322,7 @@ class PsqlGraphDriver(object):
         elif not label:
             query = self.nodes()
         else:
-            cls = Node.get_subclass(label)
+            cls = ext.get_abstract_node(self.package_namespace).get_subclass(label)
             query = self.nodes(cls)
 
         if node_id is not None:
@@ -428,7 +432,9 @@ class PsqlGraphDriver(object):
         if voided:
             queries = [self.voided_edges()]
         elif label is not None:
-            queries = [self.edges(cls) for cls in Edge._get_subclasses_labeled(label)]
+            edge_cls = ext.get_abstract_edge(self.package_namespace)
+            queries = [self.edges(cls) for cls in \
+                       edge_cls._get_subclasses_labeled(label)]
         else:
             queries = [self.edges()]
 
@@ -455,21 +461,25 @@ class PsqlGraphDriver(object):
 
     def edge_delete_by_node_id(self, node_id, session=None):
         with self.session_scope(session) as local:
-            for edge in self.edges().filter(Edge.src_id == node_id):
+            edge_cls = ext.get_abstract_edge(self.package_namespace)
+            for edge in self.edges().filter(edge_cls.src_id == node_id):
                 local.delete(edge)
-            for edge in self.edges().filter(Edge.dst_id == node_id):
+            for edge in self.edges().filter(edge_cls.dst_id == node_id):
                 local.delete(edge)
 
     def get_edge_by_labels(self, src_label, edge_label, dst_label):
-        src_classes = [n for n in Node.get_subclasses()
+        node_cls = ext.get_abstract_node(self.package_namespace)
+        src_classes = [n for n in node_cls.get_subclasses()
                        if n.get_label() == src_label]
-        dst_classes = [n for n in Node.get_subclasses()
+        dst_classes = [n for n in node_cls.get_subclasses()
                        if n.get_label() == dst_label]
         assert len(src_classes) == 1,\
             'No classes found with src_label {}'.format(src_label)
         assert len(dst_classes) == 1,\
             'No classes found with dst_label {}'.format(dst_label)
-        edges = [edge for edge in Edge.get_subclasses()
+
+        edge_cls = ext.get_abstract_edge(self.package_namespace)
+        edges = [edge for edge in edge_cls.get_subclasses()
                  if edge.__src_class__ == src_classes[0].__name__
                  and edge.__dst_class__ == dst_classes[0].__name__
                  and edge.get_label() == edge_label]
@@ -494,7 +504,7 @@ class PsqlGraphDriver(object):
     def reload(self, *entities):
         reloaded = []
         for e in entities:
-            if isinstance(e, Edge):
+            if isinstance(e, AbstractEdge):
                 reloaded.append(self.edges(type(e)).src(e.src_id)
                                 .dst(e.dst_id).one())
             else:

@@ -2,12 +2,12 @@ from collections import deque
 
 from sqlalchemy import Column, Text, UniqueConstraint, Index
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.declarative import AbstractConcreteBase, declared_attr
+from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
+from psqlgraph import base
 from psqlgraph.edge import Edge
-from psqlgraph.base import ORMBase, NODE_TABLENAME_SCHEME
 from psqlgraph.voided_node import VoidedNode
 
 
@@ -41,7 +41,12 @@ class NodeAssociationProxyMixin(object):
         The actual change:
         https://github.com/zzzeek/sqlalchemy/commit/4c931b2ec7e0f09ac8c3ebe28c794f5858d54efb
         """
-        for scls in Edge.get_subclasses():
+
+        edge_cls = cls.get_edge_class()
+        for scls in edge_cls.get_subclasses():
+
+            if scls.is_abstract_base():
+                continue
 
             name = scls.__name__
             name_in = '_{}_in'.format(name)
@@ -95,8 +100,13 @@ class NodeAssociationProxyMixin(object):
         for edge_out in self.edges_out:
             yield edge_out
 
+    @classmethod
+    def get_edge_class(cls):
+        return Edge
 
-class Node(AbstractConcreteBase, ORMBase, NodeAssociationProxyMixin):
+
+class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
+
     node_id = Column(
         Text,
         primary_key=True,
@@ -105,7 +115,7 @@ class Node(AbstractConcreteBase, ORMBase, NodeAssociationProxyMixin):
 
     @declared_attr
     def __tablename__(cls):
-        return NODE_TABLENAME_SCHEME.format(class_name=cls.__name__.lower())
+        return base.NODE_TABLENAME_SCHEME.format(class_name=cls.__name__.lower())
 
     @declared_attr
     def __table_args__(cls):
@@ -221,7 +231,7 @@ class Node(AbstractConcreteBase, ORMBase, NodeAssociationProxyMixin):
         return hash((self.node_id, self.__class__))
 
     def copy(self):
-        node = Node(
+        node = self.__class__(
             node_id=self.node_id,
             acl=self.acl,
             _system_annotations=self.system_annotations,
@@ -240,11 +250,15 @@ class Node(AbstractConcreteBase, ORMBase, NodeAssociationProxyMixin):
 
     @classmethod
     def from_json(cls, node_json):
-        if cls is Node:
-            Type = Node.get_subclass(node_json['label'])
+        """ loads a node instance from a json object """
+
+        if cls.is_abstract_base():
+            abstract_node_cls = cls.get_edge_class().get_node_class()
+            Type = abstract_node_cls.get_subclass(node_json["label"])
+
             if not Type:
                 raise KeyError('Node has no subclass named {}'
-                                  .format(node_json['label']))
+                                   .format(node_json['label']))
         else:
             Type = cls
 
@@ -256,25 +270,17 @@ class Node(AbstractConcreteBase, ORMBase, NodeAssociationProxyMixin):
                    
     @classmethod
     def get_subclass(cls, label):
-        for c in cls.__subclasses__():
+        for c in cls.get_subclasses():
             if c.get_label() == label:
                 return c
         return None
 
     @classmethod
     def get_subclass_named(cls, name):
-        for c in cls.__subclasses__():
+        for c in cls.get_subclasses():
             if c.__name__ == name:
                 return c
         raise KeyError('Node has no subclass named {}'.format(name))
-
-    @staticmethod
-    def get_subclass_table_names():
-        return [s.__tablename__ for s in Node.__subclasses__()]
-
-    @classmethod
-    def get_subclasses(cls):
-        return [s for s in cls.__subclasses__()]
 
     @property
     def _history(self):
@@ -297,6 +303,10 @@ class Node(AbstractConcreteBase, ORMBase, NodeAssociationProxyMixin):
                        old_sysan, self.label, self.created)
         voided = VoidedNode(temp)
         session.add(voided)
+
+
+class Node(base.LocalConcreteBase, AbstractNode, base.ORMBase):
+    pass
 
 
 class TmpNode(object):

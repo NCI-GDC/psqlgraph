@@ -8,15 +8,12 @@
 appdirs==1.4.4            # via virtualenv
 atomicwrites==1.4.0       # via pytest
 attrs==19.3.0             # via pytest
-certifi==2020.4.5.1       # via requests
-chardet==3.0.4            # via requests
 configparser==4.0.2       # via importlib-metadata
 contextlib2==0.6.0.post1  # via importlib-metadata, importlib-resources, virtualenv, zipp
 coverage==5.1             # via pytest-cov
 distlib==0.3.0            # via virtualenv
 filelock==3.0.12          # via tox, virtualenv
 funcsigs==1.0.2           # via pytest
-idna==2.9                 # via requests
 importlib-metadata==1.6.0  # via importlib-resources, pluggy, pytest, tox, virtualenv
 importlib-resources==1.5.0  # via virtualenv
 more-itertools==5.0.0     # via pytest
@@ -29,7 +26,6 @@ py==1.8.1                 # via pytest, tox
 pyparsing==2.4.7          # via packaging
 pytest-cov==2.7.1         # via -r dev-requirements.in
 pytest==4.6.10            # via -r dev-requirements.in, pytest-cov
-requests==2.23.0          # via psqlgraph (setup.py)
 rstr==2.2.6               # via psqlgraph (setup.py)
 scandir==1.10.0           # via pathlib2
 singledispatch==3.4.0.3   # via importlib-resources
@@ -38,7 +34,6 @@ sqlalchemy==1.3.17        # via psqlgraph (setup.py)
 toml==0.10.1              # via tox
 tox==3.15.1               # via -r dev-requirements.in
 typing==3.7.4.1           # via importlib-resources
-urllib3==1.25.9           # via requests
 virtualenv==20.0.21       # via tox
 wcwidth==0.1.9            # via pytest
 xlocal==0.5               # via psqlgraph (setup.py)

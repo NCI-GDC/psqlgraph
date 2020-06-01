@@ -1,6 +1,0 @@
-psycopg2-binary
-sqlalchemy
-xlocal
-requests
-rstr
-six>=1.12.0

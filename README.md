@@ -1,9 +1,23 @@
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/562dc95026254b1a82b39062322bd845)](https://www.codacy.com/manual/NCI-GDC/psqlgraph?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=NCI-GDC/psqlgraph&amp;utm_campaign=Badge_Grade)
 [![Codacy Badge](https://api.codacy.com/project/badge/Coverage/562dc95026254b1a82b39062322bd845)](https://www.codacy.com/manual/NCI-GDC/psqlgraph?utm_source=github.com&utm_medium=referral&utm_content=NCI-GDC/psqlgraph&utm_campaign=Badge_Coverage)
 [![Build Status](https://travis-ci.org/NCI-GDC/psqlgraph.svg?branch=develop)](https://travis-ci.org/NCI-GDC/psqlgraph)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 # Overview
 
-The psqlgraph library is a layer on top of [SQLAlchemy's](http://www.sqlalchemy.org/) ORM layer that attemps to capitalize on the benefits of SQL while utilizing Postgresql's JSONB support for SQL-less flexibility.  Psqlgraph allows you to interact with your data graphically by defining Node and Edge models to maintain flexible many-to-many relationships.
+The psqlgraph library is a layer on top of [SQLAlchemy's](http://www.sqlalchemy.org/) ORM layer that attempts to capitalize on the benefits of SQL while utilizing Postgresql's JSONB support for SQL-less flexibility.  Psqlgraph allows you to interact with your data graphically by defining Node and Edge models to maintain flexible many-to-many relationships.
+
+
+- [Overview](#overview)
+- [Usage](#usage)
+- [Installation](#installation)
+  - [Dependencies](#dependencies)
+    - [Project Dependencies](#project-dependencies)
+    - [Building Documentation](#building-documentation)
+  - [Test Setup](#test-setup)
+- [Setup pre-commit hook to check for secrets](#setup-pre-commit-hook-to-check-for-secrets)
+- [Contributing](#contributing)
+- [Tests](#tests)
+
 
 # Usage
 
@@ -54,6 +68,28 @@ Running the setup script will:
 Setting up test database
 Dropping old test data
 Creating tables in test database
+```
+
+    
+# Setup pre-commit hook to check for secrets
+
+We use [pre-commit](https://pre-commit.com/) to setup pre-commit hooks for this repo.
+We use [detect-secrets](https://github.com/Yelp/detect-secrets) to search for secrets being committed into the repo. 
+
+To install the pre-commit hook, run
+```
+pre-commit install
+```
+
+To update the .secrets.baseline file run
+```
+detect-secrets scan --update .secrets.baseline
+```
+
+`.secrets.baseline` contains all the string that were caught by detect-secrets but are not stored in plain text. Audit the baseline to view the secrets . 
+
+```
+detect-secrets audit .secrets.baseline
 ```
 # Contributing
 Read how to contribute [here](https://github.com/NCI-GDC/gdcapi/blob/master/CONTRIBUTING.md)

@@ -1,15 +1,15 @@
-import sqlalchemy
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import event
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.ext import declarative
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import object_session, sessionmaker
+from sqlalchemy.sql import expression, schema, sqltypes
 
-from psqlgraph.attributes import PropertiesDict, SystemAnnotationDict
+from psqlgraph import attributes
 from psqlgraph.util import sanitize, validate
 
 
-abstract_classes = ['Node', 'Edge', 'Base']
 NODE_TABLENAME_SCHEME = 'node_{class_name}'
 EDGE_TABLENAME_SCHEME = 'edge_{class_name}'
 
@@ -21,28 +21,28 @@ class CommonBase(object):
     _session_hooks_before_delete = []
 
     # ======== Columns ========
-    created = sqlalchemy.Column(
-        sqlalchemy.DateTime(timezone=True),
+    created = schema.Column(
+        sqltypes.DateTime(timezone=True),
         nullable=False,
-        server_default=sqlalchemy.text('now()'),
+        server_default=expression.text('now()'),
     )
 
-    acl = sqlalchemy.Column(
-        ARRAY(sqlalchemy.Text),
+    acl = schema.Column(
+        postgresql.ARRAY(sqltypes.Text),
         default=list(),
     )
 
-    _sysan = sqlalchemy.Column(
+    _sysan = schema.Column(
         # WARNING: Do not update this column directly. See
         # `.system_annotations`
-        JSONB,
+        postgresql.JSONB,
         server_default='{}',
     )
 
-    _props = sqlalchemy.Column(
+    _props = schema.Column(
         # WARNING: Do not update this column directly.
         # See `.properties` or `.props`
-        JSONB,
+        postgresql.JSONB,
         server_default='{}',
     )
 
@@ -62,7 +62,7 @@ class CommonBase(object):
     # ======== Properties ========
     @hybrid_property
     def properties(self):
-        return PropertiesDict(self)
+        return attributes.PropertiesDict(self)
 
     @properties.setter
     def properties(self, properties):
@@ -184,7 +184,7 @@ class CommonBase(object):
         column.
 
         """
-        return SystemAnnotationDict(self)
+        return attributes.SystemAnnotationDict(self)
 
     @system_annotations.setter
     def system_annotations(self, sysan):
@@ -274,7 +274,7 @@ def create_hybrid_property(name, fset):
     return hybrid_prop
 
 
-@sqlalchemy.event.listens_for(CommonBase, 'mapper_configured', propagate=True)
+@event.listens_for(CommonBase, 'mapper_configured', propagate=True)
 def create_hybrid_properties(mapper, cls):
     # This dictionary will be a property name to allowed types
     # dictionary.  It will be populated at mapper configuration using
@@ -325,10 +325,61 @@ class VoidedBaseClass(object):
         self.system_annotations = sysan
 
 
-VoidedBase = declarative_base(cls=VoidedBaseClass)
-ORMBase = declarative_base(cls=CommonBase)
+VoidedBase = declarative.declarative_base(cls=VoidedBaseClass)
+ORMBase = declarative.declarative_base(cls=CommonBase)
 
 
-def create_all(engine):
-    ORMBase.metadata.create_all(engine)
+def create_all(engine, base=ORMBase):
+    """ Create all tables associated with the provided declarative base, defaults to
+        ORMBase if not specified
+    Args:
+        engine (sqlalchemy.engine.Engine): active engine instance
+        base (sqlalchemy.ext.declarative.DeclarativeMeta): a declarative base class
+    """
+    base.metadata.create_all(engine)
     VoidedBase.metadata.create_all(engine)
+
+
+def drop_all(engine, base=ORMBase):
+    """ Drops all tables associated with a given delcarative base
+    Args:
+        engine (sqlalchemy.engine.Engine): active engine instance
+        base (sqlalchemy.ext.declarative.DeclarativeMeta): a declarative base class
+    """
+    base.metadata.drop_all(engine)
+    VoidedBase.metadata.drop_all(engine)
+
+
+class ExtMixin(object):
+    """  An extension mixin used for retrieving child classes when needed """
+
+    @classmethod
+    def is_subclass_loaded(cls, name):
+        return name in [c.__name__ for c in cls.get_subclasses()]
+
+    @classmethod
+    def add_subclass(cls, subclass):
+        if not issubclass(subclass, cls):
+            raise AttributeError("{} is not a subclass of {}".format(subclass, cls))
+
+    @classmethod
+    def get_subclasses(cls):
+        """ Limits the scope of subclasses to only those manually specified, else defaults to actual subclasses """
+        return cls.__subclasses__()
+
+    @classmethod
+    def get_subclass_table_names(cls):
+        return [s.__tablename__ for s in cls.get_subclasses()]
+
+    @classmethod
+    def is_abstract_base(cls):
+        return LocalConcreteBase in cls.__bases__
+
+
+class LocalConcreteBase(declarative.AbstractConcreteBase):
+
+    @classmethod
+    def _sa_decl_prepare_nocascade(cls):
+        if not cls.__subclasses__():
+            return
+        super(LocalConcreteBase, cls)._sa_decl_prepare_nocascade()

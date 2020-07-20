@@ -9,11 +9,10 @@ setup(
     name='psqlgraph',
     packages=["psqlgraph"],
     install_requires=[
-        'psycopg2-binary',
-        'sqlalchemy',
-        'xlocal',
-        'rstr',
-        'requests',
-        'six>=1.12.0'
+        'psycopg2~=2.8.5',
+        'sqlalchemy~=1.3',
+        'xlocal~=0.5',
+        'rstr~=2.2.6',
+        'six~=1.15.0',
     ]
 )

@@ -2,8 +2,10 @@
 Session hooks
 """
 from sqlalchemy.inspection import inspect
-from psqlgraph.node import Node
-from psqlgraph.edge import Edge
+
+from psqlgraph.base import ExtMixin
+from psqlgraph.edge import AbstractEdge
+from psqlgraph.node import AbstractNode
 
 
 def history(target, column, attr):
@@ -41,8 +43,7 @@ def is_psqlgraph_entity(target):
     """Only attempt to track history on Nodes and Edges
 
     """
-    return target.__class__ in (
-        Node.__subclasses__()+Edge.__subclasses__())
+    return isinstance(target, ExtMixin)
 
 
 def receive_before_flush(session, flush_context, instances):
@@ -98,7 +99,7 @@ def receive_before_flush(session, flush_context, instances):
         if not is_psqlgraph_entity(target):
             continue
 
-        if isinstance(target, (Node, Edge)):
+        if isinstance(target, (AbstractNode, AbstractEdge)):
             target._validate()
 
         # Call custom session hook

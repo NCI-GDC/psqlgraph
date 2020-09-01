@@ -1,9 +1,9 @@
-import unittest
 import logging
 import uuid
-from psqlgraph import Node, Edge, PsqlGraphDriver
-from psqlgraph import PolyNode, PolyEdge
 
+import pytest
+
+from psqlgraph import PolyNode, PolyEdge
 from test import models, PsqlgraphBaseTest
 
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +33,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             self.g.edge_insert(PolyEdge(
                 src_id=parent_id, dst_id=foo_id, label='test_edge_2'))
             if level < 2:
-                self._create_subtree(node_id, level+1)
+                self._create_subtree(node_id, level + 1)
 
     def test_ids(self):
         with self.g.session_scope():
@@ -57,8 +57,8 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
     def test_not_props(self):
         with self.g.session_scope():
             for i in range(3):
-                ns = self.g.nodes(models.Test).not_props({'key2': i, 'key3': None})\
-                                       .all()
+                ns = self.g.nodes(models.Test).not_props({'key2': i, 'key3': None}) \
+                    .all()
                 self.assertNotEqual(ns, [])
                 for n in ns:
                     self.assertNotEqual(n['key2'], i)
@@ -97,7 +97,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         with self.g.session_scope():
             self.assertEqual(
                 self.g.nodes(models.Foo)
-                .subq_path('tests.foos.tests.foos', [
+                    .subq_path('tests.foos.tests.foos', [
                     lambda q: q.props(bar=1),
                     lambda q: q.ids(self.parent_id),
                     lambda q: q.props(bar=3)
@@ -107,7 +107,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         with self.g.session_scope():
             self.assertEqual(
                 self.g.nodes(models.Foo)
-                .subq_path('tests.foos.tests.foos', [
+                    .subq_path('tests.foos.tests.foos', [
                     lambda q: q.props(bar=-1),
                     lambda q: q.ids(self.parent_id),
                     lambda q: q.props(bar=3)
@@ -123,6 +123,20 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         with self.g.session_scope():
             self.assertEqual(self.g.nodes(models.Foo)
                              .subq_without_path(
-                                 'tests',
-                                 [lambda q: q.ids('test')])
+                'tests',
+                [lambda q: q.ids('test')])
                              .count(), self.g.nodes(models.Foo).count())
+
+
+@pytest.mark.parametrize(
+    "col, vals, expected_count", [
+        ("studies", ["C1"], 1),
+        ("studies", ["P2"], 3),
+        ("studies", ["XP2"], 0),
+        ("studies", ["C1", "P1"], 2),
+])
+def test_props_in(pg_driver, samples_with_array, col, vals, expected_count):
+    # filter
+    with pg_driver.session_scope() as s:
+        r = pg_driver.nodes(models.Foo).prop_in(col, vals).count()
+        assert r == expected_count

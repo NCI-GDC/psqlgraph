@@ -2,13 +2,10 @@ from copy import copy
 
 import six
 from sqlalchemy import not_, or_
+from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.orm import Query
 
 from psqlgraph import ext
-
-"""
-
-"""
 
 
 class GraphQuery(Query):
@@ -25,7 +22,7 @@ class GraphQuery(Query):
     def _iterable(self, val):
         if hasattr(val, '__iter__') and not isinstance(val, six.string_types):
             return val
-        return val,
+        return val
 
     def entity(self):
         """It is useful for us to be able to get the last entity in a chained
@@ -468,9 +465,15 @@ class GraphQuery(Query):
             g.prop_in('key1', ['Yes', 'yes', 'True', 'true']).count()
 
         """
-
+        entity = self.entity()
+        col = entity._props
+        if is_list_prop(entity, key):
+            # applicable only to text arrays
+            # see https://www.postgresql.org/docs/9.4/functions-json.html
+            # has_any is `?|` under the hood and that requires the right operand to be a text array
+            return self.filter(col[key].has_any(array(values)))
         assert isinstance(key, six.string_types) and isinstance(values, list)
-        return self.filter(self.entity()._props[key].astext.in_([
+        return self.filter(col[key].astext.in_([
             str(v) for v in values]))
 
     def prop(self, key, value):
@@ -547,3 +550,10 @@ class GraphQuery(Query):
         for key in keys:
             self = self.filter(self.entity()._sysan.has_key(key))
         return self
+
+
+def is_list_prop(entity, prop):
+    if prop not in entity.__pg_properties__:
+        raise KeyError("{} has not attribute {}".format(entity.__class__, prop))
+    return list in entity.__pg_properties__[prop]
+

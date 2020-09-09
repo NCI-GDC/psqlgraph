@@ -262,9 +262,7 @@ class GraphQuery(Query):
 
         This example will filter on governments with presidents named Dave:
 
-        ``g.nodes(Nation).subq_path('governments',
-                  [lambda q: q.props(president='Dave')])``
-
+        ``g.nodes(Nation).subq_path('governments',[lambda q: q.props(president='Dave')])``
 
         WARNING: Filters applied after calling this filter will be
         applied to the selection entity, not the end of the path.
@@ -419,12 +417,11 @@ class GraphQuery(Query):
 
         :param keys:
             A string or list of string keys to filter by null values
-            or missing keys.  Additional keys can be added as
-            :param:`*args`
+            or missing keys.  Additional keys can be added as`*args`
 
         :param args:
             A list of keys to filter by null values or missing keys.
-            Additional keys can be added as :param:`keys`
+            Additional keys can be added as`keys`
 
         :returns: |qobj|
 
@@ -542,8 +539,11 @@ class GraphQuery(Query):
 
     def has_sysan(self, keys):
         """Filter only entities that have a key `key` in system_annotations
-        Args:
-            keys (str|list[str]): System annotation key(s)
+
+        :param keys:
+            System annotation key(s)
+        :type keys: str|list[str]
+        :returns GraphQuery: Active GraphQuery instance
         """
         if isinstance(keys, six.string_types):
             keys = [keys]

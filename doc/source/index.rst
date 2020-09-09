@@ -4,14 +4,14 @@
    contain the root `toctree` directive.
 
 psqlgraph documentation
-=========================
+=======================
 
 .. toctree::
    :maxdepth: 4
 
 :mod:`psqlgraph`
 ----------------
-Postgresql Graph Represetation Library
+Postgresql Graph Representation Library
 
 If you're just a detailed explanation of querying, feel free to skip
 to the section on :ref:`label-graph-queries`.
@@ -156,9 +156,9 @@ for more detailed usage.
 .. _AssociationProxy: http://docs.sqlalchemy.org/en/latest/orm/extensions/associationproxy.html
 .. _label-using-the-session:
 
------------
+-----------------
 Using The Session
------------
+-----------------
 
 .. note:: You cannot use psqlgraph without importing your models.  In
           order to use any of your models, you must import them into
@@ -263,7 +263,7 @@ example follows the one above::
 :mod:`Graph Queries`
 --------------------
 
-.. autoclass:: psqlgraph.GraphQuery
+.. autoclass:: psqlgraph.query.GraphQuery
    :members:
 
 Tests
@@ -285,7 +285,7 @@ Building Documentation
 Utility Methods
 ---------------
 
-.. automodule:: psqlgraph
+.. automodule:: psqlgraph.util
    :members: retryable, default_backoff
 
 Indices and tables

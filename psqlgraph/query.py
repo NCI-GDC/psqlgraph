@@ -22,7 +22,7 @@ class GraphQuery(Query):
     def _iterable(self, val):
         if hasattr(val, '__iter__') and not isinstance(val, six.string_types):
             return val
-        return val
+        return val,
 
     def entity(self):
         """It is useful for us to be able to get the last entity in a chained

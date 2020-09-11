@@ -31,6 +31,18 @@ class FakeDictionary(object):
                         'type': 'integer',
                         'minimum': 20,
                         'maximum': 30,
+                    },
+                    'studies': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'string'
+                        }
+                    },
+                    'ages': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'integer'
+                        }
                     }
                 },
                 'links': [
@@ -135,6 +147,14 @@ class Foo(Node):
     @pg_property(int)
     def fobble(self, value):
         self._set_property('fobble', value)
+
+    @pg_property(list)
+    def studies(self, value):
+        self._set_property('studies', value)
+
+    @pg_property(list)
+    def ages(self, value):
+        self._set_property('ages', value)
 
 
 class FooBar(Node):

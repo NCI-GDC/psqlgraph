@@ -2,13 +2,10 @@ from copy import copy
 
 import six
 from sqlalchemy import not_, or_
+from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.orm import Query
 
 from psqlgraph import ext
-
-"""
-
-"""
 
 
 class GraphQuery(Query):
@@ -265,9 +262,7 @@ class GraphQuery(Query):
 
         This example will filter on governments with presidents named Dave:
 
-        ``g.nodes(Nation).subq_path('governments',
-                  [lambda q: q.props(president='Dave')])``
-
+        ``g.nodes(Nation).subq_path('governments',[lambda q: q.props(president='Dave')])``
 
         WARNING: Filters applied after calling this filter will be
         applied to the selection entity, not the end of the path.
@@ -422,12 +417,11 @@ class GraphQuery(Query):
 
         :param keys:
             A string or list of string keys to filter by null values
-            or missing keys.  Additional keys can be added as
-            :param:`*args`
+            or missing keys.  Additional keys can be added as`*args`
 
         :param args:
             A list of keys to filter by null values or missing keys.
-            Additional keys can be added as :param:`keys`
+            Additional keys can be added as`keys`
 
         :returns: |qobj|
 
@@ -468,9 +462,15 @@ class GraphQuery(Query):
             g.prop_in('key1', ['Yes', 'yes', 'True', 'true']).count()
 
         """
-
+        entity = self.entity()
+        col = entity._props
+        if is_list_prop(entity, key):
+            # applicable only to text arrays
+            # see https://www.postgresql.org/docs/9.4/functions-json.html
+            # has_any is `?|` under the hood and that requires the right operand to be a text array
+            return self.filter(col[key].has_any(array(values)))
         assert isinstance(key, six.string_types) and isinstance(values, list)
-        return self.filter(self.entity()._props[key].astext.in_([
+        return self.filter(col[key].astext.in_([
             str(v) for v in values]))
 
     def prop(self, key, value):
@@ -539,11 +539,21 @@ class GraphQuery(Query):
 
     def has_sysan(self, keys):
         """Filter only entities that have a key `key` in system_annotations
-        Args:
-            keys (str|list[str]): System annotation key(s)
+
+        :param keys:
+            System annotation key(s)
+        :type keys: str|list[str]
+        :returns GraphQuery: Active GraphQuery instance
         """
         if isinstance(keys, six.string_types):
             keys = [keys]
         for key in keys:
             self = self.filter(self.entity()._sysan.has_key(key))
         return self
+
+
+def is_list_prop(entity, prop):
+    if prop not in entity.__pg_properties__:
+        raise KeyError("{} has not attribute {}".format(entity.__class__, prop))
+    return list in entity.__pg_properties__[prop]
+

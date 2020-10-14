@@ -93,6 +93,17 @@ class BooleanRand(Randomizer):
         return isinstance(value, bool)
 
 
+class ArrayRand(Randomizer):
+    def random_value(self, override=None):
+        if self.validate_value(override):
+            return override
+
+        return []
+
+    def validate_value(self, value):
+        return isinstance(value, list)
+
+
 class TypeRandFactory(object):
     @staticmethod
     def get_randomizer(type_def):
@@ -100,8 +111,11 @@ class TypeRandFactory(object):
         if isinstance(_type, list):
             _type = _type[0]
 
-        if _type in ['object', 'array']:
+        if _type in ['object']:
             raise ValueError('Resolve relationships outside of this factory')
+
+        if _type == 'array':
+            return ArrayRand()
 
         if _type in ['integer', 'number', 'float']:
             return NumberRand(type_def)

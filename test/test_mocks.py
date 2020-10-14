@@ -52,6 +52,7 @@ def validate_test(node):
 def validate_foo(node):
     assert isinstance(node, models.Foo)
     assert isinstance(node.fobble, int)
+    assert isinstance(node.studies, list)
     assert 20 <= node.fobble <= 30
     assert re.match(STRING_MATCH, node.bar)
     assert node.baz in ['allowed_1', 'allowed_2']
@@ -184,7 +185,9 @@ def test_graph_factory_with_globals(gdcmodels, gdcdictionary,
 
     prop_counts = defaultdict(int)
     for n in nodes:
-        for key_val in n.props.items():
+        items = ((key, tuple(value) if hasattr(value, "__iter__") else value) for key, value in n.props.items())
+
+        for key_val in items:
             prop_counts[key_val] += 1
 
     # 'disallowed' is not in Enum and shouldn't be set
@@ -207,7 +210,7 @@ def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
 
     nodes = [
         dict(label='foo', node_id='id_1'),
-        dict(label='foo', node_id='id_2', baz='allowed_2', bar='hello', fobble=30),
+        dict(label='foo', node_id='id_2', baz='allowed_2', bar='hello', fobble=30, ages=[1,2]),
         dict(label='foo', node_id='id_3', baz='disallowed'),
         dict(label='foo', node_id='id_4', bar=1, fobble='hello'),
     ]
@@ -217,7 +220,7 @@ def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
     # otherwise, we use random valid value
     expected_values = [
         dict(node_id='id_1', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1'),
-        dict(node_id='id_2', bar='hello', baz='allowed_2', fobble=30),
+        dict(node_id='id_2', bar='hello', baz='allowed_2', fobble=30, ages=[1,2]),
         dict(node_id='id_3', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1'),
         dict(node_id='id_4', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1')
     ]

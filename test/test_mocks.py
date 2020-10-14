@@ -185,7 +185,7 @@ def test_graph_factory_with_globals(gdcmodels, gdcdictionary,
 
     prop_counts = defaultdict(int)
     for n in nodes:
-        items = ((key, tuple(value) if hasattr(value, "__iter__") else value) for key, value in n.props.items())
+        items = ((key, tuple(value) if not isinstance(value, str) and hasattr(value, "__iter__") else value) for key, value in n.props.items())
 
         for key_val in items:
             prop_counts[key_val] += 1

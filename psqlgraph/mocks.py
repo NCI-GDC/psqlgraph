@@ -94,11 +94,15 @@ class BooleanRand(Randomizer):
 
 
 class ArrayRand(Randomizer):
+    def __init__(self, enum):
+        super(ArrayRand, self).__init__()
+        self.enum = enum if enum is None else frozenset(enum)
+
     def random_value(self, override=None):
         if self.validate_value(override):
-            return override
+            return override if self.enum is None else [o for o in override if o in self.enum]
 
-        return []
+        return [] if self.enum is None else [next(iter(self.enum))]
 
     def validate_value(self, value):
         return isinstance(value, list)
@@ -115,7 +119,7 @@ class TypeRandFactory(object):
             raise ValueError('Resolve relationships outside of this factory')
 
         if _type == 'array':
-            return ArrayRand()
+            return ArrayRand(type_def.get("items", {}).get("enum", None))
 
         if _type in ['integer', 'number', 'float']:
             return NumberRand(type_def)

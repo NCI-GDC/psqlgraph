@@ -35,7 +35,7 @@ class FakeDictionary(object):
                     'studies': {
                         'type': 'array',
                         'items': {
-                            'type': 'string'
+                            'enum': ['N/A', 'Unknown'],
                         }
                     },
                     'ages': {

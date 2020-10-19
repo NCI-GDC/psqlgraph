@@ -209,9 +209,9 @@ def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
     gf = GraphFactory(gdcmodels, gdcdictionary, graph_globals=graph_globals)
 
     nodes = [
-        dict(label='foo', node_id='id_1'),
+        dict(label='foo', node_id='id_1', studies=['N/A', 'STUDIE0']),
         dict(label='foo', node_id='id_2', baz='allowed_2', bar='hello', fobble=30, ages=[1,2]),
-        dict(label='foo', node_id='id_3', baz='disallowed'),
+        dict(label='foo', node_id='id_3', baz='disallowed', studies=['N/A', 'Unknown']),
         dict(label='foo', node_id='id_4', bar=1, fobble='hello'),
     ]
 
@@ -219,9 +219,9 @@ def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
     # invalid passed values are overridden by global if set
     # otherwise, we use random valid value
     expected_values = [
-        dict(node_id='id_1', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1'),
+        dict(node_id='id_1', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1', studies=['N/A']),
         dict(node_id='id_2', bar='hello', baz='allowed_2', fobble=30, ages=[1,2]),
-        dict(node_id='id_3', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1'),
+        dict(node_id='id_3', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1', studies=['N/A', 'Unknown']),
         dict(node_id='id_4', bar='012345abcdefghijklmnopqrstuvwxyz', baz='allowed_1')
     ]
 

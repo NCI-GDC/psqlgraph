@@ -94,18 +94,18 @@ class BooleanRand(Randomizer):
 
 
 class ArrayRand(Randomizer):
-    def __init__(self, enum):
+    def __init__(self, item_randomizer):
         super(ArrayRand, self).__init__()
-        self.enum = enum if enum is None else frozenset(enum)
+        self.item_randomizer = item_randomizer
 
     def random_value(self, override=None):
         if self.validate_value(override):
-            return override if self.enum is None else [o for o in override if o in self.enum]
+            return override
 
-        return [] if self.enum is None else [next(iter(self.enum))]
+        return [self.item_randomizer.random_value() for _ in range(0, random.randint(1, 5))]
 
     def validate_value(self, value):
-        return isinstance(value, list)
+        return isinstance(value, list) and all(self.item_randomizer.validate_value(i) for i in value)
 
 
 class TypeRandFactory(object):
@@ -119,7 +119,12 @@ class TypeRandFactory(object):
             raise ValueError('Resolve relationships outside of this factory')
 
         if _type == 'array':
-            return ArrayRand(type_def.get("items", {}).get("enum", None))
+            items = type_def.get('items')
+
+            if not items:
+                raise ValueError('Array configuration missing items.')
+
+            return ArrayRand(TypeRandFactory.resolve_type(items))
 
         if _type in ['integer', 'number', 'float']:
             return NumberRand(type_def)
@@ -129,6 +134,27 @@ class TypeRandFactory(object):
 
         return StringRand(type_def)
 
+    @staticmethod
+    def resolve_type(definition):
+        if 'enum' in definition:
+            return EnumRand(definition['enum'])
+
+        if 'type' in definition:
+            return TypeRandFactory.get_randomizer(definition)
+
+        if 'oneOf' in definition:
+            if 'enum' in definition['oneOf'][0]:
+                values = [
+                    v for d in definition['oneOf'] for v in d.get('enum', [])
+                ]
+                return EnumRand(values)
+            return TypeRandFactory.resolve_type(definition['oneOf'][0])
+
+        if 'anyOf' in definition:
+            return TypeRandFactory.resolve_type(definition['anyOf'][0])
+
+        return StringRand(definition)
+
 
 class PropertyFactory(object):
     def __init__(self, properties):
@@ -136,7 +162,7 @@ class PropertyFactory(object):
         self.type_factories = {}
         for name in properties:
             try:
-                self.type_factories[name] = self.resolve_type(
+                self.type_factories[name] = TypeRandFactory.resolve_type(
                     self.properties.get(name, {})
                 )
             except ValueError as ve:
@@ -166,26 +192,6 @@ class PropertyFactory(object):
             )
 
         return name, self.type_factories[name].random_value(override)
-
-    def resolve_type(self, definition):
-        if 'enum' in definition:
-            return EnumRand(definition['enum'])
-
-        if 'type' in definition:
-            return TypeRandFactory.get_randomizer(definition)
-
-        if 'oneOf' in definition:
-            if 'enum' in definition['oneOf'][0]:
-                values = [
-                    v for d in definition['oneOf'] for v in d.get('enum', [])
-                ]
-                return EnumRand(values)
-            return self.resolve_type(definition['oneOf'][0])
-
-        if 'anyOf' in definition:
-            return self.resolve_type(definition['anyOf'][0])
-
-        return StringRand(definition)
 
 
 class NodeFactory(object):

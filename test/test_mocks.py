@@ -202,14 +202,15 @@ def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
     graph_globals = {
         'properties': {
             'baz': 'allowed_1',
-            'bar': '012345abcdefghijklmnopqrstuvwxyz'
+            'bar': '012345abcdefghijklmnopqrstuvwxyz',
+            'studies': ['N/A']
         }
     }
 
     gf = GraphFactory(gdcmodels, gdcdictionary, graph_globals=graph_globals)
 
     nodes = [
-        dict(label='foo', node_id='id_1', studies=['N/A', 'STUDIE0']),
+        dict(label='foo', node_id='id_1', studies=['N/A', 'STUDY0']),
         dict(label='foo', node_id='id_2', baz='allowed_2', bar='hello', fobble=30, ages=[1,2]),
         dict(label='foo', node_id='id_3', baz='disallowed', studies=['N/A', 'Unknown']),
         dict(label='foo', node_id='id_4', bar=1, fobble='hello'),

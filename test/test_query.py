@@ -128,6 +128,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
                              .count(), self.g.nodes(models.Foo).count())
 
 
+@pytest.mark.parametrize("node_type", [models.Foo, models.Node])
 @pytest.mark.parametrize(
     "col, vals, expected_count", [
         ("studies", ["C1"], 1),
@@ -135,8 +136,16 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         ("studies", ["XP2"], 0),
         ("studies", ["C1", "P1"], 2),
 ])
-def test_props_in(pg_driver, samples_with_array, col, vals, expected_count):
-    # filter
+def test__props_in__list(pg_driver, samples_with_array, node_type, col, vals, expected_count):
     with pg_driver.session_scope() as s:
-        r = pg_driver.nodes(models.Foo).prop_in(col, vals).count()
+        # studies is type list
+        r = pg_driver.nodes(node_type).prop_in(col, vals).count()
         assert r == expected_count
+
+
+@pytest.mark.parametrize("node_type", [models.Foo, models.Node])
+def test__props_in__int(pg_driver, samples_with_array, node_type):
+    with pg_driver.session_scope() as s:
+        # fobble is type int
+        r = pg_driver.nodes(node_type).prop_in("fobble", [25]).count()
+        assert r == 3

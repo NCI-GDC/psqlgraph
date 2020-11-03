@@ -553,17 +553,11 @@ class GraphQuery(Query):
 
 
 def is_list_prop(entity, prop):
-    """Determine if a property on an entity is a list type.
-
-    The Node type is a special case because it has no properties but its
-    subclasses do have them. It's also special in that it's the only node
-    type with subclasses. Going through the subclasses to find a matching
-    type will allow us to make a g.nodes() query with no parameters. By default
-    g.nodes() with no parameters will use gdcdatamodel.models.Node, so we need
-    special logic to check the subclasses.
-    """
+    """Determine if a property on an entity is a list type."""
     if entity.label == 'node':
-        # All data models subclass node, but have no subclasses of their own.
+        # By default a query that starts with g.nodes() will use
+        # gdcdatamodel.models.Node as the node type. We want prop_in to
+        # continue to work for list types so check Node's subclasses.
         for subclass in entity.get_subclasses():
             if list in subclass.__pg_properties__.get(prop, {}):
                 return True

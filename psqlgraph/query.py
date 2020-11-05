@@ -553,7 +553,14 @@ class GraphQuery(Query):
 
 
 def is_list_prop(entity, prop):
-    if prop not in entity.__pg_properties__:
-        raise KeyError("{} has not attribute {}".format(entity.__class__, prop))
-    return list in entity.__pg_properties__[prop]
+    """Determine if a property on an entity is a list type."""
+    if entity.label == 'node':
+        # By default a query that starts with g.nodes() will use
+        # gdcdatamodel.models.Node as the node type. We want prop_in to
+        # continue to work for list types so check Node's subclasses.
+        for subclass in entity.get_subclasses():
+            if list in subclass.__pg_properties__.get(prop, {}):
+                return True
 
+    # Default value of dict because __pg_properties__ is a dict.
+    return list in entity.__pg_properties__.get(prop, {})

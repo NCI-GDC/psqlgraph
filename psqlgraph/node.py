@@ -9,6 +9,7 @@ from sqlalchemy.orm import relationship
 from psqlgraph import base
 from psqlgraph.edge import Edge
 from psqlgraph.voided_node import VoidedNode
+from psqlgraph.util import sanitize
 
 
 DST_SRC_ASSOC = '__dst_src_assoc__'
@@ -206,7 +207,10 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
 
     def __init__(self, node_id=None, properties=None, acl=None,
                  system_annotations=None, label=None, **kwargs):
-        self._props = {}
+        try:
+            self._props = sanitize(self._defaults)
+        except AttributeError:
+            self._props = {}
         self.system_annotations = system_annotations or {}
         self.acl = acl or []
         self.properties = properties or {}

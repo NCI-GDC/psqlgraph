@@ -421,7 +421,6 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             self.assertDictEqual(new_node.sysan, node.sysan)
             self.assertEqual(new_node.node_id, node_id)
 
-
     def _insert_node(self, node):
         """Test inserting a node"""
         with self.g.session_scope() as session:

@@ -10,8 +10,6 @@ from parameterized import parameterized
 from multiprocessing import Process
 from sqlalchemy.exc import IntegrityError
 from psqlgraph.exc import ValidationError, EdgeCreationError
-from sqlalchemy.orm.exc import FlushError
-from sqlalchemy.orm.attributes import flag_modified
 
 from datetime import datetime
 from copy import deepcopy
@@ -835,7 +833,6 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             self.assertDictEqual(new_edge.props, edge.props)
             self.assertDictEqual(new_edge.sysan, edge.sysan)
 
-
     def test_sessioned_path_insertion(self):
         """Test creation of a sessioned node path
 
@@ -907,45 +904,6 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
                 self.assertTrue(dst_id not in set(edges))
             for dst_id in dst_ids:
                 self.assertIs(self.g.edge_lookup_one(dst_id=dst_id), None)
-
-    @unittest.skip('deprecated')
-    def test_node_validator_error(self):
-        """Test node validator error"""
-
-        with self.g.session_scope():
-            node_id = str(uuid.uuid4())
-            temp = self.g.node_validator.validate
-            self.g.node_validator.validate = lambda x: False
-            try:
-                self.assertRaises(
-                    ValidationError,
-                    self.g.node_merge, node_id, label='test',
-                )
-            except:
-                self.g.node_validator.validate = temp
-                raise
-
-    @unittest.skip('deprecated')
-    def test_edge_validator_error(self):
-        """Test edge validator error"""
-
-        with self.g.session_scope():
-            src_id = str(uuid.uuid4())
-            dst_id = str(uuid.uuid4())
-            temp = self.g.edge_validator.validate
-            self.g.edge_validator.validate = lambda x: False
-            self.g.node_merge(src_id, label='test')
-            self.g.node_merge(dst_id, label='test')
-
-            try:
-                self.assertRaises(
-                    ValidationError,
-                    self.g.edge_insert,
-                    PsqlEdge(src_id=src_id, dst_id=dst_id, label='test'),
-                )
-            except:
-                self.g.edge_validator.validate = temp
-                raise
 
     def test_get_nodes(self):
         """Test node get"""

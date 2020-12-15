@@ -8,8 +8,8 @@ from sqlalchemy.orm import relationship
 
 from psqlgraph import base
 from psqlgraph.edge import Edge
-from psqlgraph.voided_node import VoidedNode
 from psqlgraph.util import sanitize
+from psqlgraph.voided_node import VoidedNode
 
 
 DST_SRC_ASSOC = '__dst_src_assoc__'

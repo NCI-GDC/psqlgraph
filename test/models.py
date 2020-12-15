@@ -51,10 +51,20 @@ class FakeDictionary(object):
             },
             'foo_bar': {
                 'properties': {
-                    'bar': {'type': 'string'}
+                    'bar': {'type': 'string'},
                 },
                 'links': [],
-            }
+            },
+            'test_default_value': {
+                'properties': {
+                    'property_with_default': {
+                        'default': 'open',
+                        'enum': ['open', 'submitted', 'closed', 'legacy']
+                    },
+                    'property_without_default': {'type': 'string'}
+                },
+                'links': [],
+            },
         }
 
 
@@ -169,6 +179,22 @@ class FooBar(Node):
         self._set_property('bar', value)
 
 
+class TestDefaultValue(Node):
+    __label__ = 'test_default_value'
+
+    _pg_edges = {}
+
+    _defaults = {'property_with_default': 'open'}
+
+    @pg_property(enum=('open', 'submitted', 'closed', 'legacy'))
+    def property_with_default(self, value):
+        self._set_property('property_with_default', value)
+
+    @pg_property
+    def property_without_default(self, value):
+        self._set_property('property_without_default', value)
+
+
 Test._pg_edges.update({
     'tests': {
         'backref': '_tests',
@@ -180,6 +206,7 @@ Test._pg_edges.update({
     }
 })
 
+
 Foo._pg_edges.update({
     'foobars': {
         'backref': 'foos',
@@ -190,6 +217,7 @@ Foo._pg_edges.update({
         'type': Test,
     }
 })
+
 
 FooBar._pg_edges.update({
     'foos': {

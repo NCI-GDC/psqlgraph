@@ -207,13 +207,11 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
 
     def __init__(self, node_id=None, properties=None, acl=None,
                  system_annotations=None, label=None, **kwargs):
-        try:
-            self._props = sanitize(self._defaults)
-        except AttributeError:
-            self._props = {}
+        self._props = {}
         self.system_annotations = system_annotations or {}
         self.acl = acl or []
-        self.properties = properties or {}
+        self.properties = sanitize(getattr(self, "_defaults", {}))
+        self.properties.update(properties)
         self.properties.update(kwargs)
         self.node_id = node_id
 

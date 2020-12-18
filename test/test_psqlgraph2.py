@@ -524,6 +524,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
     [True, 'closed'],
 ])
 def test_default_value(pg_driver, sending_default, expected):
+    """Test the default value assignment for class with default values"""
     node_id = 'test_default'
     with pg_driver.session_scope() as s:
         node = models.TestDefaultValue(node_id)
@@ -535,4 +536,16 @@ def test_default_value(pg_driver, sending_default, expected):
         node_added = pg_driver.nodes(models.TestDefaultValue).ids(node_id).one()
         assert node_added.property_with_default == expected
         assert node_added.property_without_default == 'dummy'
+        s.delete(node_added)
+
+
+def test_empty__default_property(pg_driver):
+    """Test class without default values should have empty _defaults property"""
+    node_id = 'test_default'
+    with pg_driver.session_scope() as s:
+        test_node = models.Test(node_id)
+        s.add(test_node)
+    with pg_driver.session_scope() as s:
+        node_added = pg_driver.nodes(models.Test).ids(node_id).one()
+        assert node_added._defaults == {}
         s.delete(node_added)

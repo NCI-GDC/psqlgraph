@@ -8,7 +8,6 @@ from sqlalchemy.orm import relationship
 
 from psqlgraph import base
 from psqlgraph.edge import Edge
-from psqlgraph.util import sanitize
 from psqlgraph.voided_node import VoidedNode
 
 

@@ -5,6 +5,7 @@ from psqlgraph.exc import ValidationError
 from psqlgraph.exc import SessionClosedError
 import socket
 import sqlalchemy as sa
+import pytest
 
 # We have to import models here, even if we don't use them
 from test import models, PsqlgraphBaseTest
@@ -516,3 +517,35 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             self.g.nodes(models.Test).null_props('key1', 'key2').one()
             self.g.nodes(models.Test).null_props(['key1', 'key2'], 'key3').one()
             self.g.nodes(models.Test).null_props('key1').one()
+
+
+@pytest.mark.parametrize("sending_default, expected", [
+    [False, 'open'],
+    [True, 'closed'],
+])
+def test_default_value(pg_driver, sending_default, expected):
+    """Test the default value assignment for class with default values"""
+    node_id = 'test_default'
+    with pg_driver.session_scope() as s:
+        node = models.TestDefaultValue(node_id)
+        node.property_without_default = 'dummy'
+        if sending_default:
+            node.property_with_default = expected
+        s.add(node)
+    with pg_driver.session_scope() as s:
+        node_added = pg_driver.nodes(models.TestDefaultValue).ids(node_id).one()
+        assert node_added.property_with_default == expected
+        assert node_added.property_without_default == 'dummy'
+        s.delete(node_added)
+
+
+def test_empty__default_property(pg_driver):
+    """Test class without default values should have empty _defaults property"""
+    node_id = 'test_default'
+    with pg_driver.session_scope() as s:
+        test_node = models.Test(node_id)
+        s.add(test_node)
+    with pg_driver.session_scope() as s:
+        node_added = pg_driver.nodes(models.Test).ids(node_id).one()
+        assert node_added._defaults == {}
+        s.delete(node_added)

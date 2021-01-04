@@ -209,9 +209,14 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
         self._props = {}
         self.system_annotations = system_annotations or {}
         self.acl = acl or []
-        self.properties = properties or {}
+        self.properties = self._defaults
+        self.properties.update(properties)
         self.properties.update(kwargs)
         self.node_id = node_id
+
+    @property
+    def _defaults(self):
+        return {}
 
     def __repr__(self):
         return '<{}({node_id})>'.format(

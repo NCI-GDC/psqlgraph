@@ -241,7 +241,9 @@ class NodeFactory(object):
             prop_list = self.schema[label].get('required', [])
 
         for prop in prop_list:
-            if prop == 'type':
+            # these two props are excluded during the real node creation
+            # see `excluded_props` in gdcdatamodel.models.__init__.py
+            if prop in ['id', 'type']:
                 continue
 
             try:

@@ -242,7 +242,7 @@ class NodeFactory(object):
 
         for prop in prop_list:
             # these two props are excluded during the real node creation
-            # see `excluded_props` in gdcdatamodel.models.__init__.py
+            # see `excluded_props` in gdcdatamodel/models/__init__.py
             if prop in ['id', 'type']:
                 continue
 

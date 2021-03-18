@@ -5,7 +5,7 @@ setup(
         'local_scheme': 'dirty-tag',
         'write_to': 'psqlgraph/_version.py',
     },
-    setup_requires=['setuptools_scm'],
+    setup_requires=['setuptools_scm<6'],
     name='psqlgraph',
     packages=["psqlgraph"],
     install_requires=[

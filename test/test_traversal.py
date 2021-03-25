@@ -138,15 +138,14 @@ def test_default_traversal(fake_nodes, fake_graph, mode):
 
 
 @pytest.mark.parametrize("depth", [0, 1, 2, 3])
-@pytest.mark.parametrize("mode", ("bfs", "dfs"))
-def test_traversal_with_max_depth(depth, fake_graph, fake_nodes, mode):
+def test_traversal_with_max_depth(depth, fake_graph, fake_nodes):
     """
     Traversal should return only self.depths_results[depth] nodes
     """
     with fake_graph.session_scope():
         root = fake_graph.nodes(models.FooBar).first()
 
-        gen = root.traverse(mode=mode, max_depth=depth)
+        gen = root.traverse(mode="bfs", max_depth=depth)
         traversal = [n for n in gen]
 
     expected_ids = {n.node_id for n in fake_nodes["depths_results"][depth]}

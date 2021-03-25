@@ -152,11 +152,11 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
                 max_depth=max_depth
             )
 
+        # max depth is ignored for dfs
         if mode == "dfs":
             return self._dfs(
                 edge_predicate=edge_predicate,
                 edge_pointer=edge_pointer,
-                max_depth=max_depth
             )
 
         raise NotImplementedError("Traversal mode {} is not implemented".format(mode))
@@ -215,19 +215,19 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
                     queue.append((n, depth + 1))
                     marked.add(n.node_id)
 
-    def _dfs(self, edge_predicate=None, max_depth=None, edge_pointer="in", visited=None, depth=0):
+    def _dfs(self, edge_predicate=None, edge_pointer="in", visited=None):
         """
         Perform a BFS, with `self` being the root node
 
         :param edge_predicate: a predicate performed on an `edge` object in
             order to decided whether to walk that edge or not
         :type edge_predicate: func
-        :param max_depth: maximum distance to traverse
-        :type max_depth: int
         :param edge_pointer: possible values `in`, `out`
                             `in`: use node.edges_in, default behavior
                             `out`: use edges_out
         :type edge_pointer: str
+        :param visited: visited node ids
+        :type visited: set
 
         :return: generator
         """
@@ -235,18 +235,12 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
         if not callable(edge_predicate):
             edge_predicate = lambda e: True
 
-        if max_depth is None:
-            max_depth = float('inf')
-
         visited = visited or set()
-
         visited.add(self.node_id)
 
         yield self
 
         edges = self.edges_out if edge_pointer == "out" else self.edges_in
-        if depth >= max_depth:
-            return
         for edge in edges:
             if not edge_predicate(edge):
                 continue
@@ -254,11 +248,9 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
             n = edge.dst if edge_pointer == "out" else edge.src
 
             if n.node_id not in visited:
-                res = n._dfs(edge_predicate, max_depth, edge_pointer, visited, depth+1)
+                res = n._dfs(edge_predicate, edge_pointer, visited)
                 for node in res:
                     yield node
-
-
 
     def __init__(self, node_id=None, properties=None, acl=None,
                  system_annotations=None, label=None, **kwargs):

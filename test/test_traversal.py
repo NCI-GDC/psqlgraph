@@ -1,6 +1,9 @@
 import uuid
+
+import pytest
 from parameterized import parameterized
 
+from psqlgraph import Edge, Node
 from test import models, PsqlgraphBaseTest
 
 
@@ -13,6 +16,108 @@ def no_allowed_2_please(edge):
         return False
 
     return True
+
+
+def clean_tables(pg_driver):
+    conn = pg_driver.engine.connect()
+    conn.execute('commit')
+    for table in Node().get_subclass_table_names():
+        if table != Node.__tablename__:
+            conn.execute('delete from {}'.format(table))
+    for table in Edge.get_subclass_table_names():
+        if table != Edge.__tablename__:
+            conn.execute('delete from {}'.format(table))
+    conn.execute('delete from _voided_nodes')
+    conn.execute('delete from _voided_edges')
+    conn.close()
+
+
+@pytest.fixture
+def fake_graph(pg_driver):
+    clean_tables(pg_driver)
+
+    yield pg_driver
+
+    clean_tables(pg_driver)
+
+
+@pytest.fixture
+def fake_nodes(fake_graph):
+    """
+    Setting up a subgraph that we can later traverse.
+    NOTE: Edge directions are as follows: Test->Test->Foo->FooBar and
+    Test->FooBar, i.e. Foo/Test will be in FooBar's edges_in, Test will be
+    in Foo's edges_in and Test will be in Test's edges_in
+
+    Edges look like this:
+    root_node <- foo1
+    root_node <- foo2
+    root_node <- foo3
+    root_node <- test1
+    foo1 <- test1
+    foo1 <- test2
+    foo2 <- test3
+    test1 <- test4
+    test2 <- test5
+
+    """
+    with fake_graph.session_scope() as session:
+        root_node = models.FooBar(node_id="root", bar='root')
+
+        foo1 = models.Foo(node_id="foo1", bar='foo1', baz='allowed_2')
+        foo2 = models.Foo(node_id="foo2", bar='foo2', baz='allowed_1')
+        foo3 = models.Foo(node_id="foo3", bar='foo3', baz='allowed_1')
+
+        test1 = models.Test(node_id="", key1='test1')
+        test2 = models.Test(node_id="test2", key1='test2')
+        test3 = models.Test(node_id="test3", key1='test3')
+        test4 = models.Test(node_id=str(uuid.uuid4()), key1='test4')
+        test5 = models.Test(node_id="test5", key1='test5')
+
+        root_node.tests.append(test1)
+
+        for foo in [foo1, foo2, foo3]:
+            root_node.foos.append(foo)
+
+        for test in [test1, test2]:
+            foo1.tests.append(test)
+
+        test1.sub_tests.append(test4)
+
+        foo2.tests.append(test3)
+
+        test2.sub_tests.append(test5)
+
+        session.add(root_node)
+
+        nodes = {
+            # These nodes should have the sysan_flag set, when predicate active
+            'sysan_flag_nodes': [root_node, foo2, foo3, test1, test3, test4],
+            # These nodes shouldn't have sysan_flag set, when predicate active
+            'not_sysan_flag_nodes': [foo1, test2, test5],
+            # These are expected nodes for a given depth
+            'depths_results': {
+                0: [root_node],
+                1: [root_node, foo1, foo2, foo3, test1],
+                2: [root_node, foo1, foo2, foo3, test1, test2, test3, test4],
+                3: [root_node, foo1, foo2, foo3, test1, test2, test3, test4, test5]
+            }
+        }
+
+        return nodes
+
+
+def test_default_traversal(fake_nodes, fake_graph):
+    """
+    Default traversal should return all nodes
+    """
+    with fake_graph.session_scope():
+        root = fake_graph.nodes(models.FooBar).first()
+        traversal = {n.node_id for n in root.bfs_children()}
+
+        nodes_all_set = {n.node_id for n in fake_graph.nodes().all()}
+
+    assert traversal == nodes_all_set
 
 
 class TestPsqlGraphTraversal(PsqlgraphBaseTest):

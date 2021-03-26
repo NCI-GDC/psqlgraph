@@ -1,4 +1,4 @@
-from collections import deque
+from collections import deque, namedtuple
 
 from sqlalchemy import Column, Text, UniqueConstraint, Index
 from sqlalchemy.ext.associationproxy import association_proxy
@@ -215,13 +215,15 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
                     queue.append((n, depth + 1))
                     marked.add(n.node_id)
 
-    def _dfs(self, edge_predicate=None, edge_pointer="in"):
+    def _dfs(self, edge_predicate=None, max_depth=None, edge_pointer="in"):
         """
         Perform a DFS, with `self` being the root node
 
         :param edge_predicate: a predicate performed on an `edge` object in
             order to decided whether to walk that edge or not
         :type edge_predicate: func
+        :param max_depth: maximum distance to traverse
+        :type max_depth: int
         :param edge_pointer: possible values `in`, `out`
                             `in`: use node.edges_in, default behavior
                             `out`: use edges_out
@@ -229,28 +231,28 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
 
         :return: generator
         """
-
+        StackItem = namedtuple('StackItem', ['node', 'next_child', 'level'])
         edge_predicate = edge_predicate if callable(edge_predicate) else lambda _: True
 
-        visited = {self.node_id}
-        stack = [(self, 0)]
+        visited = {self.node_id: 0}
+        yield self
+        stack = [StackItem(self, 0, 0)]
 
         while stack:
-            node, i = stack.pop()
+            node, next_child, level = stack.pop()
             edges = node.edges_out if edge_pointer == "out" else node.edges_in
 
-            for j in range(i, len(edges)):
+            for j in range(next_child, len(edges)):
                 edge = edges[j]
                 n = edge.dst if edge_pointer == "out" else edge.src
                 if not edge_predicate(edge) or n.node_id in visited:
                     continue
 
-                stack.append((node, j+1))
-                visited.add(n.node_id)
-                stack.append((n, 0))
+                stack.append(StackItem(node, j+1, level))
+                visited[n.node_id] = level + 1
+                yield n
+                stack.append(StackItem(n, 0, level + 1))
                 break
-            else:
-                yield node
 
     def __init__(self, node_id=None, properties=None, acl=None,
                  system_annotations=None, label=None, **kwargs):

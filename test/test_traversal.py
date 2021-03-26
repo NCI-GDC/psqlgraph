@@ -168,5 +168,4 @@ def test_default_traversal(fake_nodes, fake_graph, mode, key, expected):
     with fake_graph.session_scope():
         leaf = fake_graph.nodes().props(key1=key).first()
         actual = [node.node_id for node in leaf.traverse(mode=mode, edge_pointer="out")]
-        expected = expected if mode == "bfs" else list(reversed(expected))
         assert actual == expected

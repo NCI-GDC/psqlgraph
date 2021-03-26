@@ -215,9 +215,9 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
                     queue.append((n, depth + 1))
                     marked.add(n.node_id)
 
-    def _dfs(self, edge_predicate=None, edge_pointer="in", visited=None):
+    def _dfs(self, edge_predicate=None, edge_pointer="in"):
         """
-        Perform a BFS, with `self` being the root node
+        Perform a DFS, with `self` being the root node
 
         :param edge_predicate: a predicate performed on an `edge` object in
             order to decided whether to walk that edge or not
@@ -226,8 +226,6 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
                             `in`: use node.edges_in, default behavior
                             `out`: use edges_out
         :type edge_pointer: str
-        :param visited: visited node ids
-        :type visited: set
 
         :return: generator
         """
@@ -235,22 +233,29 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
         if not callable(edge_predicate):
             edge_predicate = lambda e: True
 
-        visited = visited or set()
-        visited.add(self.node_id)
+        visited = {self.node_id}
+        stack = [(self, 0)]
 
-        yield self
+        while stack:
+            node, i = stack.pop()
 
-        edges = self.edges_out if edge_pointer == "out" else self.edges_in
-        for edge in edges:
-            if not edge_predicate(edge):
-                continue
+            edges = node.edges_out if edge_pointer == "out" else node.edges_in
 
-            n = edge.dst if edge_pointer == "out" else edge.src
+            for j in range(i, len(edges)):
+                edge = edges[j]
+                if not edge_predicate(edge):
+                    continue
 
-            if n.node_id not in visited:
-                res = n._dfs(edge_predicate, edge_pointer, visited)
-                for node in res:
-                    yield node
+                child = edge.dst if edge_pointer == "out" else edge.src
+                if child.node_id in visited:
+                    continue
+
+                stack.append((node, j+1))
+                visited.add(child.node_id)
+                stack.append((child, 0))
+                break
+            else:
+                yield node
 
     def __init__(self, node_id=None, properties=None, acl=None,
                  system_annotations=None, label=None, **kwargs):

@@ -239,7 +239,8 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
             node, i = stack.pop()
             edges = node.edges_out if edge_pointer == "out" else node.edges_in
 
-            for j, edge in enumerate(edges[i:], i):
+            for j in range(i, len(edges)):
+                edge = edges[j]
                 n = edge.dst if edge_pointer == "out" else edge.src
                 if not edge_predicate(edge) or n.node_id in visited:
                     continue

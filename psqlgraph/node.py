@@ -230,29 +230,23 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
         :return: generator
         """
 
-        if not callable(edge_predicate):
-            edge_predicate = lambda e: True
+        edge_predicate = edge_predicate if callable(edge_predicate) else lambda _: True
 
         visited = {self.node_id}
         stack = [(self, 0)]
 
         while stack:
             node, i = stack.pop()
-
             edges = node.edges_out if edge_pointer == "out" else node.edges_in
 
-            for j in range(i, len(edges)):
-                edge = edges[j]
-                if not edge_predicate(edge):
-                    continue
-
-                child = edge.dst if edge_pointer == "out" else edge.src
-                if child.node_id in visited:
+            for j, edge in enumerate(edges[i:], i):
+                n = edge.dst if edge_pointer == "out" else edge.src
+                if not edge_predicate(edge) or n.node_id in visited:
                     continue
 
                 stack.append((node, j+1))
-                visited.add(child.node_id)
-                stack.append((child, 0))
+                visited.add(n.node_id)
+                stack.append((n, 0))
                 break
             else:
                 yield node

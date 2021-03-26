@@ -152,11 +152,11 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
                 max_depth=max_depth
             )
 
-        # max depth is ignored for dfs
         if mode == "dfs":
             return self._dfs(
                 edge_predicate=edge_predicate,
                 edge_pointer=edge_pointer,
+                max_depth=max_depth
             )
 
         raise NotImplementedError("Traversal mode {} is not implemented".format(mode))
@@ -219,6 +219,9 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
         """
         Perform a DFS, with `self` being the root node
 
+        To implement max depth, some node are visited more than once to update shortest
+        path. But those node should only be yield once.
+
         :param edge_predicate: a predicate performed on an `edge` object in
             order to decided whether to walk that edge or not
         :type edge_predicate: func
@@ -233,6 +236,7 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
         """
         StackItem = namedtuple('StackItem', ['node', 'next_child', 'level'])
         edge_predicate = edge_predicate if callable(edge_predicate) else lambda _: True
+        max_depth = float('inf') if max_depth is None else max_depth
 
         visited = {self.node_id: 0}
         yield self
@@ -240,17 +244,26 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
 
         while stack:
             node, next_child, level = stack.pop()
+            if level >= max_depth:
+                continue
             edges = node.edges_out if edge_pointer == "out" else node.edges_in
 
             for j in range(next_child, len(edges)):
                 edge = edges[j]
                 n = edge.dst if edge_pointer == "out" else edge.src
-                if not edge_predicate(edge) or n.node_id in visited:
+                if not edge_predicate(edge):
                     continue
+
+                if n.node_id in visited:
+                    if max_depth == float('inf') or level + 1 >= visited[n.node_id]:
+                        continue
+                    # update levels for max_depth if shorter path found
+                    # but do not yield node again
+                else:
+                    yield n
 
                 stack.append(StackItem(node, j+1, level))
                 visited[n.node_id] = level + 1
-                yield n
                 stack.append(StackItem(n, 0, level + 1))
                 break
 

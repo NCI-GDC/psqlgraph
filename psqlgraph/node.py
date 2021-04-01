@@ -254,13 +254,12 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
                 if not edge_predicate(edge):
                     continue
 
-                if n.node_id in visited:
-                    if max_depth == float('inf') or level + 1 >= visited[n.node_id]:
-                        continue
-                    # update levels for max_depth if shorter path found
-                    # but do not yield node again
-                else:
+                if n.node_id not in visited:
                     yield n
+                elif max_depth == float('inf') or level + 1 >= visited[n.node_id]:
+                    continue
+                # update levels for max_depth if shorter path found
+                # but do not yield node again
 
                 stack.append(StackItem(node, j+1, level))
                 visited[n.node_id] = level + 1

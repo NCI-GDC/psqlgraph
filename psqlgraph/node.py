@@ -248,12 +248,14 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
                 continue
             edges = node.edges_out if edge_pointer == "out" else node.edges_in
 
-            for j in range(next_child, len(edges)):
-                edge = edges[j]
-                n = edge.dst if edge_pointer == "out" else edge.src
-                if not edge_predicate(edge):
-                    continue
+            edges_with_index = (
+                (index, edges[index])
+                for index in range(next_child, len(edges))
+                if edge_predicate(edges[index])
+            )
 
+            for index, edge in edges_with_index:
+                n = edge.dst if edge_pointer == "out" else edge.src
                 if n.node_id not in visited:
                     yield n
                 elif max_depth == float('inf') or level + 1 >= visited[n.node_id]:
@@ -261,7 +263,7 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
                 # update levels for max_depth if shorter path found
                 # but do not yield node again
 
-                stack.append(StackItem(node, j+1, level))
+                stack.append(StackItem(node, index + 1, level))
                 visited[n.node_id] = level + 1
                 stack.append(StackItem(n, 0, level + 1))
                 break

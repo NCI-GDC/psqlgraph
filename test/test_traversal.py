@@ -56,6 +56,7 @@ def fake_nodes(fake_graph):
     foo1 <- test1
     foo1 <- test2
     foo2 <- test3
+    foo3 <- foo2
     test1 <- test4
     test2 <- test5
 
@@ -72,6 +73,7 @@ def fake_nodes(fake_graph):
         test3 = models.Test(node_id="test3", key1="test3")
         test4 = models.Test(node_id=str(uuid.uuid4()), key1="test4")
         test5 = models.Test(node_id="test5", key1="test5")
+        test6 = models.Test(node_id="test6", key1="test6")
 
         root_node.tests.append(test1)
 
@@ -87,6 +89,10 @@ def fake_nodes(fake_graph):
 
         test2.sub_tests.append(test5)
 
+        foo3.tests.append(test4)
+        foo3.tests.append(test6)
+        test4.sub_tests.append(test6)
+
         session.add(root_node)
 
         nodes = {
@@ -99,7 +105,18 @@ def fake_nodes(fake_graph):
                 0: [root_node],
                 1: [root_node, foo1, foo2, foo3, test1],
                 2: [root_node, foo1, foo2, foo3, test1, test2, test3, test4],
-                3: [root_node, foo1, foo2, foo3, test1, test2, test3, test4, test5],
+                3: [
+                    root_node,
+                    foo1,
+                    foo2,
+                    foo3,
+                    test1,
+                    test2,
+                    test3,
+                    test4,
+                    test5,
+                    test6,
+                ],
             },
         }
 
@@ -113,11 +130,12 @@ def test_default_traversal(fake_nodes, fake_graph, mode):
     """
     with fake_graph.session_scope():
         root = fake_graph.nodes(models.FooBar).first()
-        traversal = {n.node_id for n in root.traverse(mode=mode)}
+        traversal = [n.node_id for n in root.traverse(mode=mode)]
 
-        nodes_all_set = {n.node_id for n in fake_graph.nodes().all()}
+        nodes_all_set = [n.node_id for n in fake_graph.nodes().all()]
 
-    assert traversal == nodes_all_set
+    assert len(traversal) == len(nodes_all_set)
+    assert set(traversal) == set(nodes_all_set)
 
 
 @pytest.mark.parametrize("mode", ("bfs", "dfs"))
@@ -129,11 +147,12 @@ def test_default_traversal(fake_nodes, fake_graph, mode):
         root = fake_graph.nodes(models.FooBar).first()
 
         gen = root.traverse(mode=mode, edge_predicate=no_allowed_2_please)
-        traversal = {n.node_id for n in gen}
+        traversal = [n.node_id for n in gen]
 
-    expected_ids = {n.node_id for n in fake_nodes["sysan_flag_nodes"]}
+    expected_ids = [n.node_id for n in fake_nodes["sysan_flag_nodes"]]
 
-    assert traversal == expected_ids
+    assert len(traversal) == len(expected_ids)
+    assert set(traversal) == set(expected_ids)
 
 
 @pytest.mark.parametrize("depth", [0, 1, 2, 3])

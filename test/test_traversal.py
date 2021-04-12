@@ -56,10 +56,18 @@ def fake_nodes(fake_graph):
     foo1 <- test1
     foo1 <- test2
     foo2 <- test3
-    foo3 <- foo2
+    foo3 <- test1
+    foo3 <- test6
     test1 <- test4
     test2 <- test5
+    test4 <- test6
 
+    # add circle
+
+    root_node <- foo4
+    foo4 <- test7
+    test7 <- test8
+    test8 <- test7
     """
     with fake_graph.session_scope() as session:
         root_node = models.FooBar(node_id="root", bar="root")
@@ -67,6 +75,7 @@ def fake_nodes(fake_graph):
         foo1 = models.Foo(node_id="foo1", bar="foo1", baz="allowed_2")
         foo2 = models.Foo(node_id="foo2", bar="foo2", baz="allowed_1")
         foo3 = models.Foo(node_id="foo3", bar="foo3", baz="allowed_1")
+        foo4 = models.Foo(node_id="foo4", bar="foo4", baz="allowed_1")
 
         test1 = models.Test(node_id="", key1="test1")
         test2 = models.Test(node_id="test2", key1="test2")
@@ -74,10 +83,12 @@ def fake_nodes(fake_graph):
         test4 = models.Test(node_id=str(uuid.uuid4()), key1="test4")
         test5 = models.Test(node_id="test5", key1="test5")
         test6 = models.Test(node_id="test6", key1="test6")
+        test7 = models.Test(node_id="test7", key1="test7")
+        test8 = models.Test(node_id="test8", key1="test8")
 
         root_node.tests.append(test1)
 
-        for foo in [foo1, foo2, foo3]:
+        for foo in [foo1, foo2, foo3, foo4]:
             root_node.foos.append(foo)
 
         for test in [test1, test2]:
@@ -89,9 +100,14 @@ def fake_nodes(fake_graph):
 
         test2.sub_tests.append(test5)
 
-        foo3.tests.append(test4)
+        foo3.tests.append(test1)
         foo3.tests.append(test6)
         test4.sub_tests.append(test6)
+
+        foo4.tests.append(test7)
+
+        test7.sub_tests.append(test8)
+        test8.sub_tests.append(test7)
 
         session.add(root_node)
 
@@ -103,19 +119,22 @@ def fake_nodes(fake_graph):
             # These are expected nodes for a given depth
             "depths_results": {
                 0: [root_node],
-                1: [root_node, foo1, foo2, foo3, test1],
-                2: [root_node, foo1, foo2, foo3, test1, test2, test3, test4],
+                1: [root_node, foo1, foo2, foo3, foo4, test1],
+                2: [root_node, foo1, foo2, foo3, foo4, test1, test2, test3, test4, test6, test7],
                 3: [
                     root_node,
                     foo1,
                     foo2,
                     foo3,
+                    foo4,
                     test1,
                     test2,
                     test3,
                     test4,
                     test5,
                     test6,
+                    test7,
+                    test8
                 ],
             },
         }

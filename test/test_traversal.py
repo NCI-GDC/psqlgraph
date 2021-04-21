@@ -113,14 +113,37 @@ def fake_nodes(fake_graph):
 
         nodes = {
             # These nodes should have the sysan_flag set, when predicate active
-            "sysan_flag_nodes": [root_node, foo2, foo3, test1, test3, test4],
+            "sysan_flag_nodes": [
+                root_node,
+                foo2,
+                foo3,
+                foo4,
+                test1,
+                test3,
+                test4,
+                test6,
+                test7,
+                test8,
+            ],
             # These nodes shouldn't have sysan_flag set, when predicate active
             "not_sysan_flag_nodes": [foo1, test2, test5],
             # These are expected nodes for a given depth
             "depths_results": {
                 0: [root_node],
                 1: [root_node, foo1, foo2, foo3, foo4, test1],
-                2: [root_node, foo1, foo2, foo3, foo4, test1, test2, test3, test4, test6, test7],
+                2: [
+                    root_node,
+                    foo1,
+                    foo2,
+                    foo3,
+                    foo4,
+                    test1,
+                    test2,
+                    test3,
+                    test4,
+                    test6,
+                    test7,
+                ],
                 3: [
                     root_node,
                     foo1,
@@ -134,7 +157,7 @@ def fake_nodes(fake_graph):
                     test5,
                     test6,
                     test7,
-                    test8
+                    test8,
                 ],
             },
         }
@@ -143,7 +166,7 @@ def fake_nodes(fake_graph):
 
 
 @pytest.mark.parametrize("mode", ("bfs", "dfs"))
-def test_default_traversal(fake_nodes, fake_graph, mode):
+def test_traversal__return_all_nodes(fake_nodes, fake_graph, mode):
     """
     Default traversal should return all nodes
     """
@@ -158,7 +181,7 @@ def test_default_traversal(fake_nodes, fake_graph, mode):
 
 
 @pytest.mark.parametrize("mode", ("bfs", "dfs"))
-def test_default_traversal(fake_nodes, fake_graph, mode):
+def test_traversal__edge_predicate(fake_nodes, fake_graph, mode):
     """
     Traversal with predicate should return only self.sysan_flag_nodes
     """
@@ -176,7 +199,7 @@ def test_default_traversal(fake_nodes, fake_graph, mode):
 
 @pytest.mark.parametrize("depth", [0, 1, 2, 3])
 @pytest.mark.parametrize("mode", ("bfs", "dfs"))
-def test_traversal_with_max_depth(depth, fake_graph, fake_nodes, mode):
+def test_traversal__max_depth(depth, fake_graph, fake_nodes, mode):
     """
     Traversal should return only self.depths_results[depth] nodes
     """
@@ -202,7 +225,7 @@ def test_traversal_with_max_depth(depth, fake_graph, fake_nodes, mode):
         ("test3", ["test3", "foo2", "root"]),
     ),
 )
-def test_default_traversal(fake_nodes, fake_graph, mode, key, expected):
+def test_traversal__path_bottom_up(fake_nodes, fake_graph, mode, key, expected):
     """ Tests walking towards the root node from a leaf """
     with fake_graph.session_scope():
         leaf = fake_graph.nodes().props(key1=key).first()

@@ -3,7 +3,7 @@ import logging
 import argparse
 from gdcdatamodel import models
 from sqlalchemy import UniqueConstraint
-from sqlalchemy.dialects.postgres import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy import Column, Integer, Text, DateTime
 from sqlalchemy.orm import relationship, joinedload
 from psqlgraph import Base
@@ -66,7 +66,7 @@ def translate_node_range(_args):
     dst = PsqlGraphDriver(
         args.dest_host, args.dest_user, args.dest_password,
         args.dest, **driver_kwargs)
-    with src.session_scope() as session:
+    with src.session_scope():
         with dst.session_scope() as session:
             for old in src.nodes(OldNode).order_by(OldNode.node_id)\
                                          .offset(offset)\
@@ -115,14 +115,14 @@ def translate_edge_range(_args):
         args.dest_host, args.dest_user, args.dest_password,
         args.dest, **driver_kwargs)
 
-    print '{}-{}'.format(offset, offset+BLOCK)
+    print('{}-{}'.format(offset, offset+BLOCK))
     sys.stdout.flush()
-    with src.session_scope() as session:
+    with src.session_scope():
         with dst.session_scope() as session:
             for old in src.edges(OldEdge)\
-                          .order_by((OldEdge.src_id),
-                                    (OldEdge.dst_id),
-                                    (OldEdge.label))\
+                          .order_by(OldEdge.src_id,
+                                    OldEdge.dst_id,
+                                    OldEdge.label)\
                           .options(joinedload(OldEdge.src))\
                           .options(joinedload(OldEdge.dst))\
                           .offset(offset)\
@@ -130,7 +130,7 @@ def translate_edge_range(_args):
                 try:
                     Type = dst.get_edge_by_labels(
                         old.src.label, old.label, old.dst.label)
-                    print Type.__name__
+                    print(Type.__name__)
                     new = Type(
                         src_id=old.src_id,
                         dst_id=old.dst_id,

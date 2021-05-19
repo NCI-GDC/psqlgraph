@@ -1,12 +1,79 @@
 from psqlgraph import Node, Edge, pg_property
 
 
+class FakeDictionary(object):
+    def __init__(self):
+        self.schema = {
+            'test': {
+                'required': ['key1'],
+                'properties': {
+                    'key1': {'type': 'string'},
+                    'key2': {'type': 'string'},
+                    'key3': {'type': 'string'},
+                    'new_key': {'type': 'string'},
+                    'timestamp': {
+                        'oneOf': [
+                            {'type': 'string', 'format': 'date-time'},
+                            {'type': 'integer'},
+                        ]
+                    }
+                },
+                'links': [
+                    {'name': 'tests'},
+                    {'name': 'foos'},
+                ],
+            },
+            'foo': {
+                'properties': {
+                    'bar': {'type': 'string'},
+                    'baz': {'enum': ['allowed_1', 'allowed_2']},
+                    'fobble': {
+                        'type': 'integer',
+                        'minimum': 20,
+                        'maximum': 30,
+                    },
+                    'studies': {
+                        'type': 'array',
+                        'items': {
+                            'enum': ['N/A', 'Unknown'],
+                        }
+                    },
+                    'ages': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'integer'
+                        }
+                    }
+                },
+                'links': [
+                    {'name': 'foobars'},
+                ],
+            },
+            'foo_bar': {
+                'properties': {
+                    'bar': {'type': 'string'},
+                },
+                'links': [],
+            },
+            'test_default_value': {
+                'properties': {
+                    'property_with_default': {
+                        'default': 'open',
+                        'enum': ['open', 'submitted', 'closed', 'legacy']
+                    },
+                    'property_without_default': {'type': 'string'}
+                },
+                'links': [],
+            },
+        }
+
+
 class Edge1(Edge):
 
     __src_class__ = 'Test'
     __dst_class__ = 'Test'
     __src_dst_assoc__ = 'tests'
-    __dst_src_assoc__ = '_tests'
+    __dst_src_assoc__ = 'sub_tests'
 
     @pg_property(str, int)
     def test(self, value):
@@ -38,7 +105,17 @@ class Edge3(Edge):
     __dst_src_assoc__ = 'foos'
 
 
+class TestToFooBarEdge(Edge):
+
+    __src_class__ = 'Test'
+    __dst_class__ = 'FooBar'
+    __src_dst_assoc__ = 'foobars'
+    __dst_src_assoc__ = 'tests'
+
+
 class Test(Node):
+
+    _pg_edges = {}
 
     @pg_property
     def key1(self, value):
@@ -58,7 +135,7 @@ class Test(Node):
     def new_key(self, value):
         self._set_property('new_key', value)
 
-    @pg_property(long, str)
+    @pg_property(int, str)
     def timestamp(self, value):
         self._set_property('timestamp', value)
 
@@ -66,6 +143,8 @@ class Test(Node):
 class Foo(Node):
 
     __label__ = 'foo'
+
+    _pg_edges = {}
 
     @pg_property
     def bar(self, value):
@@ -79,12 +158,70 @@ class Foo(Node):
     def fobble(self, value):
         self._set_property('fobble', value)
 
+    @pg_property(list)
+    def studies(self, value):
+        self._set_property('studies', value)
+
+    @pg_property(list)
+    def ages(self, value):
+        self._set_property('ages', value)
+
 
 class FooBar(Node):
 
     __label__ = 'foo_bar'
     __nonnull_properties__ = ['bar']
 
+    _pg_edges = {}
+
     @pg_property
     def bar(self, value):
         self._set_property('bar', value)
+
+
+class TestDefaultValue(Node):
+    __label__ = 'test_default_value'
+
+    _pg_edges = {}
+
+    _defaults = {'property_with_default': 'open'}
+
+    @pg_property(enum=('open', 'submitted', 'closed', 'legacy'))
+    def property_with_default(self, value):
+        self._set_property('property_with_default', value)
+
+    @pg_property
+    def property_without_default(self, value):
+        self._set_property('property_without_default', value)
+
+
+Test._pg_edges.update({
+    'tests': {
+        'backref': '_tests',
+        'type': Test,
+    },
+    'foos': {
+        'backref': 'tests',
+        'type': Foo,
+    }
+})
+
+
+Foo._pg_edges.update({
+    'foobars': {
+        'backref': 'foos',
+        'type': FooBar,
+    },
+    'tests': {
+        'backref': 'foos',
+        'type': Test,
+    }
+})
+
+
+FooBar._pg_edges.update({
+    'foos': {
+        'backref': 'foobars',
+        'type': Foo,
+    }
+})

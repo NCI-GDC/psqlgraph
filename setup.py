@@ -1,16 +1,18 @@
 from setuptools import setup
 
 setup(
-    version='0.0.2',
+    use_scm_version={
+        'local_scheme': 'dirty-tag',
+        'write_to': 'psqlgraph/_version.py',
+    },
+    setup_requires=['setuptools_scm<6'],
     name='psqlgraph',
     packages=["psqlgraph"],
     install_requires=[
-        'psycopg2==2.5.4',
-        'sqlalchemy==0.9.9',
-        'py2neo==2.0.1',
-        'progressbar',
-        'avro==1.7.7',
-        'xlocal==0.5',
-        'requests>=2.5.2, <=2.6.0'
+        'psycopg2~=2.8.5',
+        'sqlalchemy~=1.3',
+        'xlocal~=0.5',
+        'rstr~=2.2.6',
+        'six~=1.15.0',
     ]
 )

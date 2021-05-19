@@ -1,25 +1,17 @@
-import unittest
 import logging
 import uuid
-from psqlgraph import Node, Edge, PsqlGraphDriver
-from psqlgraph import PolyNode, PolyEdge
 
-host = 'localhost'
-user = 'test'
-password = 'test'
-database = 'automated_test'
-g = PsqlGraphDriver(host, user, password, database)
+import pytest
+
+from psqlgraph import PolyNode, PolyEdge
+from test import models, PsqlgraphBaseTest
 
 logging.basicConfig(level=logging.INFO)
 
-from models import Test, Foo, Edge1, Edge2, Edge3
 
-
-class TestPsqlGraphDriver(unittest.TestCase):
+class TestPsqlGraphDriver(PsqlgraphBaseTest):
 
     def setUp(self):
-        self.logger = logging.getLogger(__name__)
-        self.g = g
         self.parent_id = str(uuid.uuid4())
         self.g.node_insert(PolyNode(self.parent_id, 'test'))
         self._create_subtree(self.parent_id)
@@ -41,24 +33,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
             self.g.edge_insert(PolyEdge(
                 src_id=parent_id, dst_id=foo_id, label='test_edge_2'))
             if level < 2:
-                self._create_subtree(node_id, level+1)
-
-    def tearDown(self):
-        self.g.engine.dispose()
-        self._clear_tables()
-
-    def _clear_tables(self):
-        conn = g.engine.connect()
-        conn.execute('commit')
-        for table in Node().get_subclass_table_names():
-            if table != Node.__tablename__:
-                conn.execute('delete from {}'.format(table))
-        for table in Edge().get_subclass_table_names():
-            if table != Edge.__tablename__:
-                conn.execute('delete from {}'.format(table))
-        conn.execute('delete from _voided_nodes')
-        conn.execute('delete from _voided_edges')
-        conn.close()
+                self._create_subtree(node_id, level + 1)
 
     def test_ids(self):
         with self.g.session_scope():
@@ -82,8 +57,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_not_props(self):
         with self.g.session_scope():
             for i in range(3):
-                ns = self.g.nodes(Test).not_props({'key2': i, 'key3': None})\
-                                       .all()
+                ns = self.g.nodes(models.Test).not_props({'key2': i, 'key3': None}) \
+                    .all()
                 self.assertNotEqual(ns, [])
                 for n in ns:
                     self.assertNotEqual(n['key2'], i)
@@ -91,7 +66,7 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_path(self):
         with self.g.session_scope():
-            self.assertEqual(self.g.nodes(Test)
+            self.assertEqual(self.g.nodes(models.Test)
                              .ids(self.parent_id)
                              .path('foos')
                              .props(bar=1)
@@ -99,21 +74,21 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_subq_path_no_filter(self):
         with self.g.session_scope():
-            self.assertEqual(self.g.nodes(Test)
+            self.assertEqual(self.g.nodes(models.Test)
                              .ids(self.parent_id)
                              .subq_path('foos')
                              .count(), 4)
 
     def test_subq_path_single_filter(self):
         with self.g.session_scope():
-            self.assertEqual(self.g.nodes(Test)
+            self.assertEqual(self.g.nodes(models.Test)
                              .ids(self.parent_id)
                              .subq_path('foos', lambda q: q.props(bar=1))
                              .count(), 1)
 
     def test_subq_path_single_filter_negative(self):
         with self.g.session_scope():
-            self.assertEqual(self.g.nodes(Test)
+            self.assertEqual(self.g.nodes(models.Test)
                              .ids(self.parent_id)
                              .subq_path('foos', lambda q: q.props(bar=-1))
                              .count(), 0)
@@ -121,8 +96,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_subq_path_multi_filters(self):
         with self.g.session_scope():
             self.assertEqual(
-                self.g.nodes(Foo)
-                .subq_path('tests.foos.tests.foos', [
+                self.g.nodes(models.Foo)
+                    .subq_path('tests.foos.tests.foos', [
                     lambda q: q.props(bar=1),
                     lambda q: q.ids(self.parent_id),
                     lambda q: q.props(bar=3)
@@ -131,8 +106,8 @@ class TestPsqlGraphDriver(unittest.TestCase):
     def test_subq_path_multi_filters_negative(self):
         with self.g.session_scope():
             self.assertEqual(
-                self.g.nodes(Foo)
-                .subq_path('tests.foos.tests.foos', [
+                self.g.nodes(models.Foo)
+                    .subq_path('tests.foos.tests.foos', [
                     lambda q: q.props(bar=-1),
                     lambda q: q.ids(self.parent_id),
                     lambda q: q.props(bar=3)
@@ -140,14 +115,37 @@ class TestPsqlGraphDriver(unittest.TestCase):
 
     def test_subq_without_path_no_filter(self):
         with self.g.session_scope():
-            self.assertEqual(self.g.nodes(Foo)
+            self.assertEqual(self.g.nodes(models.Foo)
                              .subq_without_path('tests')
                              .count(), 0)
 
     def test_subq_without_path_filter(self):
         with self.g.session_scope():
-            self.assertEqual(self.g.nodes(Foo)
+            self.assertEqual(self.g.nodes(models.Foo)
                              .subq_without_path(
-                                 'tests',
-                                 [lambda q: q.ids('test')])
-                             .count(), self.g.nodes(Foo).count())
+                'tests',
+                [lambda q: q.ids('test')])
+                             .count(), self.g.nodes(models.Foo).count())
+
+
+@pytest.mark.parametrize("node_type", [models.Foo, models.Node])
+@pytest.mark.parametrize(
+    "col, vals, expected_count", [
+        ("studies", ["C1"], 1),
+        ("studies", ["P2"], 3),
+        ("studies", ["XP2"], 0),
+        ("studies", ["C1", "P1"], 2),
+])
+def test__props_in__list(pg_driver, samples_with_array, node_type, col, vals, expected_count):
+    with pg_driver.session_scope() as s:
+        # studies is type list
+        r = pg_driver.nodes(node_type).prop_in(col, vals).count()
+        assert r == expected_count
+
+
+@pytest.mark.parametrize("node_type", [models.Foo, models.Node])
+def test__props_in__int(pg_driver, samples_with_array, node_type):
+    with pg_driver.session_scope() as s:
+        # fobble is type int
+        r = pg_driver.nodes(node_type).prop_in("fobble", [25]).count()
+        assert r == 3

@@ -1,24 +1,38 @@
 language: python
+
 python:
-    - "2.7"
-# command to run tests
-jdk:
-  - oraclejdk7
+  - 2.7
+  - 3.5
+  - 3.6
+  - 3.7
+  - 3.8
+
+addons:
+  postgresql: "13"
+  apt:
+    sources:
+      - sourceline: deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main 13
+        key_url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    packages:
+      - postgresql-13
+      - postgresql-client-13
+
+before_install:
+  # Copy custom configs from the repo because PG-13 isn't set up to run like
+  # it normally does on Travis out of the box.
+  - sudo cp travis/postgresql.conf /etc/postgresql/13/main/postgresql.conf
+  - sudo cp travis/pg_hba.conf /etc/postgresql/13/main/pg_hba.conf
+  - sudo pg_ctlcluster 13 main restart
+
+install:
+  - pip install tox-travis
 
 before_script:
-  - "echo $JAVA_OPTS"
-  - "export JAVA_OPTS=-Xmx512m"
-  - echo -e 'Host github.com\n\tStrictHostKeyChecking no\n' >> ~/.ssh/config
-  - wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-  - sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg 9.4" >> /etc/apt/sources.list.d/pgdg.list'
-  - sudo apt-get update
-  - sudo service postgresql stop
-  - sudo apt-get remove postgresql postgresql-9.3 --purge
-  - sudo apt-get install postgresql-9.4 postgresql-client-9.4 postgresql-server-dev-9.4 postgresql-contrib-9.4
-  - sudo sed -i s/peer/trust/g /etc/postgresql/9.4/main/pg_hba.conf
-  - sudo sed -i s/5433/5432/g /etc/postgresql/9.4/main/postgresql.conf
-  - sudo service postgresql restart
-  - yes | python setup.py install
-  - cd test; python setup_test_psqlgraph.py
-  - cd ..; python bin/setup_neo4j.py
-script: "cd test; py.test -v"
+  - psql -U postgres -c "create user test with superuser password 'test';"
+  - psql -U postgres -c "create database automated_test with owner test;"
+
+script:
+  - tox
+
+after_script:
+  - test $TRAVIS_PYTHON_VERSION = "3.8" && tox -e coverage

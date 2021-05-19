@@ -1,15 +1,15 @@
-from attributes import PropertiesDict, SystemAnnotationDict
-from sqlalchemy import Column, Text, DateTime, text, event
-from sqlalchemy.dialects.postgres import ARRAY, JSONB
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import event
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.ext import declarative
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import object_session, sessionmaker
-from sqlalchemy.orm.util import polymorphic_union
-from util import sanitize, validate
+from sqlalchemy.sql import expression, schema, sqltypes
+
+from psqlgraph import attributes
+from psqlgraph.util import sanitize, validate
 
 
-abstract_classes = ['Node', 'Edge', 'Base']
 NODE_TABLENAME_SCHEME = 'node_{class_name}'
 EDGE_TABLENAME_SCHEME = 'edge_{class_name}'
 
@@ -21,60 +21,48 @@ class CommonBase(object):
     _session_hooks_before_delete = []
 
     # ======== Columns ========
-    created = Column(
-        DateTime(timezone=True),
+    created = schema.Column(
+        sqltypes.DateTime(timezone=True),
         nullable=False,
-        server_default=text('now()'),
+        server_default=expression.text('now()'),
     )
 
-    acl = Column(
-        ARRAY(Text),
+    acl = schema.Column(
+        postgresql.ARRAY(sqltypes.Text),
         default=list(),
     )
 
-    _sysan = Column(
+    _sysan = schema.Column(
         # WARNING: Do not update this column directly. See
         # `.system_annotations`
-        JSONB,
-        default={},
+        postgresql.JSONB,
+        server_default='{}',
     )
 
-    _props = Column(
+    _props = schema.Column(
         # WARNING: Do not update this column directly.
         # See `.properties` or `.props`
-        JSONB,
-        default={},
+        postgresql.JSONB,
+        server_default='{}',
     )
-
-    @classmethod
-    def get_label(cls):
-        return getattr(cls, '__label__', cls.__name__.lower())
 
     # ======== Table Attributes ========
     @declared_attr
     def __mapper_args__(cls):
-        name = cls.__name__
-        if name in abstract_classes:
-            pjoin = polymorphic_union({
-                scls.__tablename__: scls.__table__ for scls in
-                cls.get_subclasses()}, 'type')
-            return {
-                'polymorphic_identity': name,
-                'with_polymorphic': ('*', pjoin),
-            }
-        else:
-            return {
-                'polymorphic_identity': name,
-                'concrete': True,
-            }
+        name = cls.__tablename__
+
+        return {
+            'polymorphic_identity': name,
+            'concrete': True,
+        }
 
     def __init__(self, *args, **kwargs):
-        raise NotImplemented()
+        raise NotImplementedError()
 
     # ======== Properties ========
     @hybrid_property
     def properties(self):
-        return PropertiesDict(self)
+        return attributes.PropertiesDict(self)
 
     @properties.setter
     def properties(self, properties):
@@ -122,7 +110,7 @@ class CommonBase(object):
         """
         if not self.has_property(key):
             raise KeyError('{} has no property {}'.format(type(self), key))
-        self._props = {k: v for k, v in self._props.iteritems()}
+        self._props = {k: v for k, v in self._props.items()}
         self._props[key] = val
 
     def _get_property(self, key):
@@ -136,11 +124,12 @@ class CommonBase(object):
             return None
         return self._props[key]
 
-    def property_template(self, properties={}):
+    def property_template(self, properties=None):
         """Returns a dictionary of {key: None} templating all of the
         properties defined on the model.
 
         """
+        properties = properties or {}
         temp = {k: None for k in self.get_property_list()}
         temp.update(properties)
         return temp
@@ -178,24 +167,14 @@ class CommonBase(object):
         return key in cls.get_property_list()
 
     # ======== Label ========
-    @hybrid_property
-    def label(self):
-        """Custom label on the model
 
-        .. note: This is not the polymorphic identity, see `_type`
-        """
-        return self.get_label()
+    @classmethod
+    def get_label(cls):
+        return getattr(cls, '__label__', cls.__name__.lower())
 
-    @label.setter
-    def label(self, label):
-        """Custom setter as an application level ban from changing labels.
-
-        """
-        if not isinstance(self.label, Column)\
-           and self.get_label() is not None\
-           and self.get_label() != label:
-            raise AttributeError('Cannot change label from {} to {}'.format(
-                self.get_label(), label))
+    @declared_attr
+    def label(cls):
+        return cls.get_label()
 
     # ======== System Annotations ========
     @hybrid_property
@@ -205,7 +184,7 @@ class CommonBase(object):
         column.
 
         """
-        return SystemAnnotationDict(self)
+        return attributes.SystemAnnotationDict(self)
 
     @system_annotations.setter
     def system_annotations(self, sysan):
@@ -225,11 +204,13 @@ class CommonBase(object):
         """
         return object_session(self)
 
-    def merge(self, acl=None, system_annotations={}, properties={}):
+    def merge(self, acl=None, system_annotations=None, properties=None):
         """Merge the model's system_annotations and properties.
 
         .. note: acl will be overwritten, merging acls is not supported
         """
+        properties = properties or {}
+        system_annotations = system_annotations or {}
         self.system_annotations.update(system_annotations)
         for key, value in properties.items():
             setattr(self, key, value)
@@ -344,10 +325,61 @@ class VoidedBaseClass(object):
         self.system_annotations = sysan
 
 
-VoidedBase = declarative_base(cls=VoidedBaseClass)
-ORMBase = declarative_base(cls=CommonBase)
+VoidedBase = declarative.declarative_base(cls=VoidedBaseClass)
+ORMBase = declarative.declarative_base(cls=CommonBase)
 
 
-def create_all(engine):
-    ORMBase.metadata.create_all(engine)
+def create_all(engine, base=ORMBase):
+    """ Create all tables associated with the provided declarative base, defaults to
+        ORMBase if not specified
+    Args:
+        engine (sqlalchemy.engine.Engine): active engine instance
+        base (sqlalchemy.ext.declarative.DeclarativeMeta): a declarative base class
+    """
+    base.metadata.create_all(engine)
     VoidedBase.metadata.create_all(engine)
+
+
+def drop_all(engine, base=ORMBase):
+    """ Drops all tables associated with a given delcarative base
+    Args:
+        engine (sqlalchemy.engine.Engine): active engine instance
+        base (sqlalchemy.ext.declarative.DeclarativeMeta): a declarative base class
+    """
+    base.metadata.drop_all(engine)
+    VoidedBase.metadata.drop_all(engine)
+
+
+class ExtMixin(object):
+    """  An extension mixin used for retrieving child classes when needed """
+
+    @classmethod
+    def is_subclass_loaded(cls, name):
+        return name in [c.__name__ for c in cls.get_subclasses()]
+
+    @classmethod
+    def add_subclass(cls, subclass):
+        if not issubclass(subclass, cls):
+            raise AttributeError("{} is not a subclass of {}".format(subclass, cls))
+
+    @classmethod
+    def get_subclasses(cls):
+        """ Limits the scope of subclasses to only those manually specified, else defaults to actual subclasses """
+        return cls.__subclasses__()
+
+    @classmethod
+    def get_subclass_table_names(cls):
+        return [s.__tablename__ for s in cls.get_subclasses()]
+
+    @classmethod
+    def is_abstract_base(cls):
+        return LocalConcreteBase in cls.__bases__
+
+
+class LocalConcreteBase(declarative.AbstractConcreteBase):
+
+    @classmethod
+    def _sa_decl_prepare_nocascade(cls):
+        if not cls.__subclasses__():
+            return
+        super(LocalConcreteBase, cls)._sa_decl_prepare_nocascade()

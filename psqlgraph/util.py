@@ -1,11 +1,13 @@
-from sqlalchemy.exc import IntegrityError
-from functools import wraps
 import time
 import random
 import logging
 from functools import wraps
-from exc import ValidationError
+
+import six
 from types import FunctionType
+
+from sqlalchemy.exc import IntegrityError
+from psqlgraph.exc import ValidationError
 
 #  PsqlNode modules
 DEFAULT_RETRIES = 0
@@ -22,10 +24,11 @@ def validate(f, value, types, enum=None):
             ).format(value, enum, f.__name__))
     if not types:
         return
+
     _types = types+(type(None),)
-    # If type is str, accept unicode as well, it will be sanitized
-    if str in _types:
-        _types = _types+(unicode,)
+    if str in types:
+        _types = _types+(six.string_types,)
+
     if not isinstance(value, _types):
         raise ValidationError((
             "Value '{}' is of type {} and is not one of the allowed types "
@@ -56,10 +59,10 @@ def pg_property(*pg_args, **pg_kwargs):
 def sanitize(properties):
     sanitized = {}
     for key, value in properties.items():
-        if isinstance(value, (list, int, str, long, bool, float, type(None))):
+        if not value or isinstance(value, (six.integer_types, bool, list, float, type(None))):
             sanitized[str(key)] = value
-        elif isinstance(value, unicode):
-            sanitized[str(key)] = value.encode('ascii', 'ignore')
+        elif isinstance(value, six.string_types):
+            sanitized[str(key)] = six.ensure_str(value, "utf8")
         else:
             raise ValueError(
                 'Cannot serialize {} to JSONB property'.format(type(value)))
@@ -113,11 +116,9 @@ def retryable(func):
                         retries, max_retries))
                 if retries >= max_retries:
                     logging.error(
-                        'Unabel to execute {f}, max retries exceeded'.format(
+                        'Unable to execute {f}, max retries exceeded'.format(
                             f=func))
                     raise
                 retries += 1
                 backoff(retries, max_retries)
-            else:
-                break
     return wrapper

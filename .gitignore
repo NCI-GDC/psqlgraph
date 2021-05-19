@@ -43,8 +43,16 @@ htmlcov/
 .tox/
 .coverage
 .cache
+.report/
 nosetests.xml
 coverage.xml
+
+# Jenkins 
+.local/
+.eggs/
+.ssh/
+*/_version.py
+wait-for-it.sh
 
 # Translations
 *.mo
@@ -62,3 +70,8 @@ target/
 # IDEs
 .idea/
 *.swp
+
+*.DS_Store
+
+# VS Code
+.vscode

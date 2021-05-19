@@ -2,8 +2,10 @@
 Session hooks
 """
 from sqlalchemy.inspection import inspect
-from node import Node
-from edge import Edge
+
+from psqlgraph.base import ExtMixin
+from psqlgraph.edge import AbstractEdge
+from psqlgraph.node import AbstractNode
 
 
 def history(target, column, attr):
@@ -25,8 +27,15 @@ def get_old_version(target, *attrs):
 
     sysan, props = dict(), dict()
     for attr in attrs:
-        props.update(history(target, '_props', attr))
-        sysan.update(history(target, '_sysan', attr))
+        old_props = history(target, '_props', attr)
+        if old_props is None:
+            old_props = {}
+        props.update(old_props)
+
+        old_sysan = history(target, '_sysan', attr)
+        if old_sysan is None:
+            old_sysan = {}
+        sysan.update(old_sysan)
     return props, sysan
 
 
@@ -34,15 +43,14 @@ def is_psqlgraph_entity(target):
     """Only attempt to track history on Nodes and Edges
 
     """
-    return target.__class__ in (
-        Node.__subclasses__()+Edge.__subclasses__())
+    return isinstance(target, ExtMixin)
 
 
 def receive_before_flush(session, flush_context, instances):
     """Provide a session hook that gets called before the session is
     flushed.
 
-    A snaphot of a node is created if any of the following are true:
+    A snapshot of a node is created if any of the following are true:
 
     1. There are 'added' system_annotations
     2. There are 'added' properties
@@ -91,7 +99,7 @@ def receive_before_flush(session, flush_context, instances):
         if not is_psqlgraph_entity(target):
             continue
 
-        if isinstance(target, (Node, Edge)):
+        if isinstance(target, (AbstractNode, AbstractEdge)):
             target._validate()
 
         # Call custom session hook

@@ -1,12 +1,10 @@
-from collections import deque
-
 from sqlalchemy import Column, Text, UniqueConstraint, Index
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
-from psqlgraph import base
+from psqlgraph import base, traversals
 from psqlgraph.edge import Edge
 from psqlgraph.voided_node import VoidedNode
 
@@ -145,64 +143,13 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
         Returns:
             generator: nodes found in the sub tree
         """
-        if mode == "bfs":
-            return self._bfs(
-                edge_predicate=edge_predicate,
-                edge_pointer=edge_pointer,
-                max_depth=max_depth
-            )
-        raise NotImplementedError("Traversal mode {} is not implemented".format(mode))
+        return traversals.traverse(self, mode, max_depth, edge_pointer, edge_predicate)
 
     def bfs_children(self, edge_predicate=None, max_depth=None):
         return self.traverse(edge_predicate=edge_predicate, max_depth=max_depth)
 
-    def _bfs(self, edge_predicate=None, max_depth=None, edge_pointer="in"):
-        """
-        Perform a BFS, with `self` being the root node
-
-        :param edge_predicate: a predicate performed on an `edge` object in
-            order to decided whether to walk that edge or not
-        :type edge_predicate: func
-        :param max_depth: maximum distance to traverse
-        :type max_depth: int
-        :param edge_pointer: possible values `in`, `out`
-                            `in`: use node.edges_in, default behavior
-                            `out`: use edges_out
-        :type edge_pointer: str
-
-        :return: generator
-        """
-
-        if not callable(edge_predicate):
-            def edge_predicate(e):
-                return True
-
-        if max_depth is None:
-            max_depth = float('inf')
-
-        marked = set()
-        queue = deque([(self, 0)])
-
-        marked.add(self.node_id)
-
-        while queue:
-            current, depth = queue.popleft()
-
-            yield current
-
-            if depth + 1 > max_depth:
-                continue
-
-            edges = current.edges_out if edge_pointer == "out" else current.edges_in
-            for edge in edges:
-                if not edge_predicate(edge):
-                    continue
-
-                n = edge.dst if edge_pointer == "out" else edge.src
-
-                if n.node_id not in marked:
-                    queue.append((n, depth + 1))
-                    marked.add(n.node_id)
+    def dfs_children(self, edge_predicate=None, max_depth=None):
+        return self.traverse(mode="dfs", edge_predicate=edge_predicate, max_depth=max_depth)
 
     def __init__(self, node_id=None, properties=None, acl=None,
                  system_annotations=None, label=None, **kwargs):

@@ -34,18 +34,6 @@ identify==1.4.24
     # via pre-commit
 idna==2.10
     # via requests
-importlib-metadata==1.6.0
-    # via
-    #   importlib-resources
-    #   pluggy
-    #   pre-commit
-    #   pytest
-    #   tox
-    #   virtualenv
-importlib-resources==1.5.0
-    # via
-    #   pre-commit
-    #   virtualenv
 more-itertools==5.0.0
     # via pytest
 nodeenv==1.4.0
@@ -62,8 +50,6 @@ pluggy==0.13.1
     #   tox
 pre-commit==1.21.0
     # via -r dev-requirements.in
-psycopg2==2.8.6
-    # via psqlgraph (setup.py)
 py==1.8.1
     # via
     #   pytest
@@ -76,27 +62,22 @@ pytest==4.6.10
     # via
     #   -r dev-requirements.in
     #   pytest-cov
-pyyaml==5.3.1
+pyyaml==5.4
     # via
     #   aspy.yaml
     #   detect-secrets
     #   pre-commit
 requests==2.24.0
     # via detect-secrets
-rstr==2.2.6
-    # via psqlgraph (setup.py)
 six==1.15.0
     # via
     #   cfgv
     #   more-itertools
     #   packaging
     #   pre-commit
-    #   psqlgraph (setup.py)
     #   pytest
     #   tox
     #   virtualenv
-sqlalchemy==1.3.24
-    # via psqlgraph (setup.py)
 toml==0.10.1
     # via
     #   pre-commit
@@ -111,9 +92,3 @@ virtualenv==20.0.21
     #   tox
 wcwidth==0.1.9
     # via pytest
-xlocal==0.5
-    # via psqlgraph (setup.py)
-zipp==1.2.0
-    # via
-    #   importlib-metadata
-    #   importlib-resources

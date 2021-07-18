@@ -1,18 +1,14 @@
+from sqlalchemy import BigInteger, Column, DateTime, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlalchemy import Column, Text, DateTime, BigInteger, text
+
 from psqlgraph.base import VoidedBase
 
 
 class VoidedEdge(VoidedBase):
 
-    __tablename__ = '_voided_edges'
+    __tablename__ = "_voided_edges"
 
-    key = Column(
-        BigInteger,
-        primary_key=True,
-        nullable=False,
-        autoincrement=True
-    )
+    key = Column(BigInteger, primary_key=True, nullable=False, autoincrement=True)
 
     src_id = Column(
         Text,
@@ -29,13 +25,13 @@ class VoidedEdge(VoidedBase):
     created = Column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=text('now()'),
+        server_default=text("now()"),
     )
 
     voided = Column(
         DateTime(timezone=True),
         nullable=False,
-        server_default=text('now()'),
+        server_default=text("now()"),
     )
 
     acl = Column(

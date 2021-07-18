@@ -6,11 +6,13 @@ from psqlgraph.node import AbstractNode, Node
 
 
 @pytest.mark.parametrize(
-    "ns, node_cls_name, edge_cls_name", [
-    ("sample", "SampleAbstractNode", "SampleAbstractEdge"),
-    ("test", "TestAbstractNode", "TestAbstractEdge"),
-    (None, "Node", "Edge")
-])
+    "ns, node_cls_name, edge_cls_name",
+    [
+        ("sample", "SampleAbstractNode", "SampleAbstractEdge"),
+        ("test", "TestAbstractNode", "TestAbstractEdge"),
+        (None, "Node", "Edge"),
+    ],
+)
 def test_register_bases(ns, node_cls_name, edge_cls_name):
 
     node_cls, edge_cls = ext.register_base_class(package_namespace=ns)
@@ -21,8 +23,7 @@ def test_register_bases(ns, node_cls_name, edge_cls_name):
     assert edge_cls.__name__ == edge_cls_name
 
 
-@pytest.mark.parametrize(
-    "ns", ["sample", "test", None])
+@pytest.mark.parametrize("ns", ["sample", "test", None])
 def test_bases_cached(ns):
     node_cls, edge_cls = ext.register_base_class(package_namespace=ns)
 

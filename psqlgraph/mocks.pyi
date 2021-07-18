@@ -1,37 +1,22 @@
-from typing import (
-    Any,
-    Dict,
-    Generic,
-    Iterable,
-    List,
-    Optional,
-    Protocol,
-    Set,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import (Any, Dict, Generic, Iterable, List, Optional, Protocol,
+                    Set, Tuple, TypeVar, Union)
 
 from mypy_extensions import TypedDict
-
 from psqlgraph import edge, node
 
 KT = Union[bool, float, int, list, str, None]
 VT = TypeVar("VT", bool, float, int, List[str], str, None)
-# E = TypeVar("E", bound=AbstractEdge)
-# N = TypeVar("N", bound=AbstractNode)
 
 E = edge.AbstractEdge
 N = node.AbstractNode
-# R = TypeVar("R", bound="Randomizer")
 
-class DataModel(Protocol):
+class DataCommonsModel(Protocol):
     Edge: E
     Node: N
 
 class SchemaMeta(TypedDict): ...
 
-class Dictionary(Protocol):
+class DataCommonsDictionary(Protocol):
     schema: SchemaMeta
 
 class EdgeMeta(TypedDict):
@@ -84,13 +69,13 @@ class PropertyFactory:
     def create(self, name: str, override: Optional[KT] = ...) -> Tuple[str, KT]: ...
 
 class NodeFactory:
-    models: DataModel
+    models: DataCommonsModel
     schema: SchemaMeta
     property_factories: Dict[str, PropertyFactory]
     graph_globals: Dict[str, KT]
     def __init__(
         self,
-        models: DataModel,
+        models: DataCommonsModel,
         schema: SchemaMeta,
         graph_globals: Optional[Dict[str, KT]] = ...,
     ) -> None: ...
@@ -101,14 +86,14 @@ class NodeFactory:
     def validate_override_value(self, prop: str, label: str, override: KT) -> bool: ...
 
 class GraphFactory:
-    models: DataModel
-    dictionary: Dictionary
+    models: DataCommonsModel
+    dictionary: DataCommonsDictionary
     node_factory: NodeFactory
     relation_cache: Dict[str, Set[str]]
     def __init__(
         self,
-        models: DataModel,
-        dictionary: Dictionary,
+        models: DataCommonsModel,
+        dictionary: DataCommonsDictionary,
         graph_globals: Optional[Dict[str, KT]] = ...,
     ) -> None: ...
     @staticmethod

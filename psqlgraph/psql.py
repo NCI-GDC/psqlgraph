@@ -94,8 +94,14 @@ class PsqlGraphDriver(object):
         return self.context.session
 
     @contextmanager
-    def session_scope(self, session=None, can_inherit=True,
-                      must_inherit=False):
+    def session_scope(
+            self,
+            session=None,
+            can_inherit=True,
+            must_inherit=False,
+            auto_flush=True,
+            read_only=False
+    ):
         """Provide a transactional scope around a series of operations.
 
         This session scope has a deceptively complex behavior, so be
@@ -165,6 +171,10 @@ class PsqlGraphDriver(object):
             scope must inherit a session from a parent session.  This
             parameter can be set to true to prevent session leaks from
             functions which return raw query objects
+        :param bool auto_flush:
+            Enable/disable autoflush, defaults to True
+        :param bool read_only:
+            Enforce a read only transaction, defaults to False
 
         """
 
@@ -183,6 +193,11 @@ class PsqlGraphDriver(object):
             local = self._new_session()
         else:
             local = self.current_session()
+
+        # apply auto_flush and read only settings
+        local.autoflush = auto_flush
+        if read_only:
+            local.execute("SET TRANSACTION READ ONLY")
 
         # Context manager functionality
         try:

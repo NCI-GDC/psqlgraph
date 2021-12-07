@@ -195,7 +195,8 @@ class PsqlGraphDriver(object):
             local = self.current_session()
 
         # apply auto_flush and read only settings
-        local.autoflush = auto_flush
+        if not inherited_session:
+            local.autoflush = auto_flush
         if read_only:
             local.execute("SET TRANSACTION READ ONLY")
 
@@ -250,7 +251,8 @@ class PsqlGraphDriver(object):
                 'Have you imported your models?'
             ).format(str(e)))
 
-    def voided_nodes(self, query=VoidedNode):
+    def voided_nodes(self, query=None):
+        query = query or VoidedNode
         with self.session_scope(must_inherit=True) as local:
             if isinstance(query, list) or isinstance(query, tuple):
                 return local.query(*query)
@@ -258,17 +260,13 @@ class PsqlGraphDriver(object):
                 return local.query(query)
 
     def voided_edges(self, query=VoidedEdge):
-        with self.session_scope(must_inherit=True) as local:
-            if isinstance(query, list) or isinstance(query, tuple):
-                return local.query(*query)
-            else:
-                return local.query(query)
+        self.voided_nodes(query)
 
     def set_node_validator(self, node_validator):
-        raise NotImplemented('Deprecated.')
+        raise NotImplementedError("Deprecated.")
 
     def set_edge_validator(self, edge_validator):
-        raise NotImplemented('Deprecated.')
+        raise NotImplementedError("Deprecated.")
 
     def get_nodes(self, session=None, batch_size=1000):
         return self.nodes().yield_per(batch_size)

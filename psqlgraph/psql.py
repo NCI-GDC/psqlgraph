@@ -197,8 +197,8 @@ class PsqlGraphDriver(object):
         # apply auto_flush and read only settings
         if not inherited_session:
             local.autoflush = auto_flush
-        if read_only:
-            local.execute("SET TRANSACTION READ ONLY")
+            if read_only:
+                local.execute("SET TRANSACTION READ ONLY")
 
         # Context manager functionality
         try:

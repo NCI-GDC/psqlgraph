@@ -42,6 +42,8 @@ class PsqlGraphDriver(object):
         """
 
         # Parse kwargs
+        self.auto_flush = kwargs.pop("auto_flush", True)
+        self.read_only = kwargs.pop("read_only", False)
         self.package_namespace = kwargs.pop("package_namespace", None)
         connect_args = kwargs.pop('connect_args', {})
         kwargs.pop('node_validator', None)
@@ -78,13 +80,22 @@ class PsqlGraphDriver(object):
         # Create context for xlocal sessions
         self.context = xlocal()
 
-    def _new_session(self):
-        Session = sessionmaker(expire_on_commit=False, class_=GraphSession)
+    def _new_session(self, auto_flush=None, read_only=None):
+
+        # use instance level value for auto_flush if nothing is passed
+        auto_flush = self.auto_flush if auto_flush is None else auto_flush
+        read_only = self.read_only if read_only is None else read_only
+
+        Session = sessionmaker(autoflush=auto_flush, expire_on_commit=False, class_=GraphSession)
         Session.configure(bind=self.engine, query_cls=GraphQuery)
         session = Session(package_namespace=self.package_namespace)
         session._flush_timestamp = None
         session._set_flush_timestamps = self.set_flush_timestamps
         event.listen(session, 'before_flush', receive_before_flush)
+
+        if read_only:
+            session.execute("SET TRANSACTION READ ONLY")
+
         return session
 
     def has_session(self):
@@ -99,8 +110,8 @@ class PsqlGraphDriver(object):
             session=None,
             can_inherit=True,
             must_inherit=False,
-            auto_flush=True,
-            read_only=False
+            auto_flush=None,
+            read_only=None
     ):
         """Provide a transactional scope around a series of operations.
 
@@ -190,15 +201,9 @@ class PsqlGraphDriver(object):
             local = session
         elif not (can_inherit and self.has_session()):
             inherited_session = False
-            local = self._new_session()
+            local = self._new_session(auto_flush, read_only)
         else:
             local = self.current_session()
-
-        # apply auto_flush and read only settings
-        if not inherited_session:
-            local.autoflush = auto_flush
-            if read_only:
-                local.execute("SET TRANSACTION READ ONLY")
 
         # Context manager functionality
         try:

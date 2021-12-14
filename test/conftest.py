@@ -73,4 +73,6 @@ def samples_with_array(pg_driver):
 
     with pg_driver.session_scope():
         for node in nodes:
-            pg_driver.node_delete(node=node)
+            n = pg_driver.nodes().get(node.node_id)
+            if n:
+                pg_driver.node_delete(node=n)

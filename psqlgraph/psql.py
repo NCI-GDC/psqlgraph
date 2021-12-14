@@ -38,7 +38,14 @@ class PsqlGraphDriver(object):
             Is `True` by default.  Setting this to `True` will
             perform an extra database query to get the server time at
             flush and store `session._flush_timestamp`.
-
+        :param bool auto_flush:
+            defaults to `True`, force all newly created sessions to set autoflush.
+            This value will be the default autoflush value and used while creating new sessions. If the user
+            passes a different value while creating the session, this value will be ignored
+        :param bool read_only:
+            defaults to `False`, Controls whether new sessions are set to only allow read only queries or not.
+            This value is used while creating new sessions and can be replaced by passing a different value while
+            creating the session.
         """
 
         # Parse kwargs
@@ -183,9 +190,9 @@ class PsqlGraphDriver(object):
             parameter can be set to true to prevent session leaks from
             functions which return raw query objects
         :param bool auto_flush:
-            Enable/disable autoflush, defaults to True
+            Enable/disable autoflush, defaults to True (self.auto_flush)
         :param bool read_only:
-            Enforce a read only transaction, defaults to False
+            Enforce a read only transaction, defaults to False (self.read_only)
 
         """
 

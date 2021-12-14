@@ -26,7 +26,7 @@ def pg_read_only(pg_conf, pg_driver):
 
 
 def test_no_auto_flush_driver(pg_no_auto_flush):
-    """Tests auto flush settings and applied appropriately"""
+    """Tests auto flush settings are applied appropriately"""
 
     # Uses value set by constructor
     with pg_no_auto_flush.session_scope() as s:
@@ -159,7 +159,7 @@ def test_read_only_driver__nest_must_inherit(pg_read_only, inherits):
 
 
 def test_read_only_driver__delete(pg_read_only, samples_with_array):
-    """Tests that merging fails for transactions marked as read only"""
+    """Tests that delete fails for transactions marked as read only"""
 
     with pytest.raises(exc.InternalError):
         with pg_read_only.session_scope() as s:

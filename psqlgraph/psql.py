@@ -25,6 +25,7 @@ from psqlgraph.voided_node import VoidedNode
 from psqlgraph.session import GraphSession
 
 DEFAULT_RETRIES = 0
+logger = logging.getLogger(__name__)
 
 
 class PsqlGraphDriver(object):
@@ -212,6 +213,14 @@ class PsqlGraphDriver(object):
         else:
             local = self.current_session()
 
+        if inherited_session and (read_only is not None or auto_flush is not None):
+            logger.warning(
+                "Attempt to mark an inherited session with read_only={} or auto_flush={} will be ignored.".format(
+                    read_only,
+                    auto_flush
+                )
+            )
+
         # Context manager functionality
         try:
             with self.context(session=local):
@@ -236,11 +245,7 @@ class PsqlGraphDriver(object):
         """
         query = query or ext.get_abstract_node(self.package_namespace)
         self._configure_driver_mappers()
-        with self.session_scope(must_inherit=True) as local:
-            if isinstance(query, list) or isinstance(query, tuple):
-                return local.query(*query)
-            else:
-                return local.query(query)
+        return self.__expand_query(query)
 
     def __call__(self, *args, **kwargs):
         return self.nodes(*args, **kwargs)
@@ -248,11 +253,7 @@ class PsqlGraphDriver(object):
     def edges(self, query=None):
         query = query or ext.get_abstract_edge(self.package_namespace)
         self._configure_driver_mappers()
-        with self.session_scope(must_inherit=True) as local:
-            if isinstance(query, list) or isinstance(query, tuple):
-                return local.query(*query)
-            else:
-                return local.query(query)
+        return self.__expand_query(query)
 
     def _configure_driver_mappers(self):
         try:
@@ -263,16 +264,18 @@ class PsqlGraphDriver(object):
                 'Have you imported your models?'
             ).format(str(e)))
 
-    def voided_nodes(self, query=None):
-        query = query or VoidedNode
+    def __expand_query(self, query=None):
         with self.session_scope(must_inherit=True) as local:
             if isinstance(query, list) or isinstance(query, tuple):
                 return local.query(*query)
             else:
                 return local.query(query)
 
+    def voided_nodes(self, query=VoidedNode):
+        return self.__expand_query(query)
+
     def voided_edges(self, query=VoidedEdge):
-        self.voided_nodes(query)
+        return self.__expand_query(query)
 
     def set_node_validator(self, node_validator):
         raise NotImplementedError("Deprecated.")
@@ -395,7 +398,7 @@ class PsqlGraphDriver(object):
                                   node=None, session=None,
                                   max_retries=DEFAULT_RETRIES,
                                   backoff=default_backoff):
-        raise NotImplemented('Deprecated.')
+        raise NotImplementedError('Deprecated.')
 
     @retryable
     def node_delete_system_annotation_keys(self,

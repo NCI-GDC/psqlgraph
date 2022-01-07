@@ -25,6 +25,7 @@ from psqlgraph.voided_node import VoidedNode
 from psqlgraph.session import GraphSession
 
 DEFAULT_RETRIES = 0
+logger = logging.getLogger(__name__)
 
 
 class PsqlGraphDriver(object):
@@ -38,10 +39,19 @@ class PsqlGraphDriver(object):
             Is `True` by default.  Setting this to `True` will
             perform an extra database query to get the server time at
             flush and store `session._flush_timestamp`.
-
+        :param bool auto_flush:
+            defaults to `True`, force all newly created sessions to set autoflush.
+            This value will be the default autoflush value and used while creating new sessions. If the user
+            passes a different value while creating the session, this value will be ignored
+        :param bool read_only:
+            defaults to `False`, Controls whether new sessions are set to only allow read only queries or not.
+            This value is used while creating new sessions and can be replaced by passing a different value while
+            creating the session.
         """
 
         # Parse kwargs
+        self.auto_flush = kwargs.pop("auto_flush", True)
+        self.read_only = kwargs.pop("read_only", False)
         self.package_namespace = kwargs.pop("package_namespace", None)
         connect_args = kwargs.pop('connect_args', {})
         kwargs.pop('node_validator', None)
@@ -78,13 +88,22 @@ class PsqlGraphDriver(object):
         # Create context for xlocal sessions
         self.context = xlocal()
 
-    def _new_session(self):
-        Session = sessionmaker(expire_on_commit=False, class_=GraphSession)
+    def _new_session(self, auto_flush=None, read_only=None):
+
+        # use instance level value for auto_flush if nothing is passed
+        auto_flush = self.auto_flush if auto_flush is None else auto_flush
+        read_only = self.read_only if read_only is None else read_only
+
+        Session = sessionmaker(autoflush=auto_flush, expire_on_commit=False, class_=GraphSession)
         Session.configure(bind=self.engine, query_cls=GraphQuery)
         session = Session(package_namespace=self.package_namespace)
         session._flush_timestamp = None
         session._set_flush_timestamps = self.set_flush_timestamps
         event.listen(session, 'before_flush', receive_before_flush)
+
+        if read_only:
+            session.execute("SET TRANSACTION READ ONLY")
+
         return session
 
     def has_session(self):
@@ -94,8 +113,14 @@ class PsqlGraphDriver(object):
         return self.context.session
 
     @contextmanager
-    def session_scope(self, session=None, can_inherit=True,
-                      must_inherit=False):
+    def session_scope(
+            self,
+            session=None,
+            can_inherit=True,
+            must_inherit=False,
+            auto_flush=None,
+            read_only=None
+    ):
         """Provide a transactional scope around a series of operations.
 
         This session scope has a deceptively complex behavior, so be
@@ -165,6 +190,10 @@ class PsqlGraphDriver(object):
             scope must inherit a session from a parent session.  This
             parameter can be set to true to prevent session leaks from
             functions which return raw query objects
+        :param bool auto_flush:
+            Enable/disable autoflush, defaults to True (self.auto_flush)
+        :param bool read_only:
+            Enforce a read only transaction, defaults to False (self.read_only)
 
         """
 
@@ -180,9 +209,17 @@ class PsqlGraphDriver(object):
             local = session
         elif not (can_inherit and self.has_session()):
             inherited_session = False
-            local = self._new_session()
+            local = self._new_session(auto_flush, read_only)
         else:
             local = self.current_session()
+
+        if inherited_session and (read_only is not None or auto_flush is not None):
+            logger.warning(
+                "Attempt to mark an inherited session with read_only={} or auto_flush={} will be ignored.".format(
+                    read_only,
+                    auto_flush
+                )
+            )
 
         # Context manager functionality
         try:
@@ -208,11 +245,7 @@ class PsqlGraphDriver(object):
         """
         query = query or ext.get_abstract_node(self.package_namespace)
         self._configure_driver_mappers()
-        with self.session_scope(must_inherit=True) as local:
-            if isinstance(query, list) or isinstance(query, tuple):
-                return local.query(*query)
-            else:
-                return local.query(query)
+        return self.__expand_query(query)
 
     def __call__(self, *args, **kwargs):
         return self.nodes(*args, **kwargs)
@@ -220,11 +253,7 @@ class PsqlGraphDriver(object):
     def edges(self, query=None):
         query = query or ext.get_abstract_edge(self.package_namespace)
         self._configure_driver_mappers()
-        with self.session_scope(must_inherit=True) as local:
-            if isinstance(query, list) or isinstance(query, tuple):
-                return local.query(*query)
-            else:
-                return local.query(query)
+        return self.__expand_query(query)
 
     def _configure_driver_mappers(self):
         try:
@@ -235,25 +264,24 @@ class PsqlGraphDriver(object):
                 'Have you imported your models?'
             ).format(str(e)))
 
-    def voided_nodes(self, query=VoidedNode):
+    def __expand_query(self, query=None):
         with self.session_scope(must_inherit=True) as local:
             if isinstance(query, list) or isinstance(query, tuple):
                 return local.query(*query)
             else:
                 return local.query(query)
+
+    def voided_nodes(self, query=VoidedNode):
+        return self.__expand_query(query)
 
     def voided_edges(self, query=VoidedEdge):
-        with self.session_scope(must_inherit=True) as local:
-            if isinstance(query, list) or isinstance(query, tuple):
-                return local.query(*query)
-            else:
-                return local.query(query)
+        return self.__expand_query(query)
 
     def set_node_validator(self, node_validator):
-        raise NotImplemented('Deprecated.')
+        raise NotImplementedError("Deprecated.")
 
     def set_edge_validator(self, edge_validator):
-        raise NotImplemented('Deprecated.')
+        raise NotImplementedError("Deprecated.")
 
     def get_nodes(self, session=None, batch_size=1000):
         return self.nodes().yield_per(batch_size)
@@ -370,7 +398,7 @@ class PsqlGraphDriver(object):
                                   node=None, session=None,
                                   max_retries=DEFAULT_RETRIES,
                                   backoff=default_backoff):
-        raise NotImplemented('Deprecated.')
+        raise NotImplementedError('Deprecated.')
 
     @retryable
     def node_delete_system_annotation_keys(self,

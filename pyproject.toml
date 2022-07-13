@@ -10,7 +10,7 @@ SQLAlchemy = {version = ">=1.3.0,<1.4.0", extras = ["postgresql"]}
 python = "^3.6.1"
 rstr = [
   {version = ">=3.0.0,<3.1.0", python = "<3.7"},
-  {version = "^3.2.0", python = "^3.7"},
+  {version = "^3.2.0", python = ">=3.7"},
 ]
 six = "^1.16.0"
 xlocal = "^0.5"

@@ -320,6 +320,14 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "rstr"
+version = "3.2.0"
+description = "Generate random strings in Python"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[[package]]
 name = "six"
 version = "1.16.0"
 description = "Python 2 and 3 compatibility utilities"
@@ -430,7 +438,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.6.1"
-content-hash = "f2fadcd0f5f620b6b1f69f685d03011ccb1aaa774a8d99204f966bc875a0dea4"
+content-hash = "9cac01a28dd746ae3df031f896927a6851cdcbb7531ac0f591be2d599b5714f4"
 
 [metadata.files]
 atomicwrites = []
@@ -459,7 +467,10 @@ pyparsing = []
 pytest = []
 pyyaml = []
 requests = []
-rstr = []
+rstr = [
+    {file = "rstr-3.2.0-py3-none-any.whl", hash = "sha256:29f4870c70141c26cb75cc639fbd658e2aad1e75c7dedfb5d3afd74de62acb02"},
+    {file = "rstr-3.2.0.tar.gz", hash = "sha256:54b36313a3aecb37450083004f3951cbf04687eeadb1ede90e8bf48fcbabd736"},
+]
 six = []
 sqlalchemy = []
 toml = []

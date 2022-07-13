@@ -1,22 +1,23 @@
+os: linux
+dist: bionic
 language: python
-
 python:
-  - 2.7
-  - 3.5
-  - 3.6
-  - 3.7
-  - 3.8
-  - 3.9
+  - "3.6"
+  - "3.7"
+  - "3.8"
+  - "3.9"
+  - "3.10"
+  - "3.11-dev"
 
 addons:
   postgresql: "13"
   apt:
-    sources:
-      - sourceline: deb http://apt.postgresql.org/pub/repos/apt/ xenial-pgdg main 13
-        key_url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
     packages:
       - postgresql-13
       - postgresql-client-13
+      # Below are required for installing pipx
+      - python3-pip
+      - python3-venv
 
 before_install:
   # Copy custom configs from the repo because PG-13 isn't set up to run like
@@ -26,7 +27,10 @@ before_install:
   - sudo pg_ctlcluster 13 main restart
 
 install:
-  - pip install tox-travis
+  - /usr/bin/python3 -m pip install pipx --user
+  - pipx install poetry
+  - pipx inject poetry poetry-dynamic-versioning
+  - pip install tox-travis tox-poetry
 
 before_script:
   - psql -U postgres -c "create user test with superuser password 'test';"
@@ -37,3 +41,7 @@ script:
 
 after_script:
   - test $TRAVIS_PYTHON_VERSION = "3.9" && tox -e coverage
+
+jobs:
+  allow_failures:
+    - python: "3.11-dev"

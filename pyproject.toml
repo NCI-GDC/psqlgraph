@@ -1,0 +1,33 @@
+[tool.poetry]
+authors = ["Your Name <you@example.com>"]
+description = "A library for managing graph like structures using SQLAlchemy and Postgres DB."
+license = "Apache-2.0"
+name = "psqlgraph"
+readme = "README.md"
+version = "0.0.0"
+
+[tool.poetry.dependencies]
+SQLAlchemy = {version = ">=1.3.0,<1.4.0", extras = ["postgresql"]}
+python = "^3.6.1"
+rstr = ">=3.0.0,<3.1.0"
+six = "^1.16.0"
+xlocal = "^0.5"
+
+[tool.poetry.group.dev.dependencies]
+coverage = [
+  {version = "^6.2.0", python = "^3.6"},
+  {version = "^6.4.0", python = "^3.7"},
+]
+detect-secrets = "^1.2.0"
+pre-commit = ">=2.17.0,<2.18.0"
+pytest = ">=7.0.0,<7.1.0"
+
+[tool.poetry-dynamic-versioning]
+dirty = true
+enable = true
+metadata = true
+pattern = "default-unprefixed"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core", "poetry-dynamic-versioning"]

@@ -18,7 +18,7 @@ services:
     volumes:
     - .:/home/jenkins
     - $SSH_AUTH_SOCK:$SSH_AUTH_SOCK
-    command: bash -c "./wait-for-it.sh localhost:5432 -t 120 &&  pip install tox -q --user && tox --recreate"
+    command: bash -c "./wait-for-it.sh localhost:5432 -t 120 && pip install tox tox-poetry pipx -q --user && pipx install poetry && pipx inject poetry poetry-dynamic-versioning && tox -r"
     network_mode: "service:postgres"
     depends_on: 
       - postgres

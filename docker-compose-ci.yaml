@@ -18,7 +18,7 @@ services:
     volumes:
     - .:/home/jenkins
     - $SSH_AUTH_SOCK:$SSH_AUTH_SOCK
-    command: bash -c "./wait-for-it.sh localhost:5432 -t 120 && pip install poetry poetry-dynamic-versioning && tox -r"
+    command: bash -c "./wait-for-it.sh localhost:5432 -t 120 && ./docker-tox.sh"
     network_mode: "service:postgres"
     depends_on: 
       - postgres

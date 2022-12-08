@@ -1,7 +1,7 @@
 version: "3.3"
 services:
   postgres:
-    image: postgres:9.4
+    image: postgres:13
     logging:
       driver: none
     environment: 
@@ -18,7 +18,7 @@ services:
     volumes:
     - .:/home/jenkins
     - $SSH_AUTH_SOCK:$SSH_AUTH_SOCK
-    command: bash -c "./wait-for-it.sh localhost:5432 -t 120 &&  pip install tox -q --user && tox --recreate"
+    command: bash -c "./wait-for-it.sh localhost:5432 -t 120 && ./docker-run-tests.sh"
     network_mode: "service:postgres"
     depends_on: 
       - postgres

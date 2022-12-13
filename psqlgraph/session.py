@@ -45,4 +45,3 @@ class GraphSession(Session):
     def query(self, *entities, **kwargs):
         kwargs["package_namespace"] = self.package_namespace
         return super(GraphSession, self).query(*entities, **kwargs)
-

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # psqlgraph documentation build configuration file, created by
 # sphinx-quickstart on Mon Dec  8 11:04:21 2014.

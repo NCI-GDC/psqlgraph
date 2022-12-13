@@ -219,7 +219,7 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
                     acl=node_json['acl'],
                     system_annotations=node_json['system_annotations'],
                     label=node_json['label'])
-                   
+
     @classmethod
     def get_subclass(cls, label):
         for c in cls.get_subclasses():

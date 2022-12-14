@@ -38,7 +38,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
     def test_custom_application_name(self):
         cmd = "select application_name from pg_stat_activity;"
         custom_name = '_CUSTOM_NAME'
-        
+
         g_ = PsqlGraphDriver(application_name=custom_name, **self.pg_conf)
         with g_.session_scope() as s:
             s.merge(models.Test('a'))

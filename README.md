@@ -70,11 +70,11 @@ Dropping old test data
 Creating tables in test database
 ```
 
-    
+
 # Setup pre-commit hook to check for secrets
 
 We use [pre-commit](https://pre-commit.com/) to setup pre-commit hooks for this repo.
-We use [detect-secrets](https://github.com/Yelp/detect-secrets) to search for secrets being committed into the repo. 
+We use [detect-secrets](https://github.com/Yelp/detect-secrets) to search for secrets being committed into the repo.
 
 To install the pre-commit hook, run
 ```
@@ -86,7 +86,7 @@ To update the .secrets.baseline file run
 detect-secrets scan --update .secrets.baseline
 ```
 
-`.secrets.baseline` contains all the string that were caught by detect-secrets but are not stored in plain text. Audit the baseline to view the secrets . 
+`.secrets.baseline` contains all the string that were caught by detect-secrets but are not stored in plain text. Audit the baseline to view the secrets .
 
 ```
 detect-secrets audit .secrets.baseline

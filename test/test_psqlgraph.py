@@ -354,8 +354,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             self.assertDictEqual(node.to_json(), expected_json)
 
     def test_node_from_json(self):
-        """Test node creation from json
-        """
+        """Test node creation from json"""
         node_id = str(uuid.uuid4())
 
         propertiesA = sanitize({

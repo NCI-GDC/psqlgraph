@@ -13,6 +13,5 @@ setup(
         "sqlalchemy~=1.3,<1.4",
         "xlocal~=0.5",
         "rstr~=2.2.6",
-        "six~=1.15.0",
     ],
 )

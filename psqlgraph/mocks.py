@@ -6,7 +6,6 @@ import uuid
 from collections import defaultdict, deque
 
 import rstr
-import six
 
 
 class Randomizer(object):
@@ -62,7 +61,7 @@ class NumberRand(Randomizer):
         return random.randrange(self.minimum, self.maximum + 1)
 
     def validate_value(self, value):
-        return isinstance(value, six.integer_types) and \
+        return isinstance(value, int) and \
                 self.minimum <= value <= self.maximum
 
 
@@ -80,7 +79,7 @@ class StringRand(Randomizer):
         return rstr.xeger(self.pattern)
 
     def validate_value(self, value):
-        return isinstance(value, six.string_types)
+        return isinstance(value, str)
 
 
 class BooleanRand(Randomizer):

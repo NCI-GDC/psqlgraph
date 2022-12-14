@@ -1,6 +1,5 @@
 from copy import copy
 
-import six
 from sqlalchemy import not_, or_
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.orm import Query
@@ -20,7 +19,7 @@ class GraphQuery(Query):
         self.package_namespace = package_namespace
 
     def _iterable(self, val):
-        if hasattr(val, '__iter__') and not isinstance(val, six.string_types):
+        if hasattr(val, '__iter__') and not isinstance(val, str):
             return val
         return val,
 
@@ -92,7 +91,7 @@ class GraphQuery(Query):
             g.nodes().src(node1.node_id).filter(...
 
         """
-        if isinstance(ids, six.string_types):
+        if isinstance(ids, str):
             ids = [ids]
 
         assert hasattr(self.entity(), 'src_id')
@@ -110,7 +109,7 @@ class GraphQuery(Query):
             g.nodes().dst('id1').filter(...
 
         """
-        if isinstance(ids, six.string_types):
+        if isinstance(ids, str):
             ids = [ids]
 
         assert hasattr(self.entity(), 'dst_id')
@@ -130,7 +129,7 @@ class GraphQuery(Query):
             g.nodes().ids(['id1', 'id2']).filter(...
 
         """
-        if isinstance(ids, six.string_types):
+        if isinstance(ids, str):
             ids = [ids]
 
         _id = self.entity().node_id
@@ -152,7 +151,7 @@ class GraphQuery(Query):
 
         _id = self.entity().node_id
 
-        if isinstance(ids, six.string_types):
+        if isinstance(ids, str):
             ids = [ids]
 
         return self.filter(not_(_id.in_(ids)))
@@ -287,7 +286,7 @@ class GraphQuery(Query):
             return self
 
         # Munge arguments to lists
-        if isinstance(path, six.string_types):
+        if isinstance(path, str):
             path = path.strip().split('.')
         if not isinstance(filters, list):
             filters = [filters]
@@ -434,7 +433,7 @@ class GraphQuery(Query):
 
         """
 
-        keys = [keys] if isinstance(keys, six.string_types) else keys
+        keys = [keys] if isinstance(keys, str) else keys
         keys += args if args else []
 
         assert keys, 'No keys provided to `null_prop()` filter'
@@ -469,7 +468,7 @@ class GraphQuery(Query):
             # see https://www.postgresql.org/docs/9.4/functions-json.html
             # has_any is `?|` under the hood and that requires the right operand to be a text array
             return self.filter(col[key].has_any(array(values)))
-        assert isinstance(key, six.string_types) and isinstance(values, list)
+        assert isinstance(key, str) and isinstance(values, list)
         return self.filter(col[key].astext.in_([
             str(v) for v in values]))
 
@@ -545,7 +544,7 @@ class GraphQuery(Query):
         :type keys: str|list[str]
         :returns GraphQuery: Active GraphQuery instance
         """
-        if isinstance(keys, six.string_types):
+        if isinstance(keys, str):
             keys = [keys]
         for key in keys:
             self = self.filter(self.entity()._sysan.has_key(key))

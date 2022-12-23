@@ -116,7 +116,7 @@ def retryable(func):
                 return func(*args, **kwargs)
             except IntegrityError:
                 logging.debug(
-                    "Race-condition caught? ({0}/{1} retries)".format(
+                    "Race-condition caught? ({}/{} retries)".format(
                         retries, max_retries
                     )
                 )

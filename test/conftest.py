@@ -9,10 +9,10 @@ from test import models
 @pytest.fixture(scope="session")
 def pg_conf():
     return {
-        'host': "localhost",
-        'user': "test",
-        'password': "test",
-        'database': "automated_test"
+        "host": "localhost",
+        "user": "test",
+        "password": "test",
+        "database": "automated_test",
     }
 
 
@@ -40,7 +40,7 @@ SAMPLES = [
         fobble=25,
         studies=["P1", "P2"],
         ages=[23, 45],
-        node_id=str(uuid.uuid4())
+        node_id=str(uuid.uuid4()),
     ),
     dict(
         bar="bar2",
@@ -48,7 +48,7 @@ SAMPLES = [
         fobble=25,
         studies=["C1", "P2"],
         ages=[29, 45],
-        node_id=str(uuid.uuid4())
+        node_id=str(uuid.uuid4()),
     ),
     dict(
         bar="bar3",
@@ -56,8 +56,8 @@ SAMPLES = [
         fobble=25,
         studies=["P2"],
         ages=[29],
-        node_id=str(uuid.uuid4())
-    )
+        node_id=str(uuid.uuid4()),
+    ),
 ]
 
 

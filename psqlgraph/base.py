@@ -10,8 +10,8 @@ from psqlgraph import attributes
 from psqlgraph.util import sanitize, validate
 
 
-NODE_TABLENAME_SCHEME = 'node_{class_name}'
-EDGE_TABLENAME_SCHEME = 'edge_{class_name}'
+NODE_TABLENAME_SCHEME = "node_{class_name}"
+EDGE_TABLENAME_SCHEME = "edge_{class_name}"
 
 
 class CommonBase(object):
@@ -24,7 +24,7 @@ class CommonBase(object):
     created = schema.Column(
         sqltypes.DateTime(timezone=True),
         nullable=False,
-        server_default=expression.text('now()'),
+        server_default=expression.text("now()"),
     )
 
     acl = schema.Column(
@@ -36,14 +36,14 @@ class CommonBase(object):
         # WARNING: Do not update this column directly. See
         # `.system_annotations`
         postgresql.JSONB,
-        server_default='{}',
+        server_default="{}",
     )
 
     _props = schema.Column(
         # WARNING: Do not update this column directly.
         # See `.properties` or `.props`
         postgresql.JSONB,
-        server_default='{}',
+        server_default="{}",
     )
 
     # ======== Table Attributes ========
@@ -52,8 +52,8 @@ class CommonBase(object):
         name = cls.__tablename__
 
         return {
-            'polymorphic_identity': name,
-            'concrete': True,
+            "polymorphic_identity": name,
+            "concrete": True,
         }
 
     def __init__(self, *args, **kwargs):
@@ -77,30 +77,22 @@ class CommonBase(object):
 
     @hybrid_property
     def props(self):
-        """Alias of properties
-
-        """
+        """Alias of properties"""
         return self.properties
 
     @props.setter
     def props(self, properties):
-        """Alias of properties
-
-        """
+        """Alias of properties"""
         self.properties = properties
 
     @hybrid_property
     def sysan(self):
-        """Alias of properties
-
-        """
+        """Alias of properties"""
         return self.system_annotations
 
     @sysan.setter
     def sysan(self, sysan):
-        """Alias of properties
-
-        """
+        """Alias of properties"""
         self.system_annotations = sysan
 
     def _set_property(self, key, val):
@@ -109,7 +101,7 @@ class CommonBase(object):
 
         """
         if not self.has_property(key):
-            raise KeyError('{} has no property {}'.format(type(self), key))
+            raise KeyError("{} has no property {}".format(type(self), key))
         self._props = {k: v for k, v in self._props.items()}
         self._props[key] = val
 
@@ -119,7 +111,7 @@ class CommonBase(object):
 
         """
         if not self.has_property(key):
-            raise KeyError('{} has no property {}'.format(type(self), key))
+            raise KeyError("{} has no property {}".format(type(self), key))
         if key not in self._props:
             return None
         return self._props[key]
@@ -135,9 +127,7 @@ class CommonBase(object):
         return temp
 
     def __getitem__(self, key):
-        """Returns value corresponding to key in _props
-
-        """
+        """Returns value corresponding to key in _props"""
         return getattr(self, key)
 
     def __setitem__(self, key, val):
@@ -149,28 +139,25 @@ class CommonBase(object):
 
     @classmethod
     def get_property_list(cls):
-        """Returns a list of hybrid_properties defined on the subclass model
-
-        """
+        """Returns a list of hybrid_properties defined on the subclass model"""
         return [
-            attr for attr in dir(cls)
+            attr
+            for attr in dir(cls)
             if attr in cls.__dict__
             and isinstance(cls.__dict__[attr], hybrid_property)
-            and getattr(getattr(cls, attr), '_is_pg_property', True)
+            and getattr(getattr(cls, attr), "_is_pg_property", True)
         ]
 
     @classmethod
     def has_property(cls, key):
-        """Returns boolean if key is a property defined on the subclass model
-
-        """
+        """Returns boolean if key is a property defined on the subclass model"""
         return key in cls.get_property_list()
 
     # ======== Label ========
 
     @classmethod
     def get_label(cls):
-        return getattr(cls, '__label__', cls.__name__.lower())
+        return getattr(cls, "__label__", cls.__name__.lower())
 
     @declared_attr
     def label(cls):
@@ -188,20 +175,15 @@ class CommonBase(object):
 
     @system_annotations.setter
     def system_annotations(self, sysan):
-        """Directly set the model's _sysan column with dict sysan.
-
-        """
+        """Directly set the model's _sysan column with dict sysan."""
         self._sysan = sanitize(sysan)
 
     def get_name(self):
-        """Convenience wrapper for getting class name
-        """
+        """Convenience wrapper for getting class name"""
         return type(self).__name__
 
     def get_session(self):
-        """Returns the session an object is bound to if bound to a session
-
-        """
+        """Returns the session an object is bound to if bound to a session"""
         return object_session(self)
 
     def merge(self, acl=None, system_annotations=None, properties=None):
@@ -246,7 +228,7 @@ class CommonBase(object):
         properties
 
         """
-        for key in getattr(self, '__nonnull_properties__', []):
+        for key in getattr(self, "__nonnull_properties__", []):
             assert self.properties[key] is not None, (
                 "Null value in key '{}' violates non-null constraint for {}."
             ).format(key, self)
@@ -271,10 +253,11 @@ def create_hybrid_property(name, fset):
     def hybrid_prop(instance, value):
         validate(fset, value, fset.__pg_types__, fset.__pg_enum__)
         fset(instance, value)
+
     return hybrid_prop
 
 
-@event.listens_for(CommonBase, 'mapper_configured', propagate=True)
+@event.listens_for(CommonBase, "mapper_configured", propagate=True)
 def create_hybrid_properties(mapper, cls):
     # This dictionary will be a property name to allowed types
     # dictionary.  It will be populated at mapper configuration using
@@ -282,11 +265,11 @@ def create_hybrid_properties(mapper, cls):
     cls.__pg_properties__ = {}
 
     for pg_attr in dir(cls):
-        if pg_attr in ['properties', 'props', 'system_annotations', 'sysan']:
+        if pg_attr in ["properties", "props", "system_annotations", "sysan"]:
             continue
 
         f = getattr(cls, pg_attr)
-        if not getattr(f, '__pg_setter__', False):
+        if not getattr(f, "__pg_setter__", False):
             continue
 
         h_prop = create_hybrid_property(pg_attr, f)
@@ -295,33 +278,24 @@ def create_hybrid_properties(mapper, cls):
 
 
 class VoidedBaseClass(object):
-
     @hybrid_property
     def props(self):
-        """Alias of properties
-
-        """
+        """Alias of properties"""
         return self.properties
 
     @props.setter
     def props(self, properties):
-        """Alias of properties
-
-        """
+        """Alias of properties"""
         self.properties = properties
 
     @hybrid_property
     def sysan(self):
-        """Alias of properties
-
-        """
+        """Alias of properties"""
         return self.system_annotations
 
     @sysan.setter
     def sysan(self, sysan):
-        """Alias of properties
-
-        """
+        """Alias of properties"""
         self.system_annotations = sysan
 
 
@@ -330,7 +304,7 @@ ORMBase = declarative.declarative_base(cls=CommonBase)
 
 
 def create_all(engine, base=ORMBase):
-    """ Create all tables associated with the provided declarative base, defaults to
+    """Create all tables associated with the provided declarative base, defaults to
         ORMBase if not specified
     Args:
         engine (sqlalchemy.engine.Engine): active engine instance
@@ -341,7 +315,7 @@ def create_all(engine, base=ORMBase):
 
 
 def drop_all(engine, base=ORMBase):
-    """ Drops all tables associated with a given delcarative base
+    """Drops all tables associated with a given delcarative base
     Args:
         engine (sqlalchemy.engine.Engine): active engine instance
         base (sqlalchemy.ext.declarative.DeclarativeMeta): a declarative base class
@@ -351,7 +325,7 @@ def drop_all(engine, base=ORMBase):
 
 
 class ExtMixin(object):
-    """  An extension mixin used for retrieving child classes when needed """
+    """An extension mixin used for retrieving child classes when needed"""
 
     @classmethod
     def is_subclass_loaded(cls, name):
@@ -364,7 +338,7 @@ class ExtMixin(object):
 
     @classmethod
     def get_subclasses(cls):
-        """ Limits the scope of subclasses to only those manually specified, else defaults to actual subclasses """
+        """Limits the scope of subclasses to only those manually specified, else defaults to actual subclasses"""
         return cls.__subclasses__()
 
     @classmethod
@@ -377,7 +351,6 @@ class ExtMixin(object):
 
 
 class LocalConcreteBase(declarative.AbstractConcreteBase):
-
     @classmethod
     def _sa_decl_prepare_nocascade(cls):
         if not cls.__subclasses__():

@@ -8,7 +8,7 @@ class PropertiesDictError(Exception):
 
 
 class JsonProperty(dict):
-    """ Handles unicode to str conversion while retrieving properties"""
+    """Handles unicode to str conversion while retrieving properties"""
 
     def __setitem__(self, key, value):
 
@@ -60,8 +60,7 @@ class PropertiesDict(JsonProperty):
 
     def __init__(self, source):
         self.source = source
-        super(PropertiesDict, self).__init__(
-            source.property_template(source._props))
+        super(PropertiesDict, self).__init__(source.property_template(source._props))
 
     def update(self, properties=None, **kwargs):
 
@@ -72,8 +71,7 @@ class PropertiesDict(JsonProperty):
         properties = sanitize(properties)
         for key, val in properties.items():
             if not self.source.has_property(key):
-                raise AttributeError('{} has no property {}'.format(
-                    self.source, key))
+                raise AttributeError("{} has no property {}".format(self.source, key))
             setattr(self.source, key, val)
         super(PropertiesDict, self).update(self.source._props)
 
@@ -81,4 +79,4 @@ class PropertiesDict(JsonProperty):
         setattr(self.source, key, val)
 
     def __delitem__(self, key):
-        raise RuntimeError('You cannot delete ORM properties, only void them.')
+        raise RuntimeError("You cannot delete ORM properties, only void them.")

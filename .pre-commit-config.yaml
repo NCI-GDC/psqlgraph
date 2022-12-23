@@ -5,6 +5,10 @@ repos:
     hooks:
       - id: detect-secrets
         args: [--baseline, .secrets.baseline]
+  - repo: https://github.com/psf/black
+    rev: 22.3.0
+    hooks:
+      - id: black
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.1.0 # last version to support py36
     hooks:

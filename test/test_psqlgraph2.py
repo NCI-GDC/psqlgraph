@@ -516,11 +516,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
 
 
 @pytest.mark.parametrize(
-    "sending_default, expected",
-    [
-        [False, "open"],
-        [True, "closed"],
-    ],
+    "sending_default, expected", [[False, "open"], [True, "closed"],],
 )
 def test_default_value(pg_driver, sending_default, expected):
     """Test the default value assignment for class with default values"""

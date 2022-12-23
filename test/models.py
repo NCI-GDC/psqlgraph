@@ -18,38 +18,22 @@ class FakeDictionary(object):
                         ]
                     },
                 },
-                "links": [
-                    {"name": "tests"},
-                    {"name": "foos"},
-                ],
+                "links": [{"name": "tests"}, {"name": "foos"},],
             },
             "foo": {
                 "properties": {
                     "bar": {"type": "string"},
                     "baz": {"enum": ["allowed_1", "allowed_2"]},
-                    "fobble": {
-                        "type": "integer",
-                        "minimum": 20,
-                        "maximum": 30,
-                    },
+                    "fobble": {"type": "integer", "minimum": 20, "maximum": 30,},
                     "studies": {
                         "type": "array",
-                        "items": {
-                            "enum": ["N/A", "Unknown"],
-                        },
+                        "items": {"enum": ["N/A", "Unknown"],},
                     },
                     "ages": {"type": "array", "items": {"type": "integer"}},
                 },
-                "links": [
-                    {"name": "foobars"},
-                ],
+                "links": [{"name": "foobars"},],
             },
-            "foo_bar": {
-                "properties": {
-                    "bar": {"type": "string"},
-                },
-                "links": [],
-            },
+            "foo_bar": {"properties": {"bar": {"type": "string"},}, "links": [],},
             "test_default_value": {
                 "properties": {
                     "property_with_default": {
@@ -192,37 +176,18 @@ class TestDefaultValue(Node):
 
 Test._pg_edges.update(
     {
-        "tests": {
-            "backref": "_tests",
-            "type": Test,
-        },
-        "foos": {
-            "backref": "tests",
-            "type": Foo,
-        },
+        "tests": {"backref": "_tests", "type": Test,},
+        "foos": {"backref": "tests", "type": Foo,},
     }
 )
 
 
 Foo._pg_edges.update(
     {
-        "foobars": {
-            "backref": "foos",
-            "type": FooBar,
-        },
-        "tests": {
-            "backref": "foos",
-            "type": Test,
-        },
+        "foobars": {"backref": "foos", "type": FooBar,},
+        "tests": {"backref": "foos", "type": Test,},
     }
 )
 
 
-FooBar._pg_edges.update(
-    {
-        "foos": {
-            "backref": "foobars",
-            "type": Foo,
-        }
-    }
-)
+FooBar._pg_edges.update({"foos": {"backref": "foobars", "type": Foo,}})

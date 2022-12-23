@@ -544,8 +544,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
 
         for node in nodes:
             self.assertEqual(
-                properties[node.node_id],
-                node.properties,
+                properties[node.node_id], node.properties,
             )
 
     @unittest.skip("not implemented")
@@ -669,11 +668,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         """
 
         self.assertRaises(
-            AttributeError,
-            PsqlEdge,
-            str(uuid.uuid4()),
-            str(uuid.uuid4),
-            None,
+            AttributeError, PsqlEdge, str(uuid.uuid4()), str(uuid.uuid4), None,
         )
 
     @unittest.skip("not implemented")
@@ -973,11 +968,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
                 self.g.node_merge(src_id, label="test")
                 self.g.node_merge(dst_id, label="test")
                 self.g.edge_insert(
-                    PsqlEdge(
-                        src_id=src_id,
-                        dst_id=dst_id,
-                        label="edge1",
-                    )
+                    PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1",)
                 )
 
             edges = self.g.get_edges()

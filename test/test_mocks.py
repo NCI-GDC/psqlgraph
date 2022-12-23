@@ -65,11 +65,7 @@ def validate_foo_bar(node):
 
 @pytest.mark.parametrize(
     "label, validator",
-    [
-        ("test", validate_test),
-        ("foo", validate_foo),
-        ("foo_bar", validate_foo_bar),
-    ],
+    [("test", validate_test), ("foo", validate_foo), ("foo_bar", validate_foo_bar),],
 )
 def test_node_factory_all_props(node_factory, label, validator):
     node = node_factory.create(label, all_props=True)

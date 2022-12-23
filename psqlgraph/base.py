@@ -27,10 +27,7 @@ class CommonBase(object):
         server_default=expression.text("now()"),
     )
 
-    acl = schema.Column(
-        postgresql.ARRAY(sqltypes.Text),
-        default=list(),
-    )
+    acl = schema.Column(postgresql.ARRAY(sqltypes.Text), default=list(),)
 
     _sysan = schema.Column(
         # WARNING: Do not update this column directly. See

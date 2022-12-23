@@ -103,11 +103,7 @@ class NodeAssociationProxyMixin(object):
 
 class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
 
-    node_id = Column(
-        Text,
-        primary_key=True,
-        nullable=False,
-    )
+    node_id = Column(Text, primary_key=True, nullable=False,)
 
     @declared_attr
     def __tablename__(cls):

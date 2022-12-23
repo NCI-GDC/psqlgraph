@@ -5,7 +5,6 @@ import logging
 # External modules
 from contextlib import contextmanager
 
-import six
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, configure_mappers
 from sqlalchemy.orm.attributes import flag_modified
@@ -354,7 +353,7 @@ class PsqlGraphDriver(object):
             query = self.nodes(cls)
 
         if node_id is not None:
-            node_id = node_id.split(",") if isinstance(node_id, six.string_types) else node_id
+            node_id = node_id.split(",") if isinstance(node_id, str) else node_id
             query = query.ids(node_id)
         if property_matches is not None:
             query = query.props(property_matches)

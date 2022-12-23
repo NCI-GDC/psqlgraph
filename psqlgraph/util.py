@@ -3,7 +3,6 @@ import random
 import logging
 from functools import wraps
 
-import six
 from types import FunctionType
 
 from sqlalchemy.exc import IntegrityError
@@ -27,7 +26,7 @@ def validate(f, value, types, enum=None):
 
     _types = types+(type(None),)
     if str in types:
-        _types = _types+(six.string_types,)
+        _types = _types+(str,)
 
     if not isinstance(value, _types):
         raise ValidationError((
@@ -59,10 +58,10 @@ def pg_property(*pg_args, **pg_kwargs):
 def sanitize(properties):
     sanitized = {}
     for key, value in properties.items():
-        if not value or isinstance(value, (six.integer_types, bool, list, float, type(None))):
+        if not value or isinstance(value, (int, bool, list, float, type(None))):
             sanitized[str(key)] = value
-        elif isinstance(value, six.string_types):
-            sanitized[str(key)] = six.ensure_str(value, "utf8")
+        elif isinstance(value, str):
+            sanitized[str(key)] = str(value)
         else:
             raise ValueError(
                 'Cannot serialize {} to JSONB property'.format(type(value)))

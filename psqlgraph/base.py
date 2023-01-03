@@ -9,7 +9,6 @@ from sqlalchemy.sql import expression, schema, sqltypes
 from psqlgraph import attributes
 from psqlgraph.util import sanitize, validate
 
-
 NODE_TABLENAME_SCHEME = "node_{class_name}"
 EDGE_TABLENAME_SCHEME = "edge_{class_name}"
 

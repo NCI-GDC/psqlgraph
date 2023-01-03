@@ -4,13 +4,12 @@ Needs to be run as the postgres user.
 """
 
 import argparse
-from sqlalchemy import create_engine
 import logging
-
-
-from psqlgraph import create_all
-from psqlgraph import PsqlGraphDriver
 from test import models
+
+from sqlalchemy import create_engine
+
+from psqlgraph import PsqlGraphDriver, create_all
 
 
 def try_drop_test_data(user, database, root_user="postgres", host=""):

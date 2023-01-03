@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Text, UniqueConstraint, Index
+from sqlalchemy import Column, Index, Text, UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -7,7 +7,6 @@ from sqlalchemy.orm import relationship
 from psqlgraph import base, traversals
 from psqlgraph.edge import Edge
 from psqlgraph.voided_node import VoidedNode
-
 
 DST_SRC_ASSOC = "__dst_src_assoc__"
 SRC_DST_ASSOC = "__src_dst_assoc__"

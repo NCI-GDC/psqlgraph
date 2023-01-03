@@ -1,4 +1,4 @@
-from psqlgraph import ext, create_all, PsqlGraphDriver, pg_property
+from psqlgraph import PsqlGraphDriver, create_all, ext, pg_property
 from psqlgraph.base import drop_all
 
 MdaNode, MdaEdge = ext.register_base_class(package_namespace="mda")

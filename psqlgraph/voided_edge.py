@@ -1,5 +1,6 @@
+from sqlalchemy import BigInteger, Column, DateTime, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlalchemy import Column, Text, DateTime, BigInteger, text
+
 from psqlgraph.base import VoidedBase
 
 

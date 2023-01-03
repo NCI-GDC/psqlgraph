@@ -1,17 +1,15 @@
 #!/usr/bin/env python
-import logging
 import argparse
-from gdcdatamodel import models
-from sqlalchemy import UniqueConstraint
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlalchemy import Column, Integer, Text, DateTime
-from sqlalchemy.orm import relationship, joinedload
-from psqlgraph import Base
-from sqlalchemy import ForeignKey
-from multiprocessing import Pool
+import logging
 import sys
+from multiprocessing import Pool
 
-from psqlgraph import PsqlGraphDriver, PolyNode
+from gdcdatamodel import models
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, Text, UniqueConstraint
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.orm import joinedload, relationship
+
+from psqlgraph import Base, PolyNode, PsqlGraphDriver
 
 logging.root.setLevel(level=logging.ERROR)
 

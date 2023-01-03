@@ -1,5 +1,6 @@
 import argparse
 import getpass
+
 from psqlgraph import psql
 
 try:

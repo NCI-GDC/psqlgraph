@@ -7,9 +7,11 @@ try:
 
     ipython = True
 except Exception as e:
-    print('{}, using standard interactive console. '
-          'If you install IPython, then it will automatically '
-          'be used for this repl.').format(e)
+    print(
+        "{}, using standard interactive console. "
+        "If you install IPython, then it will automatically "
+        "be used for this repl."
+    ).format(e)
     import code
 
     ipython = False
@@ -26,17 +28,32 @@ NOTE:
     `rb()` will rollback the session.
 """
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d', '--database', default='test', type=str,
-                        help='name of the database to connect to')
-    parser.add_argument('-i', '--host', default='localhost', type=str,
-                        help='host of the postgres server')
-    parser.add_argument('-u', '--user', default='test', type=str,
-                        help='user to connect to postgres as')
-    parser.add_argument('-p', '--password', default=None, type=str,
-                        help='password for given user. If no '
-                             'password given, one will be prompted.')
+    parser.add_argument(
+        "-d",
+        "--database",
+        default="test",
+        type=str,
+        help="name of the database to connect to",
+    )
+    parser.add_argument(
+        "-i",
+        "--host",
+        default="localhost",
+        type=str,
+        help="host of the postgres server",
+    )
+    parser.add_argument(
+        "-u", "--user", default="test", type=str, help="user to connect to postgres as"
+    )
+    parser.add_argument(
+        "-p",
+        "--password",
+        default=None,
+        type=str,
+        help="password for given user. If no " "password given, one will be prompted.",
+    )
 
     args = parser.parse_args()
 
@@ -44,8 +61,7 @@ if __name__ == '__main__':
     if args.password is None:
         args.password = getpass.getpass()
 
-    g = psql.PsqlGraphDriver(
-        args.host, args.user, args.password, args.database)
+    g = psql.PsqlGraphDriver(args.host, args.user, args.password, args.database)
 
     with g.session_scope() as s:
         rb = s.rollback

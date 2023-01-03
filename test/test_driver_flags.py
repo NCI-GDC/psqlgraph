@@ -85,7 +85,7 @@ def test_read_only_driver__read(pg_driver, pg_read_only, samples_with_array):
 
 
 def test_read_only_driver__write_failure(pg_driver):
-    """ Tests read only sessions do not allow operations that write to the database"""
+    """Tests read only sessions do not allow operations that write to the database"""
     with pytest.raises(exc.InternalError):
         with pg_driver.session_scope(read_only=True) as s:
             m1 = models.Foo(node_id="test")

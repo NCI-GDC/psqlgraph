@@ -1,6 +1,6 @@
 class PSQLGraphError(Exception):
-    """Base class for PostgreSQL Graph Errors.
-    """
+    """Base class for PostgreSQL Graph Errors."""
+
     pass
 
 
@@ -25,6 +25,6 @@ class ValidationError(PSQLGraphError):
 
 
 class SessionClosedError(PSQLGraphError):
-    """An operation was requested from a closed session.
-    """
+    """An operation was requested from a closed session."""
+
     pass

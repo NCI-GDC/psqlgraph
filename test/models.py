@@ -31,8 +31,9 @@ class FakeDictionary(object):
                     },
                     "ages": {"type": "array", "items": {"type": "integer"}},
                 },
-                "links": [{"name": "foobars"},],
+                "links": [{"name": "foobars"}, {"name": "bars_4"}],
             },
+            "bar": {"properties": {}, "links": [{"name": "foos_5"}],},
             "foo_bar": {"properties": {"bar": {"type": "string"},}, "links": [],},
             "test_default_value": {
                 "properties": {
@@ -82,6 +83,28 @@ class Edge3(Edge):
     __dst_class__ = "FooBar"
     __src_dst_assoc__ = "foobars"
     __dst_src_assoc__ = "foos"
+
+
+# edge4 and edge5 are used to test special case, Foo->Bar and Bar->Foo are both valid
+# edges.
+class Edge4(Edge):
+
+    __label__ = "edge4"
+
+    __src_class__ = "Foo"
+    __dst_class__ = "Bar"
+    __src_dst_assoc__ = "bars_4"
+    __dst_src_assoc__ = "foos_4"
+
+
+class Edge5(Edge):
+
+    __label__ = "edge5"
+
+    __src_class__ = "Bar"
+    __dst_class__ = "Foo"
+    __src_dst_assoc__ = "foos_5"
+    __dst_src_assoc__ = "bars_5"
 
 
 class TestToFooBarEdge(Edge):
@@ -146,6 +169,13 @@ class Foo(Node):
         self._set_property("ages", value)
 
 
+class Bar(Node):
+
+    __label__ = "bar"
+
+    _pg_edges = {}
+
+
 class FooBar(Node):
 
     __label__ = "foo_bar"
@@ -186,6 +216,15 @@ Foo._pg_edges.update(
     {
         "foobars": {"backref": "foos", "type": FooBar,},
         "tests": {"backref": "foos", "type": Test,},
+        "bars_4": {"backref": "foos", "type": Bar,},
+        "bars_5": {"backref": "foos", "type": Bar,},
+    }
+)
+
+Bar._pg_edges.update(
+    {
+        "foos_4": {"backref": "bars", "type": Foo,},
+        "foos_5": {"backref": "bars", "type": Foo,},
     }
 )
 

@@ -6,7 +6,7 @@ from test import models
 
 import pytest
 
-from psqlgraph import Node
+from psqlgraph import Edge, Node
 from psqlgraph.mocks import GraphFactory, NodeFactory
 
 STRING_MATCH = "[a-zA-Z0-9]{32}"
@@ -19,6 +19,8 @@ class FakeModels(object):
         self.Test = models.Test
         self.Foo = models.Foo
         self.FooBar = models.FooBar
+
+        self.Edge = Edge
 
 
 @pytest.fixture(scope="session")
@@ -246,3 +248,50 @@ def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
     for created_node, expected in zip(created_nodes, expected_values):
         for k, v in expected.items():
             assert created_node[k] == v
+
+
+UUID1 = str(uuid.uuid4())
+UUID2 = str(uuid.uuid4())
+
+
+@pytest.mark.parametrize(
+    "src_id,dst_id,edge_label,foo_to_bar,bar_to_foo",
+    [
+        (UUID1, UUID2, "edge4", "bars_4", "foos_4"),
+        (UUID1, UUID2, "edge5", "bars_5", "foos_5"),
+        (UUID2, UUID1, "edge4", "bars_4", "foos_4"),
+        (UUID2, UUID1, "edge5", "bars_5", "foos_5"),
+    ],
+)
+def test_graph_factory_with_ambiguous_edges(
+    gdcmodels, gdcdictionary, src_id, dst_id, edge_label, foo_to_bar, bar_to_foo
+):
+    gf = GraphFactory(gdcmodels, gdcdictionary)
+
+    nodes = [{"label": "foo", "node_id": UUID1}, {"label": "bar", "node_id": UUID2}]
+
+    edges = [
+        {"src": src_id, "dst": dst_id, "label": edge_label},
+    ]
+
+    created_nodes = gf.create_from_nodes_and_edges(
+        nodes=nodes, edges=edges, unique_key="node_id"
+    )
+
+    assert len(created_nodes) == 2
+
+    foos = [n for n in created_nodes if n.label == "foo"]
+    assert len(foos) == 1
+    foo = foos[0]
+    foo_to_bar_assoc = getattr(foo, foo_to_bar)
+    assert len(foo_to_bar_assoc) == 1
+    bars = [n for n in created_nodes if n.label == "bar"]
+    assert len(bars) == 1
+    bar = bars[0]
+    bar_to_foo_assoc = getattr(bar, bar_to_foo)
+    assert len(bar_to_foo_assoc) == 1
+    assert foo_to_bar_assoc[0] == bar
+    assert bar_to_foo_assoc[0] == foo
+
+    assert len(foo.edges_out + foo.edges_in) == 1
+    assert len(bar.edges_out + bar.edges_in) == 1

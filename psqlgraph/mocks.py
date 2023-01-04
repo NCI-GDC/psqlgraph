@@ -4,8 +4,11 @@ import logging
 import random
 import uuid
 from collections import defaultdict, deque
+from typing import Dict, List, Optional
 
 import rstr
+
+from psqlgraph import Node
 
 
 class Randomizer(object):
@@ -304,26 +307,28 @@ class GraphFactory(object):
                 )
 
     def create_from_nodes_and_edges(
-        self, nodes, edges, unique_key="submitter_id", all_props=False
-    ):
-        """
+        self,
+        nodes: List[Dict[str, str]],
+        edges: List[Dict[str, str]],
+        unique_key: str = "submitter_id",
+        all_props: bool = False,
+    ) -> List[Node]:
+        """Create a graph from nodes and edges.
+
         Given a list of nodes and edges, create a graph. The edge between 2
         nodes is based on property provided via `unique_key` param.
 
-        :param nodes: list of nodes metadata in format:
-            [{'label': 'read_group', 'submitter_id': 'read_group_1'},
-             {'label': 'aliquot', 'submitter_id': 'aliquot_1'}]
-        :type nodes: List[Dict]
-        :param edges: list of edges in format:
-            [{'src': 'read_group_1', 'dst': 'aliquot_1'}]
-        :type edges: List[Dict]
-        :param unique_key: a name of the property that will be used to connect
-            nodes
-        :type unique_key: String
-        :param all_props: generate all node properties or not
-        :type all_props: Boolean
+        Args:
+            nodes: list of nodes metadata in format:
+                [{'label': 'read_group', 'submitter_id': 'read_group_1'},
+                {'label': 'aliquot', 'submitter_id': 'aliquot_1'}]
+            edges:  list of edges in format:
+                [{'src': 'read_group_1', 'dst': 'aliquot_1'}]
+            unique_key:  a name of the property that will be used to connect nodes
+            all_props: generate all node properties or not
 
-        :return: List[psqlgraph.Node]
+        Returns:
+            List of psqlgraph nodes
         """
         nodes = copy.deepcopy(nodes)
 
@@ -342,6 +347,7 @@ class GraphFactory(object):
         for edge_meta in edges:
             sub_id1 = edge_meta["src"]
             sub_id2 = edge_meta["dst"]
+            edge_label = edge_meta.get("label")
             node1 = nodes_map.get(sub_id1)
             node2 = nodes_map.get(sub_id2)
 
@@ -353,7 +359,7 @@ class GraphFactory(object):
                 )
                 continue
 
-            self.make_association(node1, node2)
+            self.make_association(node1, node2, edge_label)
 
         return list(nodes_map.values())
 
@@ -516,18 +522,48 @@ class GraphFactory(object):
 
         return relation in links
 
-    @staticmethod
-    def make_association(node1, node2):
-        """
+    def make_association(
+        self, node1: Node, node2: Node, label: Optional[str] = None
+    ) -> None:
+        """Create an Edge between 2 nodes
+
         Given 2 instances of a Node, find appropriate association between the
         2 nodes and create a relation between them
 
-        :param node1: first node
-        :type node1: psqlgraph.Node
-        :param node2: second node
-        :type node2: psqlgraph.Node
-        :return: None
+        There are some special cases like auxiliary_files and
+        structural_variant_calling_workflow, there are 2 different edges between them
+        in opposite directions. In this case, we use the label to differentiate them.
+
+        Bonus: Label could be added to all edges and will make the lookup faster.
+
+        Args:
+            node1: first node of the edge
+            node2: second node of the edge
+            label: label of the edge
         """
+        if label:
+            edge_class = self.models.Edge.get_subclass(label)
+            if not edge_class:
+                logging.debug("Edge with label {} not found".format(label))
+            elif (
+                edge_class.__src_class__ == node1.__class__.__name__
+                and edge_class.__dst_class__ == node2.__class__.__name__
+            ):
+                getattr(node1, edge_class.__src_dst_assoc__).append(node2)
+                return
+            elif (
+                edge_class.__src_class__ == node2.__class__.__name__
+                and edge_class.__dst_class__ == node1.__class__.__name__
+            ):
+                getattr(node2, edge_class.__src_dst_assoc__).append(node1)
+                return
+            else:
+                logging.debug(
+                    "Edge with label {} not working between nodes {} and {}".format(
+                        label, node1.label, node2.label
+                    )
+                )
+
         link_found = False
         for assoc_name, assoc_meta in node1._pg_edges.items():
             if isinstance(node2, assoc_meta["type"]):

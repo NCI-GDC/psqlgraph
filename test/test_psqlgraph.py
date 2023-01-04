@@ -1,20 +1,21 @@
-import uuid
-import unittest
 import logging
 import random
-from psqlgraph import Node, Edge, PolyNode, sanitize, VoidedEdge
-from psqlgraph import PolyNode as PsqlNode
-from psqlgraph import PolyEdge as PsqlEdge
-
-from multiprocessing import Process
-from sqlalchemy.exc import IntegrityError
-
-from datetime import datetime
+import unittest
+import uuid
 from copy import deepcopy
-
+from datetime import datetime
+from multiprocessing import Process
 
 # We have to import models here, even if we don't use them
-from test import models, PsqlgraphBaseTest
+from test import PsqlgraphBaseTest, models
+
+from sqlalchemy.exc import IntegrityError
+
+from psqlgraph import Edge, Node
+from psqlgraph import PolyEdge as PsqlEdge
+from psqlgraph import PolyNode
+from psqlgraph import PolyNode as PsqlNode
+from psqlgraph import VoidedEdge, sanitize
 
 logging.basicConfig(level=logging.DEBUG)
 

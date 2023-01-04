@@ -2,15 +2,15 @@
 #
 
 import logging
+import socket
 
 # External modules
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, configure_mappers
+from sqlalchemy.orm import configure_mappers, sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 from xlocal import xlocal
-import socket
 
 # Custom modules
 from psqlgraph import ext
@@ -19,10 +19,10 @@ from psqlgraph.exc import QueryError
 from psqlgraph.hooks import receive_before_flush
 from psqlgraph.node import PolyNode
 from psqlgraph.query import GraphQuery
-from psqlgraph.util import retryable, default_backoff
+from psqlgraph.session import GraphSession
+from psqlgraph.util import default_backoff, retryable
 from psqlgraph.voided_edge import VoidedEdge
 from psqlgraph.voided_node import VoidedNode
-from psqlgraph.session import GraphSession
 
 DEFAULT_RETRIES = 0
 logger = logging.getLogger(__name__)

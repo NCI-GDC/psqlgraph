@@ -1,15 +1,15 @@
-import uuid
 import logging
-from psqlgraph import PsqlGraphDriver
-from psqlgraph.exc import ValidationError
-from psqlgraph.exc import SessionClosedError
 import socket
-import sqlalchemy as sa
-import pytest
+import uuid
 
 # We have to import models here, even if we don't use them
-from test import models, PsqlgraphBaseTest
+from test import PsqlgraphBaseTest, models
 
+import pytest
+import sqlalchemy as sa
+
+from psqlgraph import PsqlGraphDriver
+from psqlgraph.exc import SessionClosedError, ValidationError
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)

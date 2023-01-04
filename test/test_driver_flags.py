@@ -8,11 +8,12 @@
    parent no matter what was passed in.
 """
 
+from test import models
+
 import pytest
 from sqlalchemy import exc
 
 import psqlgraph
-from test import models
 
 
 @pytest.fixture(scope="module")

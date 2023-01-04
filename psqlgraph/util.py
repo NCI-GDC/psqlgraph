@@ -1,11 +1,11 @@
-import time
-import random
 import logging
+import random
+import time
 from functools import wraps
-
 from types import FunctionType
 
 from sqlalchemy.exc import IntegrityError
+
 from psqlgraph.exc import ValidationError
 
 #  PsqlNode modules

@@ -1,10 +1,10 @@
 import logging
 import uuid
+from test import PsqlgraphBaseTest, models
 
 import pytest
 
-from psqlgraph import PolyNode, PolyEdge
-from test import models, PsqlgraphBaseTest
+from psqlgraph import PolyEdge, PolyNode
 
 logging.basicConfig(level=logging.INFO)
 

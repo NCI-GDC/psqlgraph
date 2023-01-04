@@ -1,9 +1,9 @@
 import uuid
+from test import models
 
 import pytest
 
 from psqlgraph import Edge, Node
-from test import models
 
 
 def no_allowed_2_please(edge):

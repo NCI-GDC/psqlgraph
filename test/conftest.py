@@ -1,9 +1,9 @@
 import uuid
+from test import models
 
 import pytest
 
 import psqlgraph
-from test import models
 
 
 @pytest.fixture(scope="session")

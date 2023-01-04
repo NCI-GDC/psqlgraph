@@ -1,4 +1,4 @@
-from psqlgraph import Node, Edge, pg_property
+from psqlgraph import Edge, Node, pg_property
 
 
 class FakeDictionary(object):

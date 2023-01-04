@@ -2,7 +2,7 @@ from collections import defaultdict
 
 from sqlalchemy.ext import declarative
 
-from psqlgraph import Node, Edge
+from psqlgraph import Edge, Node
 from psqlgraph.base import CommonBase, LocalConcreteBase
 from psqlgraph.edge import AbstractEdge
 from psqlgraph.node import AbstractNode

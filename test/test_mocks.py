@@ -264,8 +264,14 @@ UUID2 = str(uuid.uuid4())
     ],
 )
 def test_graph_factory_with_ambiguous_edges(
-    gdcmodels, gdcdictionary, src_id, dst_id, edge_label, circle_1_to_2, circle_2_to_1
-):
+    gdcmodels: FakeModels,
+    gdcdictionary: models.FakeDictionary,
+    src_id: str,
+    dst_id: str,
+    edge_label: str,
+    circle_1_to_2: str,
+    circle_2_to_1: str,
+) -> None:
     """Test using label to solve ambiguous edges.
 
     For some node couples, there are 2 edges in opposite directions between them.

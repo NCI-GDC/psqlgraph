@@ -266,6 +266,23 @@ UUID2 = str(uuid.uuid4())
 def test_graph_factory_with_ambiguous_edges(
     gdcmodels, gdcdictionary, src_id, dst_id, edge_label, foo_to_bar, bar_to_foo
 ):
+    """Test using label to solve ambiguous edges.
+
+    For some node couples, there are 2 edges in opposite directions between them.
+    In those cases, to solve the relation correctly, we should provide edge label to
+    link them.
+
+    Note: src_id and dst_id was never used to indicate direction of edge.
+
+    Args:
+        gdcmodels: fake models
+        gdcdictionary: fake dictionary
+        src_id: uuid for edge node
+        dst_id: uuid for another edge node
+        edge_label: label of edge
+        foo_to_bar: association name from foo to bar
+        bar_to_foo: association name from bar to foo
+    """
     gf = GraphFactory(gdcmodels, gdcdictionary)
 
     nodes = [{"label": "foo", "node_id": UUID1}, {"label": "bar", "node_id": UUID2}]

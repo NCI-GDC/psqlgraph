@@ -281,8 +281,8 @@ def test_graph_factory_with_ambiguous_edges(
         src_id: uuid for edge node
         dst_id: uuid for another edge node
         edge_label: label of edge
-        foo_to_bar: association name from foo to bar
-        bar_to_foo: association name from bar to foo
+        circle_1_to_2: association name from circle_1 to circle_2
+        circle_2_to_1: association name from circle_2 to circle_1
     """
     gf = GraphFactory(gdcmodels, gdcdictionary)
 

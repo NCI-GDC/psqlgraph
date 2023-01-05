@@ -255,16 +255,16 @@ UUID2 = str(uuid.uuid4())
 
 
 @pytest.mark.parametrize(
-    "src_id,dst_id,edge_label,foo_to_bar,bar_to_foo",
+    "src_id,dst_id,edge_label,circle_1_to_2,circle_2_to_1",
     [
-        (UUID1, UUID2, "edge4", "bars_4", "foos_4"),
-        (UUID1, UUID2, "edge5", "bars_5", "foos_5"),
-        (UUID2, UUID1, "edge4", "bars_4", "foos_4"),
-        (UUID2, UUID1, "edge5", "bars_5", "foos_5"),
+        (UUID1, UUID2, "edge4", "circle_2a", "circle_1a",),
+        (UUID1, UUID2, "edge5", "circle_2b", "circle_1b",),
+        (UUID2, UUID1, "edge4", "circle_2a", "circle_1a",),
+        (UUID2, UUID1, "edge5", "circle_2b", "circle_1b",),
     ],
 )
 def test_graph_factory_with_ambiguous_edges(
-    gdcmodels, gdcdictionary, src_id, dst_id, edge_label, foo_to_bar, bar_to_foo
+    gdcmodels, gdcdictionary, src_id, dst_id, edge_label, circle_1_to_2, circle_2_to_1
 ):
     """Test using label to solve ambiguous edges.
 
@@ -286,7 +286,10 @@ def test_graph_factory_with_ambiguous_edges(
     """
     gf = GraphFactory(gdcmodels, gdcdictionary)
 
-    nodes = [{"label": "foo", "node_id": UUID1}, {"label": "bar", "node_id": UUID2}]
+    nodes = [
+        {"label": "circle_1", "node_id": UUID1},
+        {"label": "circle_2", "node_id": UUID2},
+    ]
 
     edges = [
         {"src": src_id, "dst": dst_id, "label": edge_label},
@@ -298,18 +301,18 @@ def test_graph_factory_with_ambiguous_edges(
 
     assert len(created_nodes) == 2
 
-    foos = [n for n in created_nodes if n.label == "foo"]
-    assert len(foos) == 1
-    foo = foos[0]
-    foo_to_bar_assoc = getattr(foo, foo_to_bar)
-    assert len(foo_to_bar_assoc) == 1
-    bars = [n for n in created_nodes if n.label == "bar"]
-    assert len(bars) == 1
-    bar = bars[0]
-    bar_to_foo_assoc = getattr(bar, bar_to_foo)
-    assert len(bar_to_foo_assoc) == 1
-    assert foo_to_bar_assoc[0] == bar
-    assert bar_to_foo_assoc[0] == foo
+    circle_1s = [n for n in created_nodes if n.label == "circle_1"]
+    assert len(circle_1s) == 1
+    circle_1 = circle_1s[0]
+    circle_1_to_2_assic = getattr(circle_1, circle_1_to_2)
+    assert len(circle_1_to_2_assic) == 1
+    circle_2s = [n for n in created_nodes if n.label == "circle_2"]
+    assert len(circle_2s) == 1
+    circle_2 = circle_2s[0]
+    circle_2_to_1_assoc = getattr(circle_2, circle_2_to_1)
+    assert len(circle_2_to_1_assoc) == 1
+    assert circle_1_to_2_assic[0] == circle_2
+    assert circle_2_to_1_assoc[0] == circle_1
 
-    assert len(foo.edges_out + foo.edges_in) == 1
-    assert len(bar.edges_out + bar.edges_in) == 1
+    assert len(circle_1.edges_out + circle_1.edges_in) == 1
+    assert len(circle_2.edges_out + circle_2.edges_in) == 1

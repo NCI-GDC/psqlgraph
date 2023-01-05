@@ -31,9 +31,8 @@ class FakeDictionary(object):
                     },
                     "ages": {"type": "array", "items": {"type": "integer"}},
                 },
-                "links": [{"name": "foobars"}, {"name": "bars_4"}],
+                "links": [{"name": "foobars"}],
             },
-            "bar": {"properties": {}, "links": [{"name": "foos_5"}],},
             "foo_bar": {"properties": {"bar": {"type": "string"},}, "links": [],},
             "test_default_value": {
                 "properties": {
@@ -45,6 +44,8 @@ class FakeDictionary(object):
                 },
                 "links": [],
             },
+            "circle_1": {"properties": {}, "links": [{"name": "edge_4"}]},
+            "circle_2": {"properties": {}, "links": [{"name": "edge_5"}]},
         }
 
 
@@ -91,20 +92,20 @@ class Edge4(Edge):
 
     __label__ = "edge4"
 
-    __src_class__ = "Foo"
-    __dst_class__ = "Bar"
-    __src_dst_assoc__ = "bars_4"
-    __dst_src_assoc__ = "foos_4"
+    __src_class__ = "Circle1"
+    __dst_class__ = "Circle2"
+    __src_dst_assoc__ = "circle_2a"
+    __dst_src_assoc__ = "circle_1a"
 
 
 class Edge5(Edge):
 
     __label__ = "edge5"
 
-    __src_class__ = "Bar"
-    __dst_class__ = "Foo"
-    __src_dst_assoc__ = "foos_5"
-    __dst_src_assoc__ = "bars_5"
+    __src_class__ = "Circle2"
+    __dst_class__ = "Circle1"
+    __src_dst_assoc__ = "circle_1b"
+    __dst_src_assoc__ = "circle_2b"
 
 
 class TestToFooBarEdge(Edge):
@@ -169,9 +170,16 @@ class Foo(Node):
         self._set_property("ages", value)
 
 
-class Bar(Node):
+class Circle1(Node):
 
-    __label__ = "bar"
+    __label__ = "circle_1"
+
+    _pg_edges = {}
+
+
+class Circle2(Node):
+
+    __label__ = "circle_2"
 
     _pg_edges = {}
 
@@ -216,15 +224,20 @@ Foo._pg_edges.update(
     {
         "foobars": {"backref": "foos", "type": FooBar,},
         "tests": {"backref": "foos", "type": Test,},
-        "bars_4": {"backref": "foos", "type": Bar,},
-        "bars_5": {"backref": "foos", "type": Bar,},
     }
 )
 
-Bar._pg_edges.update(
+Circle1._pg_edges.update(
     {
-        "foos_4": {"backref": "bars", "type": Foo,},
-        "foos_5": {"backref": "bars", "type": Foo,},
+        "circle_2a": {"backref": "bars", "type": Circle2,},
+        "circle_2b": {"backref": "bars", "type": Circle2,},
+    }
+)
+
+Circle2._pg_edges.update(
+    {
+        "circle_1a": {"backref": "bars", "type": Circle1,},
+        "circle_1b": {"backref": "bars", "type": Circle1,},
     }
 )
 

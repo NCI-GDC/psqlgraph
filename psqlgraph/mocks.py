@@ -4,7 +4,7 @@ import logging
 import random
 import uuid
 from collections import defaultdict, deque
-from typing import Dict, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 import rstr
 
@@ -365,12 +365,12 @@ class GraphFactory(object):
 
     def create_random_subgraph(
         self,
-        label,
-        max_depth=10,
-        leaf_labels=None,
-        skip_relations=None,
-        all_props=False,
-    ):
+        label: str,
+        max_depth: int = 10,
+        leaf_labels: Optional[Iterable[str]] = None,
+        skip_relations: Optional[Iterable[str]] = None,
+        all_props: bool = False,
+    ) -> List[Node]:
         """
         Generate a randomized graph with root at the given Node `label` type.
 

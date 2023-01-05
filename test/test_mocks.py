@@ -269,6 +269,7 @@ def test_graph_factory_with_ambiguous_edges(
     """Test using label to solve ambiguous edges.
 
     For some node couples, there are 2 edges in opposite directions between them.
+    Generating a circle between those 2 nodes.
     In those cases, to solve the relation correctly, we should provide edge label to
     link them.
 

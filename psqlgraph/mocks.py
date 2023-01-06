@@ -544,7 +544,7 @@ class GraphFactory(object):
         if label:
             edge_class = self.models.Edge.get_subclass(label)
             if not edge_class:
-                logging.debug("Edge with label {} not found".format(label))
+                logging.warning("Edge with label {} not found".format(label))
             elif (
                 edge_class.__src_class__ == node1.__class__.__name__
                 and edge_class.__dst_class__ == node2.__class__.__name__

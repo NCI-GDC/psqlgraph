@@ -558,7 +558,7 @@ class GraphFactory(object):
                 getattr(node2, edge_class.__src_dst_assoc__).append(node1)
                 return
             else:
-                logging.debug(
+                logging.warning(
                     "Edge with label {} not working between nodes {} and {}".format(
                         label, node1.label, node2.label
                     )

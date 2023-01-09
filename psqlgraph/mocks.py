@@ -559,7 +559,7 @@ class GraphFactory(object):
                 return
             else:
                 logging.warning(
-                    "Edge with label {} not working between nodes {} and {}".format(
+                    "Edge with label {} is not allowed between nodes {} and {}".format(
                         edge_label, src_node.label, dst_node.label
                     )
                 )

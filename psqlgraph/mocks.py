@@ -523,7 +523,7 @@ class GraphFactory(object):
         return relation in links
 
     def make_association(
-        self, node1: Node, node2: Node, label: Optional[str] = None
+        self, src_node: Node, dst_node: Node, edge_label: Optional[str] = None
     ) -> None:
         """Create an Edge between 2 nodes
 
@@ -537,43 +537,43 @@ class GraphFactory(object):
         Bonus: Label could be added to all edges and will make the lookup faster.
 
         Args:
-            node1: first node of the edge
-            node2: second node of the edge
-            label: label of the edge
+            src_node: first node of the edge
+            dst_node: second node of the edge
+            edge_label: label of the edge
         """
-        if label:
-            edge_class = self.models.Edge.get_subclass(label)
+        if edge_label:
+            edge_class = self.models.Edge.get_subclass(edge_label)
             if not edge_class:
-                logging.warning("Edge with label {} not found".format(label))
+                logging.warning("Edge with label {} not found".format(edge_label))
             elif (
-                edge_class.__src_class__ == node1.__class__.__name__
-                and edge_class.__dst_class__ == node2.__class__.__name__
+                edge_class.__src_class__ == src_node.__class__.__name__
+                and edge_class.__dst_class__ == dst_node.__class__.__name__
             ):
-                getattr(node1, edge_class.__src_dst_assoc__).append(node2)
+                getattr(src_node, edge_class.__src_dst_assoc__).append(dst_node)
                 return
             elif (
-                edge_class.__src_class__ == node2.__class__.__name__
-                and edge_class.__dst_class__ == node1.__class__.__name__
+                edge_class.__src_class__ == dst_node.__class__.__name__
+                and edge_class.__dst_class__ == src_node.__class__.__name__
             ):
-                getattr(node2, edge_class.__src_dst_assoc__).append(node1)
+                getattr(dst_node, edge_class.__src_dst_assoc__).append(src_node)
                 return
             else:
                 logging.warning(
                     "Edge with label {} not working between nodes {} and {}".format(
-                        label, node1.label, node2.label
+                        edge_label, src_node.label, dst_node.label
                     )
                 )
 
         link_found = False
-        for assoc_name, assoc_meta in node1._pg_edges.items():
-            if isinstance(node2, assoc_meta["type"]):
-                getattr(node1, assoc_name).append(node2)
+        for assoc_name, assoc_meta in src_node._pg_edges.items():
+            if isinstance(dst_node, assoc_meta["type"]):
+                getattr(src_node, assoc_name).append(dst_node)
                 link_found = True
                 break
 
         if not link_found:
             logging.debug(
                 "Could not find a direct relation between '{}'<->'{}'".format(
-                    node1.label, node2.label
+                    src_node.label, dst_node.label
                 )
             )

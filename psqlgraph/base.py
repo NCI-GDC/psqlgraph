@@ -1,4 +1,4 @@
-from sqlalchemy import event
+from sqlalchemy import event, Table
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext import declarative
 from sqlalchemy.ext.declarative import declared_attr

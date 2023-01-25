@@ -127,6 +127,7 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
             Index('{}__sysan_idx'.format(cls.__tablename__),
                   '_sysan', postgresql_using='gin'),
             Index('{}_node_id_idx'.format(cls.__tablename__), 'node_id'),
+            {"keep_existing": True},
         )
 
     def traverse(self, mode="bfs", max_depth=None, edge_pointer="in", edge_predicate=None):
@@ -219,7 +220,7 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
                     acl=node_json['acl'],
                     system_annotations=node_json['system_annotations'],
                     label=node_json['label'])
-                   
+
     @classmethod
     def get_subclass(cls, label):
         for c in cls.get_subclasses():

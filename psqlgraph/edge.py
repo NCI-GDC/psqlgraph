@@ -75,6 +75,7 @@ class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
                              "src_id", "dst_id"),
             schema.Index('{}_dst_id'.format(cls.__tablename__), "dst_id"),
             schema.Index('{}_src_id'.format(cls.__tablename__), "src_id"),
+            {"keep_existing": True},
         )
 
     @declared_attr
@@ -134,7 +135,7 @@ class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
             Type = abstract_edge_cls.get_unique_subclass(edge_json['src_label'],
                                                 edge_json['label'],
                                                 edge_json['dst_label'])
-        
+
             if not Type:
                 raise KeyError('Edge has no subclass named {}'
                                    .format(edge_json['label']))

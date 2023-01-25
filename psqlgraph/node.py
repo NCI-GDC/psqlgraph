@@ -127,7 +127,7 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
             Index('{}__sysan_idx'.format(cls.__tablename__),
                   '_sysan', postgresql_using='gin'),
             Index('{}_node_id_idx'.format(cls.__tablename__), 'node_id'),
-            {"keep_existing": True},
+            {"extend_existing": True},
         )
 
     def traverse(self, mode="bfs", max_depth=None, edge_pointer="in", edge_predicate=None):

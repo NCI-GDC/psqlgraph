@@ -75,7 +75,7 @@ class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
                              "src_id", "dst_id"),
             schema.Index('{}_dst_id'.format(cls.__tablename__), "dst_id"),
             schema.Index('{}_src_id'.format(cls.__tablename__), "src_id"),
-            {"keep_existing": True},
+            {"extend_existing": True},
         )
 
     @declared_attr

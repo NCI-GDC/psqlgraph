@@ -6,7 +6,7 @@ from test import models
 
 import pytest
 
-from psqlgraph import Node
+from psqlgraph import Edge, Node
 from psqlgraph.mocks import GraphFactory, NodeFactory
 
 STRING_MATCH = "[a-zA-Z0-9]{32}"
@@ -19,6 +19,8 @@ class FakeModels(object):
         self.Test = models.Test
         self.Foo = models.Foo
         self.FooBar = models.FooBar
+
+        self.Edge = Edge
 
 
 @pytest.fixture(scope="session")
@@ -246,3 +248,77 @@ def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
     for created_node, expected in zip(created_nodes, expected_values):
         for k, v in expected.items():
             assert created_node[k] == v
+
+
+UUID1 = str(uuid.uuid4())
+UUID2 = str(uuid.uuid4())
+
+
+@pytest.mark.parametrize(
+    "src_id,dst_id,edge_label,circle_1_to_2,circle_2_to_1",
+    [
+        (UUID1, UUID2, "edge4", "circle_2a", "circle_1a",),
+        (UUID1, UUID2, "edge5", "circle_2b", "circle_1b",),
+        (UUID2, UUID1, "edge4", "circle_2a", "circle_1a",),
+        (UUID2, UUID1, "edge5", "circle_2b", "circle_1b",),
+    ],
+)
+def test_graph_factory_with_ambiguous_edges(
+    gdcmodels: FakeModels,
+    gdcdictionary: models.FakeDictionary,
+    src_id: str,
+    dst_id: str,
+    edge_label: str,
+    circle_1_to_2: str,
+    circle_2_to_1: str,
+) -> None:
+    """Test using label to solve ambiguous edges.
+
+    For some node couples, there are 2 edges in opposite directions between them.
+    Generating a circle between those 2 nodes.
+    In those cases, to solve the relation correctly, we should provide edge label to
+    link them.
+
+    Note: src_id and dst_id was never used to indicate direction of edge.
+
+    Args:
+        gdcmodels: fake models
+        gdcdictionary: fake dictionary
+        src_id: uuid for edge node
+        dst_id: uuid for another edge node
+        edge_label: label of edge
+        circle_1_to_2: association name from circle_1 to circle_2
+        circle_2_to_1: association name from circle_2 to circle_1
+    """
+    gf = GraphFactory(gdcmodels, gdcdictionary)
+
+    nodes = [
+        {"label": "circle_1", "node_id": UUID1},
+        {"label": "circle_2", "node_id": UUID2},
+    ]
+
+    edges = [
+        {"src": src_id, "dst": dst_id, "label": edge_label},
+    ]
+
+    created_nodes = gf.create_from_nodes_and_edges(
+        nodes=nodes, edges=edges, unique_key="node_id"
+    )
+
+    assert len(created_nodes) == 2
+
+    circle_1s = [n for n in created_nodes if n.label == "circle_1"]
+    assert len(circle_1s) == 1
+    circle_1 = circle_1s[0]
+    circle_1_to_2_assic = getattr(circle_1, circle_1_to_2)
+    assert len(circle_1_to_2_assic) == 1
+    circle_2s = [n for n in created_nodes if n.label == "circle_2"]
+    assert len(circle_2s) == 1
+    circle_2 = circle_2s[0]
+    circle_2_to_1_assoc = getattr(circle_2, circle_2_to_1)
+    assert len(circle_2_to_1_assoc) == 1
+    assert circle_1_to_2_assic[0] == circle_2
+    assert circle_2_to_1_assoc[0] == circle_1
+
+    assert len(circle_1.edges_out + circle_1.edges_in) == 1
+    assert len(circle_2.edges_out + circle_2.edges_in) == 1

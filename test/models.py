@@ -31,7 +31,7 @@ class FakeDictionary(object):
                     },
                     "ages": {"type": "array", "items": {"type": "integer"}},
                 },
-                "links": [{"name": "foobars"},],
+                "links": [{"name": "foobars"}],
             },
             "foo_bar": {"properties": {"bar": {"type": "string"},}, "links": [],},
             "test_default_value": {
@@ -44,6 +44,8 @@ class FakeDictionary(object):
                 },
                 "links": [],
             },
+            "circle_1": {"properties": {}, "links": [{"name": "edge_4"}]},
+            "circle_2": {"properties": {}, "links": [{"name": "edge_5"}]},
         }
 
 
@@ -82,6 +84,28 @@ class Edge3(Edge):
     __dst_class__ = "FooBar"
     __src_dst_assoc__ = "foobars"
     __dst_src_assoc__ = "foos"
+
+
+# edge4 and edge5 are used to test special case, Foo->Bar and Bar->Foo are both valid
+# edges.
+class Edge4(Edge):
+
+    __label__ = "edge4"
+
+    __src_class__ = "Circle1"
+    __dst_class__ = "Circle2"
+    __src_dst_assoc__ = "circle_2a"
+    __dst_src_assoc__ = "circle_1a"
+
+
+class Edge5(Edge):
+
+    __label__ = "edge5"
+
+    __src_class__ = "Circle2"
+    __dst_class__ = "Circle1"
+    __src_dst_assoc__ = "circle_1b"
+    __dst_src_assoc__ = "circle_2b"
 
 
 class TestToFooBarEdge(Edge):
@@ -146,6 +170,20 @@ class Foo(Node):
         self._set_property("ages", value)
 
 
+class Circle1(Node):
+
+    __label__ = "circle_1"
+
+    _pg_edges = {}
+
+
+class Circle2(Node):
+
+    __label__ = "circle_2"
+
+    _pg_edges = {}
+
+
 class FooBar(Node):
 
     __label__ = "foo_bar"
@@ -186,6 +224,20 @@ Foo._pg_edges.update(
     {
         "foobars": {"backref": "foos", "type": FooBar,},
         "tests": {"backref": "foos", "type": Test,},
+    }
+)
+
+Circle1._pg_edges.update(
+    {
+        "circle_2a": {"backref": "bars", "type": Circle2,},
+        "circle_2b": {"backref": "bars", "type": Circle2,},
+    }
+)
+
+Circle2._pg_edges.update(
+    {
+        "circle_1a": {"backref": "bars", "type": Circle1,},
+        "circle_1b": {"backref": "bars", "type": Circle1,},
     }
 )
 

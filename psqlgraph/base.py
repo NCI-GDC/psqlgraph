@@ -1,4 +1,6 @@
-from sqlalchemy import event, Table
+from typing import Type, List
+
+from sqlalchemy import event
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext import declarative
 from sqlalchemy.ext.declarative import declared_attr
@@ -354,25 +356,29 @@ class ExtMixin(object):
     """  An extension mixin used for retrieving child classes when needed """
 
     @classmethod
-    def is_subclass_loaded(cls, name):
+    def is_subclass_loaded(cls, name: str) -> bool:
         return name in [c.__name__ for c in cls.get_subclasses()]
 
     @classmethod
-    def add_subclass(cls, subclass):
+    def is_fully_qualified_subclass_loaded(cls, fully_qualified_class_name: str) -> bool:
+        return fully_qualified_class_name in [f"{c.__module__}.{c.__name__}" for c in cls.get_subclasses()]
+
+    @classmethod
+    def add_subclass(cls, subclass: Type) -> None:
         if not issubclass(subclass, cls):
             raise AttributeError("{} is not a subclass of {}".format(subclass, cls))
 
     @classmethod
-    def get_subclasses(cls):
+    def get_subclasses(cls) -> List[Type]:
         """ Limits the scope of subclasses to only those manually specified, else defaults to actual subclasses """
         return cls.__subclasses__()
 
     @classmethod
-    def get_subclass_table_names(cls):
+    def get_subclass_table_names(cls) -> List[str]:
         return [s.__tablename__ for s in cls.get_subclasses()]
 
     @classmethod
-    def is_abstract_base(cls):
+    def is_abstract_base(cls) -> bool:
         return LocalConcreteBase in cls.__bases__
 
 
@@ -383,3 +389,7 @@ class LocalConcreteBase(declarative.AbstractConcreteBase):
         if not cls.__subclasses__():
             return
         super(LocalConcreteBase, cls)._sa_decl_prepare_nocascade()
+
+
+if __name__ == '__main__':
+    print(LocalConcreteBase.__module__)

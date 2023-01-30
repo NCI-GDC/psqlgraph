@@ -8,6 +8,7 @@ def inherit_docstring_from(cls):
     def docstring_inheriting_decorator(fn):
         fn.__doc__ = getattr(cls, fn.__name__).__doc__
         return fn
+
     return docstring_inheriting_decorator
 
 
@@ -25,7 +26,7 @@ class GraphSession(Session):
     def connection(self, *args, **kwargs):
 
         if self._psqlgraph_closed:
-            raise exc.SessionClosedError('session closed')
+            raise exc.SessionClosedError("session closed")
 
         return super(GraphSession, self).connection(*args, **kwargs)
 
@@ -45,4 +46,3 @@ class GraphSession(Session):
     def query(self, *entities, **kwargs):
         kwargs["package_namespace"] = self.package_namespace
         return super(GraphSession, self).query(*entities, **kwargs)
-

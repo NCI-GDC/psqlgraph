@@ -11,6 +11,7 @@ bin/neo4j*
 
 # Distribution / packaging
 .Python
+.python-version
 env/
 build/
 develop-eggs/
@@ -22,6 +23,7 @@ lib64/
 parts/
 sdist/
 var/
+venv
 venv*/
 .venv/*
 *.egg-info/
@@ -47,7 +49,7 @@ htmlcov/
 nosetests.xml
 coverage.xml
 
-# Jenkins 
+# Jenkins
 .local/
 .eggs/
 .ssh/

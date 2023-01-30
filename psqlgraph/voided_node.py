@@ -1,54 +1,32 @@
+from sqlalchemy import BigInteger, Column, DateTime, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-from sqlalchemy import Column, Text, DateTime, BigInteger, text
+
 from psqlgraph.base import VoidedBase
 
 
 class VoidedNode(VoidedBase):
 
-    __tablename__ = '_voided_nodes'
+    __tablename__ = "_voided_nodes"
 
-    key = Column(
-        BigInteger,
-        primary_key=True,
-        nullable=False
-    )
+    key = Column(BigInteger, primary_key=True, nullable=False)
 
-    node_id = Column(
-        Text,
-        nullable=False,
-    )
+    node_id = Column(Text, nullable=False,)
 
     created = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=text('now()'),
+        DateTime(timezone=True), nullable=False, server_default=text("now()"),
     )
 
     voided = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=text('now()'),
+        DateTime(timezone=True), nullable=False, server_default=text("now()"),
     )
 
-    acl = Column(
-        ARRAY(Text),
-        default=list(),
-    )
+    acl = Column(ARRAY(Text), default=list(),)
 
-    system_annotations = Column(
-        JSONB,
-        default={},
-    )
+    system_annotations = Column(JSONB, default={},)
 
-    properties = Column(
-        JSONB,
-        default={},
-    )
+    properties = Column(JSONB, default={},)
 
-    label = Column(
-        Text,
-        nullable=False,
-    )
+    label = Column(Text, nullable=False,)
 
     def __init__(self, node):
         self.created = node.created

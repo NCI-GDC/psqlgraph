@@ -1,4 +1,4 @@
-from psqlgraph import ext, create_all, PsqlGraphDriver, pg_property
+from psqlgraph import PsqlGraphDriver, create_all, ext, pg_property
 from psqlgraph.base import drop_all
 
 MdaNode, MdaEdge = ext.register_base_class(package_namespace="mda")
@@ -7,10 +7,10 @@ MdaNode, MdaEdge = ext.register_base_class(package_namespace="mda")
 class E1(MdaEdge):
 
     __label__ = "edge_t1_t2"
-    __src_class__ = 'T1'
-    __dst_class__ = 'T2'
-    __src_dst_assoc__ = 't2s'
-    __dst_src_assoc__ = 't1s'
+    __src_class__ = "T1"
+    __dst_class__ = "T2"
+    __src_dst_assoc__ = "t2s"
+    __dst_src_assoc__ = "t1s"
 
 
 class T2(MdaNode):
@@ -19,7 +19,7 @@ class T2(MdaNode):
 
     @pg_property
     def bar(self, value):
-        self._set_property('bar', value)
+        self._set_property("bar", value)
 
 
 class T1(MdaNode):
@@ -28,7 +28,7 @@ class T1(MdaNode):
 
     @pg_property
     def foo(self, value):
-        self._set_property('foo', value)
+        self._set_property("foo", value)
 
 
 def test_create_tables(pg_conf):

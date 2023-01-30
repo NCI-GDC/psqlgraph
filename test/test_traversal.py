@@ -1,9 +1,9 @@
 import uuid
+from test import models
 
 import pytest
 
 from psqlgraph import Edge, Node
-from test import models
 
 
 def no_allowed_2_please(edge):
@@ -226,7 +226,7 @@ def test_traversal__max_depth(depth, fake_graph, fake_nodes, mode):
     ),
 )
 def test_traversal__path_bottom_up(fake_nodes, fake_graph, mode, key, expected):
-    """ Tests walking towards the root node from a leaf """
+    """Tests walking towards the root node from a leaf"""
     with fake_graph.session_scope():
         leaf = fake_graph.nodes().props(key1=key).first()
         actual = [node.node_id for node in leaf.traverse(mode=mode, edge_pointer="out")]

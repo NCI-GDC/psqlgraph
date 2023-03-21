@@ -1,3 +1,5 @@
-pytest>=4.5.0,<6.2.0  # python3.5
-parameterized~=0.7.0
-pytest-cov~=2.7.1
+-c requirements.txt
+
+pytest
+parameterized
+pytest-cov

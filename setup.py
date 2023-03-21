@@ -5,10 +5,5 @@ setup(
     setup_requires=["setuptools_scm<6"],
     name="psqlgraph",
     packages=["psqlgraph"],
-    install_requires=[
-        "psycopg2~=2.8.5",
-        "sqlalchemy~=1.3,<1.4",
-        "xlocal~=0.5",
-        "rstr~=2.2.6",
-    ],
+    install_requires=["psycopg2", "sqlalchemy~=1.3,<1.4", "xlocal", "rstr",],
 )

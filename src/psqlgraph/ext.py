@@ -1,9 +1,9 @@
 from collections import defaultdict
 
+from base import CommonBase, LocalConcreteBase
 from sqlalchemy.ext import declarative
 
 from psqlgraph import Edge, Node
-from psqlgraph.base import CommonBase, LocalConcreteBase
 from psqlgraph.edge import AbstractEdge
 from psqlgraph.node import AbstractNode
 

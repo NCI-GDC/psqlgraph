@@ -21,8 +21,8 @@ def pg_driver(request, pg_conf):
     pg_graph_driver = psqlgraph.PsqlGraphDriver(**pg_conf)
 
     def drop_all():
-        psqlgraph.base.ORMBase.metadata.drop_all(pg_graph_driver.engine)
-        psqlgraph.base.VoidedBase.metadata.drop_all(pg_graph_driver.engine)
+        base.ORMBase.metadata.drop_all(pg_graph_driver.engine)
+        base.VoidedBase.metadata.drop_all(pg_graph_driver.engine)
 
     request.addfinalizer(drop_all)
 

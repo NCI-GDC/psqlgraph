@@ -32,18 +32,10 @@ NOTE:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-d",
-        "--database",
-        default="test",
-        type=str,
-        help="name of the database to connect to",
+        "-d", "--database", default="test", type=str, help="name of the database to connect to",
     )
     parser.add_argument(
-        "-i",
-        "--host",
-        default="localhost",
-        type=str,
-        help="host of the postgres server",
+        "-i", "--host", default="localhost", type=str, help="host of the postgres server",
     )
     parser.add_argument(
         "-u", "--user", default="test", type=str, help="user to connect to postgres as"

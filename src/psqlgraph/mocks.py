@@ -103,9 +103,7 @@ class ArrayRand(Randomizer):
         if self.validate_value(override):
             return override
 
-        return [
-            self.item_randomizer.random_value() for _ in range(0, random.randint(1, 5))
-        ]
+        return [self.item_randomizer.random_value() for _ in range(0, random.randint(1, 5))]
 
     def validate_value(self, value):
         return isinstance(value, list) and all(
@@ -170,8 +168,7 @@ class PropertyFactory(object):
                 )
             except ValueError as ve:
                 logging.debug(
-                    "Property: '{}' is most likely a relationship. Error: {}"
-                    "".format(name, ve)
+                    "Property: '{}' is most likely a relationship. Error: {}" "".format(name, ve)
                 )
 
     def create(self, name, override=None):
@@ -202,8 +199,7 @@ class NodeFactory(object):
         self.models = models
         self.schema = schema
         self.property_factories = {
-            label: PropertyFactory(node_def["properties"])
-            for label, node_def in schema.items()
+            label: PropertyFactory(node_def["properties"]) for label, node_def in schema.items()
         }
         self.graph_globals = graph_globals or {}
 
@@ -272,11 +268,7 @@ class NodeFactory(object):
     def validate_override_value(self, prop, label, override):
         # we allow specific passed values to override if they are valid
         try:
-            return (
-                self.property_factories[label]
-                .type_factories[prop]
-                .validate_value(override)
-            )
+            return self.property_factories[label].type_factories[prop].validate_value(override)
         except (KeyError, ValueError):
             # if this fails for whatever reason, we'll default to random value
             return False
@@ -302,9 +294,7 @@ class GraphFactory(object):
     def validate_edges_metadata(edges):
         for edge_meta in edges:
             if "src" not in edge_meta or "dst" not in edge_meta:
-                raise ValueError(
-                    "Edge metadata is missing 'src' or 'dst': {}".format(edge_meta)
-                )
+                raise ValueError("Edge metadata is missing 'src' or 'dst': {}".format(edge_meta))
 
     def create_from_nodes_and_edges(
         self,
@@ -353,9 +343,7 @@ class GraphFactory(object):
 
             if not node1 or not node2:
                 logging.debug(
-                    "Could not find nodes for edge: '{}'<->'{}'".format(
-                        sub_id1, sub_id2
-                    )
+                    "Could not find nodes for edge: '{}'<->'{}'".format(sub_id1, sub_id2)
                 )
                 continue
 
@@ -443,9 +431,7 @@ class GraphFactory(object):
 
                 child_cls = edge_info["type"]
 
-                child_node = self.node_factory.create(
-                    child_cls.get_label(), all_props=all_props
-                )
+                child_node = self.node_factory.create(child_cls.get_label(), all_props=all_props)
 
                 label_node_map[child_node.get_label()].add(child_node[unique_key])
                 nodes_map[child_node[unique_key]] = child_node

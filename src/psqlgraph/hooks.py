@@ -1,9 +1,9 @@
 """
 Session hooks
 """
+from base import ExtMixin
 from sqlalchemy.inspection import inspect
 
-from psqlgraph.base import ExtMixin
 from psqlgraph.edge import AbstractEdge
 from psqlgraph.node import AbstractNode
 
@@ -63,9 +63,7 @@ def receive_before_flush(session, flush_context, instances):
     """
 
     if session._set_flush_timestamps:
-        session._flush_timestamp = list(session.execute("SELECT CURRENT_TIMESTAMP"))[0][
-            0
-        ]
+        session._flush_timestamp = list(session.execute("SELECT CURRENT_TIMESTAMP"))[0][0]
 
     for target in session.dirty:
         if not is_psqlgraph_entity(target):

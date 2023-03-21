@@ -7,18 +7,18 @@ import socket
 # External modules
 from contextlib import contextmanager
 
+# Custom modules
+import ext
+from hooks import receive_before_flush
+from query import GraphQuery
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import configure_mappers, sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 from xlocal import xlocal
 
-# Custom modules
-from psqlgraph import ext
 from psqlgraph.edge import AbstractEdge
 from psqlgraph.exc import QueryError
-from psqlgraph.hooks import receive_before_flush
 from psqlgraph.node import PolyNode
-from psqlgraph.query import GraphQuery
 from psqlgraph.session import GraphSession
 from psqlgraph.util import default_backoff, retryable
 from psqlgraph.voided_edge import VoidedEdge
@@ -93,9 +93,7 @@ class PsqlGraphDriver(object):
         auto_flush = self.auto_flush if auto_flush is None else auto_flush
         read_only = self.read_only if read_only is None else read_only
 
-        Session = sessionmaker(
-            autoflush=auto_flush, expire_on_commit=False, class_=GraphSession
-        )
+        Session = sessionmaker(autoflush=auto_flush, expire_on_commit=False, class_=GraphSession)
         Session.configure(bind=self.engine, query_cls=GraphQuery)
         session = Session(package_namespace=self.package_namespace)
         session._flush_timestamp = None
@@ -115,12 +113,7 @@ class PsqlGraphDriver(object):
 
     @contextmanager
     def session_scope(
-        self,
-        session=None,
-        can_inherit=True,
-        must_inherit=False,
-        auto_flush=None,
-        read_only=None,
+        self, session=None, can_inherit=True, must_inherit=False, auto_flush=None, read_only=None,
     ):
         """Provide a transactional scope around a series of operations.
 
@@ -259,9 +252,9 @@ class PsqlGraphDriver(object):
             configure_mappers()
         except Exception as e:
             logging.error(
-                (
-                    "{}: Unable to configure mappers. " "Have you imported your models?"
-                ).format(str(e))
+                ("{}: Unable to configure mappers. " "Have you imported your models?").format(
+                    str(e)
+                )
             )
 
     def __expand_query(self, query=None):
@@ -332,9 +325,7 @@ class PsqlGraphDriver(object):
         with self.session_scope() as local:
             local.add(node)
 
-    def node_update(
-        self, node, system_annotations=None, acl=None, properties=None, session=None
-    ):
+    def node_update(self, node, system_annotations=None, acl=None, properties=None, session=None):
 
         properties = properties or {}
         system_annotations = system_annotations or {}
@@ -489,21 +480,15 @@ class PsqlGraphDriver(object):
             local.merge(edge)
         return edge
 
-    def edge_lookup_one(
-        self, src_id=None, dst_id=None, label=None, voided=False, session=None
-    ):
+    def edge_lookup_one(self, src_id=None, dst_id=None, label=None, voided=False, session=None):
         return self.edge_lookup(src_id, dst_id, label, voided, session).scalar()
 
-    def edge_lookup(
-        self, src_id=None, dst_id=None, label=None, voided=False, session=None
-    ):
+    def edge_lookup(self, src_id=None, dst_id=None, label=None, voided=False, session=None):
         if voided:
             queries = [self.voided_edges()]
         elif label is not None:
             edge_cls = ext.get_abstract_edge(self.package_namespace)
-            queries = [
-                self.edges(cls) for cls in edge_cls._get_subclasses_labeled(label)
-            ]
+            queries = [self.edges(cls) for cls in edge_cls._get_subclasses_labeled(label)]
         else:
             queries = [self.edges()]
 
@@ -536,18 +521,10 @@ class PsqlGraphDriver(object):
 
     def get_edge_by_labels(self, src_label, edge_label, dst_label):
         node_cls = ext.get_abstract_node(self.package_namespace)
-        src_classes = [
-            n for n in node_cls.get_subclasses() if n.get_label() == src_label
-        ]
-        dst_classes = [
-            n for n in node_cls.get_subclasses() if n.get_label() == dst_label
-        ]
-        assert len(src_classes) == 1, "No classes found with src_label {}".format(
-            src_label
-        )
-        assert len(dst_classes) == 1, "No classes found with dst_label {}".format(
-            dst_label
-        )
+        src_classes = [n for n in node_cls.get_subclasses() if n.get_label() == src_label]
+        dst_classes = [n for n in node_cls.get_subclasses() if n.get_label() == dst_label]
+        assert len(src_classes) == 1, "No classes found with src_label {}".format(src_label)
+        assert len(dst_classes) == 1, "No classes found with dst_label {}".format(dst_label)
 
         edge_cls = ext.get_abstract_edge(self.package_namespace)
         edges = [

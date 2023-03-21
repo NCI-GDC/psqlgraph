@@ -1,7 +1,7 @@
+import base
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.sql import schema, sqltypes
 
-from psqlgraph import base
 from psqlgraph.voided_edge import VoidedEdge
 
 
@@ -33,12 +33,8 @@ class DeclareLastEdgeMixin(object):
         if cls.is_abstract_base():
             return
 
-        assert hasattr(
-            cls, "__src_class__"
-        ), "You must declare __src_class__ for {}".format(cls)
-        assert hasattr(
-            cls, "__dst_class__"
-        ), "You must declare __dst_class__ for {}".format(cls)
+        assert hasattr(cls, "__src_class__"), "You must declare __src_class__ for {}".format(cls)
+        assert hasattr(cls, "__dst_class__"), "You must declare __dst_class__ for {}".format(cls)
         assert hasattr(
             cls, "__src_dst_assoc__"
         ), "You must declare __src_dst_assoc__ for {}".format(cls)
@@ -59,9 +55,7 @@ class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
         src_table = cls.__src_table__
 
         if not src_table and hasattr(cls, "__src_class__"):
-            src_table = base.NODE_TABLENAME_SCHEME.format(
-                class_name=cls.__src_class__.lower()
-            )
+            src_table = base.NODE_TABLENAME_SCHEME.format(class_name=cls.__src_class__.lower())
 
         return id_column(src_table)
 
@@ -71,17 +65,13 @@ class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
         dst_table = cls.__dst_table__
 
         if not dst_table and hasattr(cls, "__dst_class__"):
-            dst_table = base.NODE_TABLENAME_SCHEME.format(
-                class_name=cls.__dst_class__.lower()
-            )
+            dst_table = base.NODE_TABLENAME_SCHEME.format(class_name=cls.__dst_class__.lower())
         return id_column(dst_table)
 
     @declared_attr
     def __table_args__(cls):
         return (
-            schema.Index(
-                "{}_dst_id_src_id_idx".format(cls.__tablename__), "src_id", "dst_id"
-            ),
+            schema.Index("{}_dst_id_src_id_idx".format(cls.__tablename__), "src_id", "dst_id"),
             schema.Index("{}_dst_id".format(cls.__tablename__), "dst_id"),
             schema.Index("{}_src_id".format(cls.__tablename__), "src_id"),
         )
@@ -155,9 +145,7 @@ class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
             )
 
             if not Type:
-                raise KeyError(
-                    "Edge has no subclass named {}".format(edge_json["label"])
-                )
+                raise KeyError("Edge has no subclass named {}".format(edge_json["label"]))
         else:
             Type = cls
 
@@ -217,9 +205,7 @@ class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
             and c.__dst_class__ == dst_class
         ]
         if len(scls) > 1:
-            raise KeyError(
-                "More than one Edge with label {} found: {}".format(label, scls)
-            )
+            raise KeyError("More than one Edge with label {} found: {}".format(label, scls))
         if not scls:
             return None
         return scls[0]
@@ -253,12 +239,7 @@ class Edge(base.LocalConcreteBase, AbstractEdge, base.ORMBase):
 
 
 def PolyEdge(
-    src_id=None,
-    dst_id=None,
-    label=None,
-    acl=None,
-    system_annotations=None,
-    properties=None,
+    src_id=None, dst_id=None, label=None, acl=None, system_annotations=None, properties=None,
 ):
     if not label:
         raise AttributeError("You cannot create a PolyEdge without a label.")

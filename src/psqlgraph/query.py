@@ -1,10 +1,9 @@
 from copy import copy
 
+import ext
 from sqlalchemy import not_, or_
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.orm import Query
-
-from psqlgraph import ext
 
 
 class GraphQuery(Query):
@@ -54,11 +53,7 @@ class GraphQuery(Query):
             edge_type, str
         ), "Argument edge_type must be a subclass of Edge not a string"
         session = self.session
-        sq = (
-            session.query(edge_type)
-            .filter(edge_type.dst_id == target_node.node_id)
-            .subquery()
-        )
+        sq = session.query(edge_type).filter(edge_type.dst_id == target_node.node_id).subquery()
         return self.filter(self.entity().node_id == sq.c.src_id)
 
     def with_edge_from_node(self, edge_type, source_node):
@@ -80,11 +75,7 @@ class GraphQuery(Query):
             edge_type, str
         ), "Argument edge_type must be a subclass of Edge not a string"
         session = self.session
-        sq = (
-            session.query(edge_type)
-            .filter(edge_type.src_id == source_node.node_id)
-            .subquery()
-        )
+        sq = session.query(edge_type).filter(edge_type.src_id == source_node.node_id).subquery()
         return self.filter(self.entity().node_id == sq.c.dst_id)
 
     def src(self, ids):
@@ -317,9 +308,7 @@ class GraphQuery(Query):
         edge, this_id, next_id, target_class = link_details
 
         # Construct the next recursive level's base query and recurse
-        next_node_q = self.session.query(
-            target_class, package_namespace=self.package_namespace
-        )
+        next_node_q = self.session.query(target_class, package_namespace=self.package_namespace)
         next_node_q = next_node_q.subq_path(path, filters, __recurse_level + 1)
 
         # Pop a filter from the filter stack and apply if non-null
@@ -329,9 +318,7 @@ class GraphQuery(Query):
                 next_node_q = f(next_node_q)
         next_node_sq = next_node_q.subquery()
 
-        return self.filter(entity.node_id == this_id).filter(
-            next_id == next_node_sq.c.node_id
-        )
+        return self.filter(entity.node_id == this_id).filter(next_id == next_node_sq.c.node_id)
 
     def subq_without_path(self, path, filters=None, __recurse_level=0):
         """This function is similar to ``subq_path`` but will filter for

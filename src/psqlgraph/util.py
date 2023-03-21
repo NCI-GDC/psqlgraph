@@ -67,9 +67,7 @@ def sanitize(properties):
         elif isinstance(value, str):
             sanitized[str(key)] = str(value)
         else:
-            raise ValueError(
-                "Cannot serialize {} to JSONB property".format(type(value))
-            )
+            raise ValueError("Cannot serialize {} to JSONB property".format(type(value)))
     return sanitized
 
 
@@ -116,14 +114,10 @@ def retryable(func):
                 return func(*args, **kwargs)
             except IntegrityError:
                 logging.debug(
-                    "Race-condition caught? ({}/{} retries)".format(
-                        retries, max_retries
-                    )
+                    "Race-condition caught? ({}/{} retries)".format(retries, max_retries)
                 )
                 if retries >= max_retries:
-                    logging.error(
-                        "Unable to execute {f}, max retries exceeded".format(f=func)
-                    )
+                    logging.error("Unable to execute {f}, max retries exceeded".format(f=func))
                     raise
                 retries += 1
                 backoff(retries, max_retries)

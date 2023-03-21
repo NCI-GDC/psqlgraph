@@ -1,6 +1,6 @@
+import ext
 import pytest
 
-from psqlgraph import ext
 from psqlgraph.edge import AbstractEdge, Edge
 from psqlgraph.node import AbstractNode, Node
 

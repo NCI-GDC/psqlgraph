@@ -989,7 +989,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         with self.g.session_scope():
             for i in range(5):
                 node_id = str(uuid.uuid4())
-                self.g.node_merge(node_id=node_id, label="test".format(level))
+                self.g.node_merge(node_id=node_id, label=f"test")
                 self.g.edge_insert(
                     PsqlEdge(src_id=parent_id, dst_id=node_id, label="edge1")
                 )

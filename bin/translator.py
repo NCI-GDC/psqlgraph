@@ -54,10 +54,8 @@ class OldNode(Base):
     edges_in = relationship("OldEdge", foreign_keys=[OldEdge.dst_id])
 
     def get_edges(self):
-        for edge_in in self.edges_in:
-            yield edge_in
-        for edge_out in self.edges_out:
-            yield edge_out
+        yield from self.edges_in
+        yield from self.edges_out
 
 
 def translate_node_range(_args):
@@ -67,7 +65,7 @@ def translate_node_range(_args):
         args.source_user,
         args.source_password,
         args.source,
-        **driver_kwargs
+        **driver_kwargs,
     )
     dst = PsqlGraphDriver(
         args.dest_host, args.dest_user, args.dest_password, args.dest, **driver_kwargs
@@ -93,9 +91,7 @@ def translate_node_range(_args):
                     new.created = old.created
                     session.merge(new)
                 except Exception as e:
-                    logging.error(
-                        "unable to add node {}, {}".format(old.label, old.node_id)
-                    )
+                    logging.error(f"unable to add node {old.label}, {old.node_id}")
                     logging.error(e)
 
             try:
@@ -110,7 +106,7 @@ def translate_nodes(args):
         args.source_user,
         args.source_password,
         args.source,
-        **driver_kwargs
+        **driver_kwargs,
     )
     with src.session_scope():
         count = src.nodes(OldNode).count()
@@ -127,13 +123,13 @@ def translate_edge_range(_args):
         args.source_user,
         args.source_password,
         args.source,
-        **driver_kwargs
+        **driver_kwargs,
     )
     dst = PsqlGraphDriver(
         args.dest_host, args.dest_user, args.dest_password, args.dest, **driver_kwargs
     )
 
-    print("{}-{}".format(offset, offset + BLOCK))
+    print(f"{offset}-{offset + BLOCK}")
     sys.stdout.flush()
     with src.session_scope():
         with dst.session_scope() as session:
@@ -180,7 +176,7 @@ def translate_edges(args):
         args.source_user,
         args.source_password,
         args.source,
-        **driver_kwargs
+        **driver_kwargs,
     )
     with src.session_scope():
         count = src.nodes(OldEdge).count()

@@ -13,7 +13,7 @@ STRING_MATCH = "[a-zA-Z0-9]{32}"
 DATE_MATCH = "^[0-9]{4}-[0-9]{2}-[0-9]{2}T00:00:00"
 
 
-class FakeModels(object):
+class FakeModels:
     def __init__(self):
         self.Node = Node
         self.Test = models.Test

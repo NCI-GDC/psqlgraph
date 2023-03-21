@@ -18,7 +18,7 @@ def reverse_lookup(dictionary, search_val):
             yield key
 
 
-class NodeAssociationProxyMixin(object):
+class NodeAssociationProxyMixin:
     @declared_attr
     def _edges_out(self):
         return list()
@@ -46,8 +46,8 @@ class NodeAssociationProxyMixin(object):
                 continue
 
             name = scls.__name__
-            name_in = "_{}_in".format(name)
-            name_out = "_{}_out".format(name)
+            name_in = f"_{name}_in"
+            name_out = f"_{name}_out"
             src_assoc = getattr(scls, SRC_DST_ASSOC)
             dst_assoc = getattr(scls, DST_SRC_ASSOC)
 
@@ -90,10 +90,8 @@ class NodeAssociationProxyMixin(object):
         setattr(cls, attr_name, rel)
 
     def get_edges(self):
-        for edge_in in self.edges_in:
-            yield edge_in
-        for edge_out in self.edges_out:
-            yield edge_out
+        yield from self.edges_in
+        yield from self.edges_out
 
     @classmethod
     def get_edge_class(cls):
@@ -111,24 +109,16 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
     @declared_attr
     def __table_args__(cls):
         return (
-            UniqueConstraint("node_id", name="_{}_id_uc".format(cls.__name__.lower())),
+            UniqueConstraint("node_id", name=f"_{cls.__name__.lower()}_id_uc"),
+            Index(f"{cls.__tablename__}__props_idx", "_props", postgresql_using="gin",),
             Index(
-                "{}__props_idx".format(cls.__tablename__),
-                "_props",
-                postgresql_using="gin",
-            ),
-            Index(
-                "{}__sysan__props_idx".format(cls.__tablename__),
+                f"{cls.__tablename__}__sysan__props_idx",
                 "_sysan",
                 "_props",
                 postgresql_using="gin",
             ),
-            Index(
-                "{}__sysan_idx".format(cls.__tablename__),
-                "_sysan",
-                postgresql_using="gin",
-            ),
-            Index("{}_node_id_idx".format(cls.__tablename__), "node_id"),
+            Index(f"{cls.__tablename__}__sysan_idx", "_sysan", postgresql_using="gin",),
+            Index(f"{cls.__tablename__}_node_id_idx", "node_id"),
         )
 
     def traverse(
@@ -164,7 +154,7 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
         acl=None,
         system_annotations=None,
         label=None,
-        **kwargs
+        **kwargs,
     ):
         self._props = {}
         self.system_annotations = system_annotations or {}
@@ -179,7 +169,7 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
         return {}
 
     def __repr__(self):
-        return "<{}({node_id})>".format(self.__class__.__name__, node_id=self.node_id)
+        return f"<{self.__class__.__name__}({self.node_id})>"
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and self.node_id == other.node_id
@@ -243,14 +233,14 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
         for c in cls.get_subclasses():
             if c.__name__ == name:
                 return c
-        raise KeyError("Node has no subclass named {}".format(name))
+        raise KeyError(f"Node has no subclass named {name}")
 
     @property
     def _history(self):
         session = self.get_session()
         if not session:
             raise RuntimeError(
-                "{} not bound to a session. Try get_history(session).".format(self)
+                f"{self} not bound to a session. Try get_history(session)."
             )
         return self.get_history(session)
 
@@ -275,7 +265,7 @@ class Node(base.LocalConcreteBase, AbstractNode, base.ORMBase):
     pass
 
 
-class TmpNode(object):
+class TmpNode:
     """
     Temporary object to hold a node information
     """

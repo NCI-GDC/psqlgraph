@@ -1,7 +1,5 @@
-import ext
-from base import drop_all
-
-from psqlgraph import PsqlGraphDriver, create_all, pg_property
+from psqlgraph import PsqlGraphDriver, create_all, ext, pg_property
+from psqlgraph.base import drop_all
 
 MdaNode, MdaEdge = ext.register_base_class(package_namespace="mda")
 

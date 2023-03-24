@@ -13,7 +13,7 @@ NODE_TABLENAME_SCHEME = "node_{class_name}"
 EDGE_TABLENAME_SCHEME = "edge_{class_name}"
 
 
-class CommonBase(object):
+class CommonBase:
 
     _session_hooks_before_insert = []
     _session_hooks_before_update = []
@@ -97,7 +97,7 @@ class CommonBase(object):
 
         """
         if not self.has_property(key):
-            raise KeyError("{} has no property {}".format(type(self), key))
+            raise KeyError(f"{type(self)} has no property {key}")
         self._props = {k: v for k, v in self._props.items()}
         self._props[key] = val
 
@@ -107,7 +107,7 @@ class CommonBase(object):
 
         """
         if not self.has_property(key):
-            raise KeyError("{} has no property {}".format(type(self), key))
+            raise KeyError(f"{type(self)} has no property {key}")
         if key not in self._props:
             return None
         return self._props[key]
@@ -273,7 +273,7 @@ def create_hybrid_properties(mapper, cls):
         cls.__pg_properties__[pg_attr] = f.__pg_types__
 
 
-class VoidedBaseClass(object):
+class VoidedBaseClass:
     @hybrid_property
     def props(self):
         """Alias of properties"""
@@ -320,7 +320,7 @@ def drop_all(engine, base=ORMBase):
     VoidedBase.metadata.drop_all(engine)
 
 
-class ExtMixin(object):
+class ExtMixin:
     """An extension mixin used for retrieving child classes when needed"""
 
     @classmethod
@@ -330,7 +330,7 @@ class ExtMixin(object):
     @classmethod
     def add_subclass(cls, subclass):
         if not issubclass(subclass, cls):
-            raise AttributeError("{} is not a subclass of {}".format(subclass, cls))
+            raise AttributeError(f"{subclass} is not a subclass of {cls}")
 
     @classmethod
     def get_subclasses(cls):
@@ -351,4 +351,4 @@ class LocalConcreteBase(declarative.AbstractConcreteBase):
     def _sa_decl_prepare_nocascade(cls):
         if not cls.__subclasses__():
             return
-        super(LocalConcreteBase, cls)._sa_decl_prepare_nocascade()
+        super()._sa_decl_prepare_nocascade()

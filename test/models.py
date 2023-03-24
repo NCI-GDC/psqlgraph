@@ -1,7 +1,7 @@
 from psqlgraph import Edge, Node, pg_property
 
 
-class FakeDictionary(object):
+class FakeDictionary:
     def __init__(self):
         self.schema = {
             "test": {

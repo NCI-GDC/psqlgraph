@@ -13,7 +13,7 @@ class JsonProperty(dict):
     def __setitem__(self, key, value):
 
         self.set_item(key, value)
-        super(JsonProperty, self).__setitem__(key, value)
+        super().__setitem__(key, value)
 
     @abstractmethod
     def set_item(self, key, value):
@@ -28,7 +28,7 @@ class SystemAnnotationDict(JsonProperty):
 
     def __init__(self, source):
         self.source = source
-        super(SystemAnnotationDict, self).__init__(sanitize(source._sysan))
+        super().__init__(sanitize(source._sysan))
 
     def update(self, system_annotations=None, **kwargs):
 
@@ -40,7 +40,7 @@ class SystemAnnotationDict(JsonProperty):
         temp = sanitize(self.source._sysan)
         temp.update(system_annotations)
         self.source._sysan = temp
-        super(SystemAnnotationDict, self).update(self.source._sysan)
+        super().update(self.source._sysan)
 
     def set_item(self, key, val):
         temp = dict(self.source._sysan)
@@ -60,7 +60,7 @@ class PropertiesDict(JsonProperty):
 
     def __init__(self, source):
         self.source = source
-        super(PropertiesDict, self).__init__(source.property_template(source._props))
+        super().__init__(source.property_template(source._props))
 
     def update(self, properties=None, **kwargs):
 
@@ -71,9 +71,9 @@ class PropertiesDict(JsonProperty):
         properties = sanitize(properties)
         for key, val in properties.items():
             if not self.source.has_property(key):
-                raise AttributeError("{} has no property {}".format(self.source, key))
+                raise AttributeError(f"{self.source} has no property {key}")
             setattr(self.source, key, val)
-        super(PropertiesDict, self).update(self.source._props)
+        super().update(self.source._props)
 
     def set_item(self, key, val):
         setattr(self.source, key, val)

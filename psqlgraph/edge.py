@@ -13,7 +13,7 @@ def id_column(tablename):
     return schema.Column(
         sqltypes.Text,
         schema.ForeignKey(
-            "{}.node_id".format(tablename),
+            f"{tablename}.node_id",
             ondelete="CASCADE",
             deferrable=True,
             initially="DEFERRED",
@@ -23,7 +23,7 @@ def id_column(tablename):
     )
 
 
-class DeclareLastEdgeMixin(object):
+class DeclareLastEdgeMixin:
     @classmethod
     def is_abstract_base(cls):
         return base.LocalConcreteBase in cls.__bases__
@@ -35,16 +35,16 @@ class DeclareLastEdgeMixin(object):
 
         assert hasattr(
             cls, "__src_class__"
-        ), "You must declare __src_class__ for {}".format(cls)
+        ), f"You must declare __src_class__ for {cls}"
         assert hasattr(
             cls, "__dst_class__"
-        ), "You must declare __dst_class__ for {}".format(cls)
+        ), f"You must declare __dst_class__ for {cls}"
         assert hasattr(
             cls, "__src_dst_assoc__"
-        ), "You must declare __src_dst_assoc__ for {}".format(cls)
+        ), f"You must declare __src_dst_assoc__ for {cls}"
         assert hasattr(
             cls, "__dst_src_assoc__"
-        ), "You must declare __dst_src_assoc__ for {}".format(cls)
+        ), f"You must declare __dst_src_assoc__ for {cls}"
 
 
 class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
@@ -79,11 +79,9 @@ class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
     @declared_attr
     def __table_args__(cls):
         return (
-            schema.Index(
-                "{}_dst_id_src_id_idx".format(cls.__tablename__), "src_id", "dst_id"
-            ),
-            schema.Index("{}_dst_id".format(cls.__tablename__), "dst_id"),
-            schema.Index("{}_src_id".format(cls.__tablename__), "src_id"),
+            schema.Index(f"{cls.__tablename__}_dst_id_src_id_idx", "src_id", "dst_id"),
+            schema.Index(f"{cls.__tablename__}_dst_id", "dst_id"),
+            schema.Index(f"{cls.__tablename__}_src_id", "src_id"),
         )
 
     @declared_attr
@@ -100,7 +98,7 @@ class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
         label=None,
         src=None,
         dst=None,
-        **kwargs
+        **kwargs,
     ):
         self._props = {}
         self.system_annotations = system_annotations or {}
@@ -217,9 +215,7 @@ class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
             and c.__dst_class__ == dst_class
         ]
         if len(scls) > 1:
-            raise KeyError(
-                "More than one Edge with label {} found: {}".format(label, scls)
-            )
+            raise KeyError(f"More than one Edge with label {label} found: {scls}")
         if not scls:
             return None
         return scls[0]

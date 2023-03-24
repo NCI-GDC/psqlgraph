@@ -15,7 +15,7 @@ class GraphQuery(Query):
     """
 
     def __init__(self, entites, session=None, package_namespace=None):
-        super(GraphQuery, self).__init__(entites, session)
+        super().__init__(entites, session)
         self.package_namespace = package_namespace
 
     def _iterable(self, val):
@@ -263,7 +263,7 @@ class GraphQuery(Query):
                 )
 
         raise AttributeError(
-            "type object '{}' has no attribute '{}'".format(entity.__name__, link_name)
+            f"type object '{entity.__name__}' has no attribute '{link_name}'"
         )
 
     def subq_path(self, path, filters=None, __recurse_level=0):

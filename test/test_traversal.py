@@ -22,10 +22,10 @@ def clean_tables(pg_driver):
     conn.execute("commit")
     for table in Node().get_subclass_table_names():
         if table != Node.__tablename__:
-            conn.execute("delete from {}".format(table))
+            conn.execute(f"delete from {table}")
     for table in Edge.get_subclass_table_names():
         if table != Edge.__tablename__:
-            conn.execute("delete from {}".format(table))
+            conn.execute(f"delete from {table}")
     conn.execute("delete from _voided_nodes")
     conn.execute("delete from _voided_edges")
     conn.close()

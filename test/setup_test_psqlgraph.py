@@ -16,21 +16,19 @@ def try_drop_test_data(user, database, root_user="postgres", host=""):
 
     print("Dropping old test data")
 
-    engine = create_engine(
-        "postgresql://{user}@{host}/postgres".format(user=root_user, host=host)
-    )
+    engine = create_engine(f"postgresql://{root_user}@{host}/postgres")
 
     conn = engine.connect()
     conn.execute("commit")
 
     try:
-        create_stmt = 'DROP DATABASE "{database}"'.format(database=database)
+        create_stmt = f'DROP DATABASE "{database}"'
         conn.execute(create_stmt)
     except Exception as msg:
         logging.warning("Unable to drop test data:" + str(msg))
 
     try:
-        user_stmt = "DROP USER {user}".format(user=user)
+        user_stmt = f"DROP USER {user}"
         conn.execute(user_stmt)
     except Exception as msg:
         logging.warning("Unable to drop test data:" + str(msg))
@@ -46,13 +44,11 @@ def setup_database(user, password, database, root_user="postgres", host=""):
 
     try_drop_test_data(user, database)
 
-    engine = create_engine(
-        "postgresql://{user}@{host}/postgres".format(user=root_user, host=host)
-    )
+    engine = create_engine(f"postgresql://{root_user}@{host}/postgres")
     conn = engine.connect()
     conn.execute("commit")
 
-    create_stmt = 'CREATE DATABASE "{database}"'.format(database=database)
+    create_stmt = f'CREATE DATABASE "{database}"'
     conn.execute(create_stmt)
 
     try:

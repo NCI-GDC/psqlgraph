@@ -36,7 +36,7 @@ def get_class_prefix(pkg_namespace):
     Returns:
         str: class name prefix eg. AbstractGpas
     """
-    return "{}".format(pkg_namespace.title())
+    return f"{pkg_namespace.title()}"
 
 
 def create_base_class(pkg_namespace, is_node=True):
@@ -49,7 +49,7 @@ def create_base_class(pkg_namespace, is_node=True):
     """
 
     base_class = AbstractNode if is_node else AbstractEdge
-    name = "{}{}".format(get_class_prefix(pkg_namespace), base_class.__name__)
+    name = f"{get_class_prefix(pkg_namespace)}{base_class.__name__}"
     return type(name, (LocalConcreteBase, base_class, get_orm_base(pkg_namespace)), {})
 
 

@@ -11,7 +11,7 @@ import rstr
 from psqlgraph import Node
 
 
-class Randomizer(object):
+class Randomizer:
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
@@ -40,7 +40,7 @@ class Randomizer(object):
 
 class EnumRand(Randomizer):
     def __init__(self, values):
-        super(EnumRand, self).__init__()
+        super().__init__()
         self.values = values
 
     def random_value(self, override=None):
@@ -54,7 +54,7 @@ class EnumRand(Randomizer):
 
 class NumberRand(Randomizer):
     def __init__(self, type_def):
-        super(NumberRand, self).__init__()
+        super().__init__()
         self.minimum = type_def.get("minimum", 0)
         self.maximum = type_def.get("maximum", 10000)
 
@@ -69,7 +69,7 @@ class NumberRand(Randomizer):
 
 class StringRand(Randomizer):
     def __init__(self, type_def):
-        super(StringRand, self).__init__()
+        super().__init__()
         if type_def.get("format") == "date-time":
             self.pattern = "201[0-9]-0[1-9]-[0-2][1-9]T00:00:00"
         else:
@@ -96,7 +96,7 @@ class BooleanRand(Randomizer):
 
 class ArrayRand(Randomizer):
     def __init__(self, item_randomizer):
-        super(ArrayRand, self).__init__()
+        super().__init__()
         self.item_randomizer = item_randomizer
 
     def random_value(self, override=None):
@@ -111,7 +111,7 @@ class ArrayRand(Randomizer):
         )
 
 
-class TypeRandFactory(object):
+class TypeRandFactory:
     @staticmethod
     def get_randomizer(type_def):
         _type = type_def.get("type")
@@ -157,7 +157,7 @@ class TypeRandFactory(object):
         return StringRand(definition)
 
 
-class PropertyFactory(object):
+class PropertyFactory:
     def __init__(self, properties):
         self.properties = properties
         self.type_factories = {}
@@ -183,7 +183,7 @@ class PropertyFactory(object):
         :return: Tuple(str, type)
         """
         if name not in self.properties:
-            raise ValueError("Unknown property: '{}'".format(name))
+            raise ValueError(f"Unknown property: '{name}'")
 
         if name not in self.type_factories:
             raise ValueError(
@@ -194,7 +194,7 @@ class PropertyFactory(object):
         return name, self.type_factories[name].random_value(override)
 
 
-class NodeFactory(object):
+class NodeFactory:
     def __init__(self, models, schema, graph_globals=None):
         self.models = models
         self.schema = schema
@@ -220,7 +220,7 @@ class NodeFactory(object):
         :return: psqlgraph.Node object
         """
         if label not in self.schema:
-            raise ValueError("Node with label '{}' does not exist".format(label))
+            raise ValueError(f"Node with label '{label}' does not exist")
 
         if not override:
             override = {}
@@ -253,7 +253,7 @@ class NodeFactory(object):
 
                 _, value = self.property_factories[label].create(prop, override_val)
             except (KeyError, ValueError):
-                logging.debug("No factory for property: '{}'".format(prop))
+                logging.debug(f"No factory for property: '{prop}'")
                 continue
 
             node_json["properties"][prop] = value
@@ -274,7 +274,7 @@ class NodeFactory(object):
             return False
 
 
-class GraphFactory(object):
+class GraphFactory:
     def __init__(self, models, dictionary, graph_globals=None):
         self.models = models
         self.dictionary = dictionary
@@ -294,7 +294,7 @@ class GraphFactory(object):
     def validate_edges_metadata(edges):
         for edge_meta in edges:
             if "src" not in edge_meta or "dst" not in edge_meta:
-                raise ValueError("Edge metadata is missing 'src' or 'dst': {}".format(edge_meta))
+                raise ValueError(f"Edge metadata is missing 'src' or 'dst': {edge_meta}")
 
     def create_from_nodes_and_edges(
         self,
@@ -530,7 +530,7 @@ class GraphFactory(object):
         if edge_label:
             edge_class = self.models.Edge.get_subclass(edge_label)
             if not edge_class:
-                logging.warning("Edge with label {} not found".format(edge_label))
+                logging.warning(f"Edge with label {edge_label} not found")
             elif (
                 edge_class.__src_class__ == src_node.__class__.__name__
                 and edge_class.__dst_class__ == dst_node.__class__.__name__

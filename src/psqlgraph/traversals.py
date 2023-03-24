@@ -32,7 +32,7 @@ def traverse(root, mode="bfs", max_depth=None, edge_pointer="in", edge_predicate
             max_depth=max_depth,
         )
 
-    raise NotImplementedError("Traversal mode {} is not implemented".format(mode))
+    raise NotImplementedError(f"Traversal mode {mode} is not implemented")
 
 
 def _bfs(root, edge_predicate=None, max_depth=None, edge_pointer="in"):

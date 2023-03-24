@@ -28,7 +28,7 @@ DEFAULT_RETRIES = 0
 logger = logging.getLogger(__name__)
 
 
-class PsqlGraphDriver(object):
+class PsqlGraphDriver:
 
     acceptable_isolation_levels = ["REPEATABLE_READ", "SERIALIZABLE"]
 
@@ -224,7 +224,7 @@ class PsqlGraphDriver(object):
                 local.commit()
 
         except Exception as msg:
-            logging.error("Rolling back session {}".format(msg))
+            logging.error(f"Rolling back session {msg}")
             local.rollback()
             raise
 

@@ -1,9 +1,9 @@
 """
 Session hooks
 """
-from base import ExtMixin
 from sqlalchemy.inspection import inspect
 
+from psqlgraph.base import ExtMixin
 from psqlgraph.edge import AbstractEdge
 from psqlgraph.node import AbstractNode
 

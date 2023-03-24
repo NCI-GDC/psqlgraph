@@ -1,6 +1,7 @@
-from base import VoidedBase
 from sqlalchemy import BigInteger, Column, DateTime, Text, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+
+from psqlgraph.base import VoidedBase
 
 
 class VoidedNode(VoidedBase):

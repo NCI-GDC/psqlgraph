@@ -1,7 +1,7 @@
-import base
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.sql import schema, sqltypes
 
+from psqlgraph import base
 from psqlgraph.voided_edge import VoidedEdge
 
 

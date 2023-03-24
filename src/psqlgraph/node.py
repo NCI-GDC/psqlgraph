@@ -1,11 +1,10 @@
-import base
 from sqlalchemy import Column, Index, Text, UniqueConstraint
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
-from psqlgraph import traversals
+from psqlgraph import base, traversals
 from psqlgraph.edge import Edge
 from psqlgraph.voided_node import VoidedNode
 

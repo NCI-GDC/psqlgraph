@@ -7,8 +7,6 @@ import socket
 # External modules
 from contextlib import contextmanager
 
-# Custom modules
-import ext
 from hooks import receive_before_flush
 from query import GraphQuery
 from sqlalchemy import create_engine, event
@@ -16,6 +14,8 @@ from sqlalchemy.orm import configure_mappers, sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 from xlocal import xlocal
 
+# Custom modules
+from psqlgraph import ext
 from psqlgraph.edge import AbstractEdge
 from psqlgraph.exc import QueryError
 from psqlgraph.node import PolyNode

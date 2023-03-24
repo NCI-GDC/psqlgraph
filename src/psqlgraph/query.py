@@ -1,9 +1,10 @@
 from copy import copy
 
-import ext
 from sqlalchemy import not_, or_
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.orm import Query
+
+from psqlgraph import ext
 
 
 class GraphQuery(Query):

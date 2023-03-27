@@ -46,9 +46,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         """Test that integers that only fit in 26 bits round trip correctly."""
         with self.g.session_scope():
             node = PolyNode(
-                node_id=str(uuid.uuid4()),
-                label="foo",
-                properties={"bar": 9223372036854775808},
+                node_id=str(uuid.uuid4()), label="foo", properties={"bar": 9223372036854775808},
             )
             self.g.node_insert(node=node)
             loaded = self.g.node_lookup(node_id=node.node_id).one()
@@ -60,9 +58,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         Verify the case where a user merges a single non-existent node
         """
         with self.g.session_scope():
-            self.assertRaises(
-                AssertionError, self.g.node_merge, node_id=str(uuid.uuid4())
-            )
+            self.assertRaises(AssertionError, self.g.node_merge, node_id=str(uuid.uuid4()))
 
     def test_node_null_query_one(self):
         """Test querying of a single non-existent node
@@ -93,15 +89,11 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         """
         with self.g.session_scope():
             nodes = list(
-                self.g.node_lookup(
-                    node_id=node_id, property_matches=matches, voided=False
-                )
+                self.g.node_lookup(node_id=node_id, property_matches=matches, voided=False)
             )
             if voided:
                 voided_nodes = list(
-                    self.g.node_lookup(
-                        node_id=node_id, property_matches=matches, voided=True
-                    )
+                    self.g.node_lookup(node_id=node_id, property_matches=matches, voided=True)
                 )
                 nodes = list(nodes) + list(voided_nodes)
             self.assertEqual(
@@ -297,17 +289,11 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
 
         # Add first node
         system_annotationsA = sanitize({"key1": None, "key2": 2, "key3": timestamp()})
-        self.g.node_merge(
-            node_id=node_id, label="test", system_annotations=system_annotationsA
-        )
+        self.g.node_merge(node_id=node_id, label="test", system_annotations=system_annotationsA)
 
         # Add second node
-        system_annotationsB = sanitize(
-            {"key1": None, "new_key": 2, "timestamp": timestamp()}
-        )
-        self.g.node_merge(
-            node_id=node_id, label="test", system_annotations=system_annotationsB
-        )
+        system_annotationsB = sanitize({"key1": None, "new_key": 2, "timestamp": timestamp()})
+        self.g.node_merge(node_id=node_id, label="test", system_annotations=system_annotationsB)
 
         # Merge system_annotations
         merged = deepcopy(system_annotationsA)
@@ -332,13 +318,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
 
         # add first node
         propertiesA = sanitize(
-            {
-                "key1": None,
-                "key2": 1,
-                "key3": timestamp(),
-                "timestamp": None,
-                "new_key": None,
-            }
+            {"key1": None, "key2": 1, "key3": timestamp(), "timestamp": None, "new_key": None,}
         )
         system_annotationsA = sanitize({"key1": None, "key2": 2, "key3": timestamp()})
         self.g.node_merge(
@@ -349,9 +329,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         )
 
         dst = self.g.node_merge(node_id=str(uuid.uuid4()), label="test")
-        edge1 = self.g.edge_insert(
-            PsqlEdge(src_id=node_id, dst_id=dst.node_id, label="edge1")
-        )
+        edge1 = self.g.edge_insert(PsqlEdge(src_id=node_id, dst_id=dst.node_id, label="edge1"))
 
         with self.g.session_scope():
             node = self.g.node_lookup_one(node_id)
@@ -370,13 +348,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         node_id = str(uuid.uuid4())
 
         propertiesA = sanitize(
-            {
-                "key1": None,
-                "key2": 1,
-                "key3": timestamp(),
-                "timestamp": None,
-                "new_key": None,
-            }
+            {"key1": None, "key2": 1, "key3": timestamp(), "timestamp": None, "new_key": None,}
         )
 
         system_annotationsA = sanitize({"key1": None, "key2": 2, "key3": timestamp()})
@@ -407,13 +379,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
 
         # add first node
         propertiesA = sanitize(
-            {
-                "key1": None,
-                "key2": 1,
-                "key3": timestamp(),
-                "timestamp": None,
-                "new_key": None,
-            }
+            {"key1": None, "key2": 1, "key3": timestamp(), "timestamp": None, "new_key": None,}
         )
         system_annotationsA = sanitize({"key1": None, "key2": 2, "key3": timestamp()})
         self.g.node_merge(
@@ -424,9 +390,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         )
 
         dst = self.g.node_merge(node_id=str(uuid.uuid4()), label="test")
-        edge1 = self.g.edge_insert(
-            PsqlEdge(src_id=node_id, dst_id=dst.node_id, label="edge1")
-        )
+        edge1 = self.g.edge_insert(PsqlEdge(src_id=node_id, dst_id=dst.node_id, label="edge1"))
 
         with self.g.session_scope():
             node = self.g.node_lookup_one(node_id)
@@ -574,9 +538,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         for p in processes:
             p.join()
 
-        self.verify_node_count(
-            process_count * self.REPEAT_COUNT * 2, tempid, voided=True
-        )
+        self.verify_node_count(process_count * self.REPEAT_COUNT * 2, tempid, voided=True)
 
     def test_node_clobber(self):
         """Test that clobbering a node replaces all of its properties"""
@@ -680,12 +642,8 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         self.g.node_merge(node_id=src_id, label="test")
         self.g.node_merge(node_id=dst_id, label="test")
 
-        edge1 = self.g.edge_insert(
-            PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1")
-        )
-        edge2 = self.g.edge_insert(
-            PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge2")
-        )
+        edge1 = self.g.edge_insert(PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1"))
+        edge2 = self.g.edge_insert(PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge2"))
         self.assertNotEqual(edge1.edge_id, edge2.edge_id)
 
     def test_edge_insert_and_lookup(self):
@@ -696,9 +654,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             self.g.node_merge(node_id=src_id, label="test")
             self.g.node_merge(node_id=dst_id, label="test")
 
-            edge = self.g.edge_insert(
-                PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1")
-            )
+            edge = self.g.edge_insert(PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1"))
             self.g.edge_update(edge, properties={"test": None})
             self.g.edge_update(edge, properties={"test": 2})
 
@@ -724,9 +680,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             dst_id = str(uuid.uuid4())
             self.g.node_merge(node_id=src_id, label="test")
             self.g.node_merge(node_id=dst_id, label="test")
-            edge = self.g.edge_insert(
-                PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1")
-            )
+            edge = self.g.edge_insert(PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1"))
         with self.g.session_scope():
             self.g.edge_update(edge, properties={"test": 3})
             voided_edge = self.g.edges(VoidedEdge).one()
@@ -763,9 +717,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
             for dst_id in dst_ids:
                 self.g.node_merge(node_id=dst_id, label="test")
-                self.g.edge_insert(
-                    PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1")
-                )
+                self.g.edge_insert(PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1"))
 
             edge_ids = [e.dst_id for e in self.g.edge_lookup(src_id=src_id)]
             self.assertEqual(len(set(edge_ids)), leaf_count)
@@ -851,9 +803,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             src = self.g.node_merge(node_id=src_id, label="test")
             dst = self.g.node_merge(node_id=dst_id, label="test")
 
-            edge = self.g.edge_insert(
-                PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1")
-            )
+            edge = self.g.edge_insert(PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1"))
 
             edge_json = edge.to_json()
 
@@ -910,9 +860,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             # Create nodes and link them to source
             for dst_id in dst_ids:
                 self.g.node_merge(node_id=dst_id, label="test")
-                self.g.edge_insert(
-                    PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1")
-                )
+                self.g.edge_insert(PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1"))
 
             # Verify that the edges there are correct
             for dst_id in dst_ids:
@@ -968,9 +916,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             for src_id, dst_id in zip(src_ids, dst_ids):
                 self.g.node_merge(src_id, label="test")
                 self.g.node_merge(dst_id, label="test")
-                self.g.edge_insert(
-                    PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1",)
-                )
+                self.g.edge_insert(PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1",))
 
             edges = self.g.get_edges()
             ret_src_ids = []
@@ -990,9 +936,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             for i in range(5):
                 node_id = str(uuid.uuid4())
                 self.g.node_merge(node_id=node_id, label=f"test")
-                self.g.edge_insert(
-                    PsqlEdge(src_id=parent_id, dst_id=node_id, label="edge1")
-                )
+                self.g.edge_insert(PsqlEdge(src_id=parent_id, dst_id=node_id, label="edge1"))
                 if level < 2:
                     self._create_subtree(node_id, level + 1)
 
@@ -1022,16 +966,10 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             self.g.edge_insert(PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1"))
             self.g.edge_insert(models.Edge2(src_id, foo_id))
             s.commit()
-            self.assertEqual(
-                len(list(self.g.edge_lookup(src_id=src_id, dst_id=dst_id))), 1
-            )
-            self.assertEqual(
-                len(list(self.g.edge_lookup(src_id=src_id, dst_id=foo_id))), 1
-            )
+            self.assertEqual(len(list(self.g.edge_lookup(src_id=src_id, dst_id=dst_id))), 1)
+            self.assertEqual(len(list(self.g.edge_lookup(src_id=src_id, dst_id=foo_id))), 1)
             self.assertRaises(
-                Exception,
-                self.g.edge_insert,
-                models.Edge1(src_id=src_id, dst_id=dst_id),
+                Exception, self.g.edge_insert, models.Edge1(src_id=src_id, dst_id=dst_id),
             )
 
     def test_simple_automatic_session(self):

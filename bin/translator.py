@@ -23,14 +23,10 @@ class OldEdge(Base):
     key = Column(Integer, primary_key=True)
     edge_id = Column(Text, nullable=False)
     src_id = Column(
-        Text,
-        ForeignKey("nodes.node_id", deferrable=True, initially="DEFERRED"),
-        nullable=False,
+        Text, ForeignKey("nodes.node_id", deferrable=True, initially="DEFERRED"), nullable=False,
     )
     dst_id = Column(
-        Text,
-        ForeignKey("nodes.node_id", deferrable=True, initially="DEFERRED"),
-        nullable=False,
+        Text, ForeignKey("nodes.node_id", deferrable=True, initially="DEFERRED"), nullable=False,
     )
     created = Column(DateTime(timezone=True), nullable=False)
     system_annotations = Column(JSONB, default={})
@@ -61,11 +57,7 @@ class OldNode(Base):
 def translate_node_range(_args):
     args, offset = _args
     src = PsqlGraphDriver(
-        args.source_host,
-        args.source_user,
-        args.source_password,
-        args.source,
-        **driver_kwargs,
+        args.source_host, args.source_user, args.source_password, args.source, **driver_kwargs,
     )
     dst = PsqlGraphDriver(
         args.dest_host, args.dest_user, args.dest_password, args.dest, **driver_kwargs
@@ -102,11 +94,7 @@ def translate_node_range(_args):
 
 def translate_nodes(args):
     src = PsqlGraphDriver(
-        args.source_host,
-        args.source_user,
-        args.source_password,
-        args.source,
-        **driver_kwargs,
+        args.source_host, args.source_user, args.source_password, args.source, **driver_kwargs,
     )
     with src.session_scope():
         count = src.nodes(OldNode).count()
@@ -119,11 +107,7 @@ def translate_nodes(args):
 def translate_edge_range(_args):
     args, offset = _args
     src = PsqlGraphDriver(
-        args.source_host,
-        args.source_user,
-        args.source_password,
-        args.source,
-        **driver_kwargs,
+        args.source_host, args.source_user, args.source_password, args.source, **driver_kwargs,
     )
     dst = PsqlGraphDriver(
         args.dest_host, args.dest_user, args.dest_password, args.dest, **driver_kwargs
@@ -143,9 +127,7 @@ def translate_edge_range(_args):
                 .all()
             ):
                 try:
-                    Type = dst.get_edge_by_labels(
-                        old.src.label, old.label, old.dst.label
-                    )
+                    Type = dst.get_edge_by_labels(old.src.label, old.label, old.dst.label)
                     print(Type.__name__)
                     new = Type(
                         src_id=old.src_id,
@@ -158,9 +140,7 @@ def translate_edge_range(_args):
                     session.merge(new)
                 except Exception as e:
                     logging.error(
-                        "unable to add edge {}, {}".format(
-                            old.label, old.src_id, old.dst_id
-                        )
+                        "unable to add edge {}, {}".format(old.label, old.src_id, old.dst_id)
                     )
                     logging.error(e)
 
@@ -172,11 +152,7 @@ def translate_edge_range(_args):
 
 def translate_edges(args):
     src = PsqlGraphDriver(
-        args.source_host,
-        args.source_user,
-        args.source_password,
-        args.source,
-        **driver_kwargs,
+        args.source_host, args.source_user, args.source_password, args.source, **driver_kwargs,
     )
     with src.session_scope():
         count = src.nodes(OldEdge).count()
@@ -192,12 +168,8 @@ if __name__ == "__main__":
     parser.add_argument("--nprocs", default=16, type=int, help="number of processes")
 
     # ======== Destination options ========
-    parser.add_argument(
-        "--dest", required=True, type=str, help="the database to import to"
-    )
-    parser.add_argument(
-        "--dest-user", default="test", type=str, help="the user to import as"
-    )
+    parser.add_argument("--dest", required=True, type=str, help="the database to import to")
+    parser.add_argument("--dest-user", default="test", type=str, help="the user to import as")
     parser.add_argument(
         "--dest-password", default="test", type=str, help="the password for import user"
     )
@@ -206,17 +178,10 @@ if __name__ == "__main__":
     )
 
     # ======== Source options ========
+    parser.add_argument("--source", required=True, type=str, help="the database to import from")
+    parser.add_argument("--source-user", default="test", type=str, help="the user to import as")
     parser.add_argument(
-        "--source", required=True, type=str, help="the database to import from"
-    )
-    parser.add_argument(
-        "--source-user", default="test", type=str, help="the user to import as"
-    )
-    parser.add_argument(
-        "--source-password",
-        default="test",
-        type=str,
-        help="the password for import user",
+        "--source-password", default="test", type=str, help="the password for import user",
     )
     parser.add_argument(
         "--source-host", default="localhost", type=str, help="the postgres server host"

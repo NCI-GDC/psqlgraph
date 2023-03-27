@@ -121,9 +121,7 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
             Index(f"{cls.__tablename__}_node_id_idx", "node_id"),
         )
 
-    def traverse(
-        self, mode="bfs", max_depth=None, edge_pointer="in", edge_predicate=None
-    ):
+    def traverse(self, mode="bfs", max_depth=None, edge_pointer="in", edge_predicate=None):
         """
         Performs a traversal starting at the current node
         Args:
@@ -143,9 +141,7 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
         return self.traverse(edge_predicate=edge_predicate, max_depth=max_depth)
 
     def dfs_children(self, edge_predicate=None, max_depth=None):
-        return self.traverse(
-            mode="dfs", edge_predicate=edge_predicate, max_depth=max_depth
-        )
+        return self.traverse(mode="dfs", edge_predicate=edge_predicate, max_depth=max_depth)
 
     def __init__(
         self,
@@ -207,9 +203,7 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
             Type = abstract_node_cls.get_subclass(node_json["label"])
 
             if not Type:
-                raise KeyError(
-                    "Node has no subclass named {}".format(node_json["label"])
-                )
+                raise KeyError("Node has no subclass named {}".format(node_json["label"]))
         else:
             Type = cls
 
@@ -239,9 +233,7 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
     def _history(self):
         session = self.get_session()
         if not session:
-            raise RuntimeError(
-                f"{self} not bound to a session. Try get_history(session)."
-            )
+            raise RuntimeError(f"{self} not bound to a session. Try get_history(session).")
         return self.get_history(session)
 
     def get_history(self, session):
@@ -254,9 +246,7 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
         )
 
     def _snapshot_existing(self, session, old_props, old_sysan):
-        temp = TmpNode(
-            self.node_id, old_props, self.acl, old_sysan, self.label, self.created
-        )
+        temp = TmpNode(self.node_id, old_props, self.acl, old_sysan, self.label, self.created)
         voided = VoidedNode(temp)
         session.add(voided)
 
@@ -279,9 +269,7 @@ class TmpNode:
         self.created = created
 
 
-def PolyNode(
-    node_id=None, label=None, acl=None, system_annotations=None, properties=None
-):
+def PolyNode(node_id=None, label=None, acl=None, system_annotations=None, properties=None):
     assert label, "You cannot create a PolyNode without a label."
     Type = Node.get_subclass(label)
     return Type(

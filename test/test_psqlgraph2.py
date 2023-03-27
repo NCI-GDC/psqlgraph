@@ -292,11 +292,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             with self.g.session_scope() as outer:
                 a = outer.query(models.Test).filter(models.Test.node_id == nid).one()
                 with self.g.session_scope(can_inherit=False) as inner:
-                    b = (
-                        inner.query(models.Test)
-                        .filter(models.Test.node_id == nid)
-                        .one()
-                    )
+                    b = inner.query(models.Test).filter(models.Test.node_id == nid).one()
                     b.sysan["inner"] = True
                     inner.merge(b)
                     inner.commit()

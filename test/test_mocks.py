@@ -78,8 +78,7 @@ def test_node_factory_sets_required_for_test_node(node_factory):
     test_node = node_factory.create("test")
     assert re.match(STRING_MATCH, test_node.key1)
     assert all(
-        getattr(test_node, key) is None
-        for key in ["key2", "key3", "new_key", "timestamp"]
+        getattr(test_node, key) is None for key in ["key2", "key3", "new_key", "timestamp"]
     )
 
 
@@ -118,9 +117,7 @@ def test_graph_factory_with_nodes_and_edges(gdcmodels, gdcdictionary):
         {"src": foo_uuids[1], "dst": foobar_uuids[0]},  # f1 -> fb0
     ]
 
-    created_nodes = gf.create_from_nodes_and_edges(
-        nodes=nodes, edges=edges, unique_key="node_id"
-    )
+    created_nodes = gf.create_from_nodes_and_edges(nodes=nodes, edges=edges, unique_key="node_id")
 
     expected_adjacency = defaultdict(set)
     for edge_info in edges:
@@ -209,14 +206,7 @@ def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
 
     nodes = [
         dict(label="foo", node_id="id_1", studies=["N/A", "STUDY0"]),
-        dict(
-            label="foo",
-            node_id="id_2",
-            baz="allowed_2",
-            bar="hello",
-            fobble=30,
-            ages=[1, 2],
-        ),
+        dict(label="foo", node_id="id_2", baz="allowed_2", bar="hello", fobble=30, ages=[1, 2],),
         dict(label="foo", node_id="id_3", baz="disallowed", studies=["N/A", "Unknown"]),
         dict(label="foo", node_id="id_4", bar=1, fobble="hello"),
     ]
@@ -301,9 +291,7 @@ def test_graph_factory_with_ambiguous_edges(
         {"src": src_id, "dst": dst_id, "label": edge_label},
     ]
 
-    created_nodes = gf.create_from_nodes_and_edges(
-        nodes=nodes, edges=edges, unique_key="node_id"
-    )
+    created_nodes = gf.create_from_nodes_and_edges(nodes=nodes, edges=edges, unique_key="node_id")
 
     assert len(created_nodes) == 2
 

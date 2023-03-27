@@ -21,9 +21,7 @@ class CommonBase:
 
     # ======== Columns ========
     created = schema.Column(
-        sqltypes.DateTime(timezone=True),
-        nullable=False,
-        server_default=expression.text("now()"),
+        sqltypes.DateTime(timezone=True), nullable=False, server_default=expression.text("now()"),
     )
 
     acl = schema.Column(postgresql.ARRAY(sqltypes.Text), default=list(),)

@@ -12,10 +12,7 @@ class FakeDictionary:
                     "key3": {"type": "string"},
                     "new_key": {"type": "string"},
                     "timestamp": {
-                        "oneOf": [
-                            {"type": "string", "format": "date-time"},
-                            {"type": "integer"},
-                        ]
+                        "oneOf": [{"type": "string", "format": "date-time"}, {"type": "integer"},]
                     },
                 },
                 "links": [{"name": "tests"}, {"name": "foos"},],
@@ -25,10 +22,7 @@ class FakeDictionary:
                     "bar": {"type": "string"},
                     "baz": {"enum": ["allowed_1", "allowed_2"]},
                     "fobble": {"type": "integer", "minimum": 20, "maximum": 30,},
-                    "studies": {
-                        "type": "array",
-                        "items": {"enum": ["N/A", "Unknown"],},
-                    },
+                    "studies": {"type": "array", "items": {"enum": ["N/A", "Unknown"],},},
                     "ages": {"type": "array", "items": {"type": "integer"}},
                 },
                 "links": [{"name": "foobars"}],
@@ -213,10 +207,7 @@ class TestDefaultValue(Node):
 
 
 Test._pg_edges.update(
-    {
-        "tests": {"backref": "_tests", "type": Test,},
-        "foos": {"backref": "tests", "type": Foo,},
-    }
+    {"tests": {"backref": "_tests", "type": Test,}, "foos": {"backref": "tests", "type": Foo,},}
 )
 
 

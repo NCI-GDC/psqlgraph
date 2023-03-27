@@ -57,9 +57,8 @@ def setup_database(user, password, database, root_user="postgres", host=""):
         )
         conn.execute(user_stmt)
 
-        perm_stmt = (
-            "GRANT ALL PRIVILEGES ON DATABASE {database} to {password}"
-            "".format(database=database, password=password)
+        perm_stmt = "GRANT ALL PRIVILEGES ON DATABASE {database} to {password}" "".format(
+            database=database, password=password
         )
         conn.execute(perm_stmt)
         conn.execute("commit")
@@ -91,15 +90,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--host", type=str, action="store", default="localhost", help="psql-server host"
     )
+    parser.add_argument("--user", type=str, action="store", default="test", help="psql test user")
     parser.add_argument(
-        "--user", type=str, action="store", default="test", help="psql test user"
-    )
-    parser.add_argument(
-        "--password",
-        type=str,
-        action="store",
-        default="test",
-        help="psql test password",
+        "--password", type=str, action="store", default="test", help="psql test password",
     )
     parser.add_argument(
         "--database",

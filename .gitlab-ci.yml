@@ -1,0 +1,35 @@
+---
+include:
+  - project: nci-gdc/gitlab-templates
+    ref: master
+    file:
+      - templates/global/full.yaml
+      - templates/python/full.yaml
+stages:
+  - pre-commit
+  - tests
+  - deploy
+
+variables:
+  TWINE_USERNAME: ${TWINE_USER}
+  TWINE_PASSWORD: ${TWINE_PASSWORD}
+  TWINE_REPOSITORY_URL: https://nexus.osdc.io/repository/pypi-snapshots/
+
+pre-commit:
+  stage: pre-commit
+  image: ${BASE_CONTAINER_REGISTRY}/python3.7-builder
+  script:
+    - tox -e lint
+
+tests:py37:
+  stage: tests
+  needs:
+    - pre-commit
+  image: ${BASE_CONTAINER_REGISTRY}/python3.7-builder
+  tags:
+    - dind
+  services:
+    - name: docker.osdc.io/ncigdc/ci-postgres-13:2.2.0
+      alias: postgres
+  script:
+    - tox -e py37

@@ -4,11 +4,6 @@ include:
     ref: master
     file:
       - templates/global/full.yaml
-      - templates/python/full.yaml
-stages:
-  - pre-commit
-  - tests
-  - deploy
 
 variables:
   TWINE_USERNAME: ${TWINE_USER}
@@ -16,13 +11,13 @@ variables:
   TWINE_REPOSITORY_URL: https://nexus.osdc.io/repository/pypi-snapshots/
 
 pre-commit:
-  stage: pre-commit
+  stage: .pre
   image: ${BASE_CONTAINER_REGISTRY}/python3.7-builder
   script:
     - tox -e lint
 
 tests:py37:
-  stage: tests
+  stage: test
   needs:
     - pre-commit
   image: ${BASE_CONTAINER_REGISTRY}/python3.7-builder

@@ -12,7 +12,7 @@ variables:
 
 pre-commit:
   stage: .pre
-  image: ${BASE_CONTAINER_REGISTRY}/python3.7-builder
+  image: ${BASE_CONTAINER_REGISTRY}/python3.8-builder
   before_script:
     - pip install 'tox < 4'
   script:

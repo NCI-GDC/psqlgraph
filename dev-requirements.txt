@@ -30,7 +30,7 @@ pytest==7.0.1
     # via
     #   psqlgraph (pyproject.toml)
     #   pytest-cov
-pytest-cov==2.11.1
+pytest-cov==4.0.0
     # via psqlgraph (pyproject.toml)
 rstr==3.0.0
     # via psqlgraph (pyproject.toml)

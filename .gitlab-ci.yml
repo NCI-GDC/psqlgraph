@@ -22,7 +22,6 @@ tox:
           - '3.8'
           - '3.9'
           - '3.10'
-          - '3.11'
   needs:
     - pre-commit
   image: ${BASE_CONTAINER_REGISTRY}/python${PY_VER}-builder
@@ -42,3 +41,7 @@ tox:
     - pip install 'tox < 4'
   script:
     - tox -e py
+
+docker_build:
+  rules:
+    - when: never

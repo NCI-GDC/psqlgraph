@@ -18,9 +18,9 @@ tox:
   parallel:
     matrix:
       - PY_VER:
-          - 3.6
-          - 3.7
-          - 3.8
+          - '3.6'
+          - '3.7'
+          - '3.8'
   needs:
     - pre-commit
   image: ${BASE_CONTAINER_REGISTRY}/python${PY_VER}-builder

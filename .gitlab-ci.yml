@@ -13,6 +13,8 @@ variables:
 pre-commit:
   stage: .pre
   image: ${BASE_CONTAINER_REGISTRY}/python3.7-builder
+  before_script:
+    - pip install 'tox < 4'
   script:
     - tox -e lint
 
@@ -26,5 +28,12 @@ tests:py37:
   services:
     - name: docker.osdc.io/ncigdc/ci-postgres-13:2.2.0
       alias: postgres
+  variables:
+    POSTGRES_DB: ${DB_NAME}
+    POSTGRES_USER: ${DB_USER}
+    POSTGRES_PASSWORD: ${DB_PASSWORD}
+    POSTGRES_HOST_AUTH_METHOD: trust
+  before_script:
+    - pip install 'tox < 4'
   script:
     - tox -e py37

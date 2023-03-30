@@ -4,6 +4,7 @@ include:
     ref: master
     file:
       - templates/global/full.yaml
+      - templates/python/full.yaml
 
 variables:
   TWINE_USERNAME: ${TWINE_USER}
@@ -29,6 +30,7 @@ tests:py37:
     - name: docker.osdc.io/ncigdc/ci-postgres-13:2.2.0
       alias: postgres
   variables:
+    PG_HOST: postgres
     POSTGRES_DB: ${DB_NAME}
     POSTGRES_USER: ${DB_USER}
     POSTGRES_PASSWORD: ${DB_PASSWORD}

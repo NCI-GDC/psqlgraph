@@ -31,10 +31,10 @@ tox:
       alias: postgres
   variables:
     PG_HOST: postgres
-    PG_USER: ${PG_USER}
-    POSTGRES_DB: ${DB_NAME}
-    POSTGRES_USER: ${PG_USER}
-    POSTGRES_PASSWORD: ${PG_PASSWORD}
+    PG_USER: $PG_USER
+    POSTGRES_DB: $DB_NAME
+    POSTGRES_USER: $PG_USER
+    POSTGRES_PASSWORD: $PG_PASSWORD
     POSTGRES_HOST_AUTH_METHOD: trust
   before_script:
     - pip install 'tox < 4'

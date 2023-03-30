@@ -27,7 +27,7 @@ tox:
   tags:
     - dind
   services:
-    - name: docker.osdc.io/postgres-13
+    - name: docker.osdc.io/postgres:13
       alias: postgres
   variables:
     PG_HOST: postgres

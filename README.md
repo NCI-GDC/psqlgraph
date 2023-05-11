@@ -29,7 +29,7 @@ For usage documentation please see /doc/build/html.
 
 Before continuing you must have the following programs installed:
 
-- [Python 3.5+](http://python.org/)
+- [Python 3.6+](http://python.org/)
 - [Postgresql 9.4+](http://www.postgresql.org/download/)
 
 The psqlgraph library requires the following pip dependencies
@@ -40,6 +40,15 @@ The psqlgraph library requires the following pip dependencies
 ### Project Dependencies
 
 Project dependencies are managed using [PIP](https://pip.readthedocs.org/en/latest/)
+
+### `pip install`
+
+```shell
+# Mac M2 - assuming you `brew install postgresql@13`
+$ export PATH=$PATH:/opt/homebrew/opt/postgresql@13/bin/
+
+$ pip install --no-deps -r dev-requirements.txt
+```
 
 ### Building Documentation
 

@@ -21,7 +21,7 @@ def traverse(root, mode="bfs", max_depth=None, edge_pointer="in", edge_predicate
             root=root,
             edge_predicate=edge_predicate,
             edge_pointer=edge_pointer,
-            max_depth=max_depth
+            max_depth=max_depth,
         )
 
     if mode == "dfs":
@@ -29,10 +29,10 @@ def traverse(root, mode="bfs", max_depth=None, edge_pointer="in", edge_predicate
             root=root,
             edge_predicate=edge_predicate,
             edge_pointer=edge_pointer,
-            max_depth=max_depth
+            max_depth=max_depth,
         )
 
-    raise NotImplementedError("Traversal mode {} is not implemented".format(mode))
+    raise NotImplementedError(f"Traversal mode {mode} is not implemented")
 
 
 def _bfs(root, edge_predicate=None, max_depth=None, edge_pointer="in"):
@@ -54,11 +54,12 @@ def _bfs(root, edge_predicate=None, max_depth=None, edge_pointer="in"):
     """
 
     if not callable(edge_predicate):
+
         def edge_predicate(e):
             return True
 
     if max_depth is None:
-        max_depth = float('inf')
+        max_depth = float("inf")
 
     marked = set()
     queue = deque([(root, 0)])
@@ -105,9 +106,9 @@ def _dfs(root, edge_predicate=None, max_depth=None, edge_pointer="in"):
 
     :return: generator
     """
-    StackItem = namedtuple('StackItem', ['node', 'next_child', 'level'])
+    StackItem = namedtuple("StackItem", ["node", "next_child", "level"])
     edge_predicate = edge_predicate if callable(edge_predicate) else lambda _: True
-    max_depth = float('inf') if max_depth is None else max_depth
+    max_depth = float("inf") if max_depth is None else max_depth
 
     visited = {root.node_id: 0}
     yield root
@@ -129,7 +130,7 @@ def _dfs(root, edge_predicate=None, max_depth=None, edge_pointer="in"):
             n = edge.dst if edge_pointer == "out" else edge.src
             if n.node_id not in visited:
                 yield n
-            elif max_depth == float('inf') or level + 1 >= visited[n.node_id]:
+            elif max_depth == float("inf") or level + 1 >= visited[n.node_id]:
                 continue
             # update levels for max_depth if shorter path found
             # but do not yield node again

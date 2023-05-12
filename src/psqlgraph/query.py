@@ -1,6 +1,5 @@
 from copy import copy
 
-import six
 from sqlalchemy import not_, or_
 from sqlalchemy.dialects.postgresql import array
 from sqlalchemy.orm import Query
@@ -16,13 +15,13 @@ class GraphQuery(Query):
     """
 
     def __init__(self, entites, session=None, package_namespace=None):
-        super(GraphQuery, self).__init__(entites, session)
+        super().__init__(entites, session)
         self.package_namespace = package_namespace
 
     def _iterable(self, val):
-        if hasattr(val, '__iter__') and not isinstance(val, six.string_types):
+        if hasattr(val, "__iter__") and not isinstance(val, str):
             return val
-        return val,
+        return (val,)
 
     def entity(self):
         """It is useful for us to be able to get the last entity in a chained
@@ -51,11 +50,11 @@ class GraphQuery(Query):
             g.nodes().with_edge_to_node(Edge1, node1).filter(...
 
         """
-        assert not isinstance(edge_type, str),\
-            'Argument edge_type must be a subclass of Edge not a string'
+        assert not isinstance(
+            edge_type, str
+        ), "Argument edge_type must be a subclass of Edge not a string"
         session = self.session
-        sq = session.query(edge_type).filter(
-            edge_type.dst_id == target_node.node_id).subquery()
+        sq = session.query(edge_type).filter(edge_type.dst_id == target_node.node_id).subquery()
         return self.filter(self.entity().node_id == sq.c.src_id)
 
     def with_edge_from_node(self, edge_type, source_node):
@@ -73,11 +72,11 @@ class GraphQuery(Query):
             g.nodes().with_edge_from_node(Edge1, node1).filter(...
 
         """
-        assert not isinstance(edge_type, str),\
-            'Argument edge_type must be a subclass of Edge not a string'
+        assert not isinstance(
+            edge_type, str
+        ), "Argument edge_type must be a subclass of Edge not a string"
         session = self.session
-        sq = session.query(edge_type).filter(
-            edge_type.src_id == source_node.node_id).subquery()
+        sq = session.query(edge_type).filter(edge_type.src_id == source_node.node_id).subquery()
         return self.filter(self.entity().node_id == sq.c.dst_id)
 
     def src(self, ids):
@@ -92,10 +91,10 @@ class GraphQuery(Query):
             g.nodes().src(node1.node_id).filter(...
 
         """
-        if isinstance(ids, six.string_types):
+        if isinstance(ids, str):
             ids = [ids]
 
-        assert hasattr(self.entity(), 'src_id')
+        assert hasattr(self.entity(), "src_id")
         return self.filter(self.entity().src_id.in_(ids))
 
     def dst(self, ids):
@@ -110,10 +109,10 @@ class GraphQuery(Query):
             g.nodes().dst('id1').filter(...
 
         """
-        if isinstance(ids, six.string_types):
+        if isinstance(ids, str):
             ids = [ids]
 
-        assert hasattr(self.entity(), 'dst_id')
+        assert hasattr(self.entity(), "dst_id")
         return self.filter(self.entity().dst_id.in_(ids))
 
     # ====== Nodes ========
@@ -130,7 +129,7 @@ class GraphQuery(Query):
             g.nodes().ids(['id1', 'id2']).filter(...
 
         """
-        if isinstance(ids, six.string_types):
+        if isinstance(ids, str):
             ids = [ids]
 
         _id = self.entity().node_id
@@ -152,7 +151,7 @@ class GraphQuery(Query):
 
         _id = self.entity().node_id
 
-        if isinstance(ids, six.string_types):
+        if isinstance(ids, str):
             ids = [ids]
 
         return self.filter(not_(_id.in_(ids)))
@@ -209,15 +208,16 @@ class GraphQuery(Query):
             query.path().reset_joinpoint().filter()
 
         """
-        entities = [p.strip() for path in paths for p in path.split('.')]
-        assert not self.entity().is_abstract_base(),\
-            'Please narrow your search by specifying a node subclass'
+        entities = [p.strip() for path in paths for p in path.split(".")]
+        assert (
+            not self.entity().is_abstract_base()
+        ), "Please narrow your search by specifying a node subclass"
         for e in entities:
             self = self.join(*getattr(self.entity(), e).attr)
         return self
 
     def _get_link_details(self, entity, link_name):
-        """"Lookup the (edge_class, left_edge_id, right_edge_id, node_class)
+        """ "Lookup the (edge_class, left_edge_id, right_edge_id, node_class)
         for the given entity and link_name.
 
         param entity: The current entity Node subclass
@@ -236,19 +236,25 @@ class GraphQuery(Query):
         edge_cls = ext.get_abstract_edge(self.package_namespace)
         for edge in edge_cls._get_edges_with_src(entity.__name__):
             if edge.__src_dst_assoc__ == link_name:
-                return (edge, edge.src_id, edge.dst_id,
-                        node_cls.get_subclass_named(edge.__dst_class__))
+                return (
+                    edge,
+                    edge.src_id,
+                    edge.dst_id,
+                    node_cls.get_subclass_named(edge.__dst_class__),
+                )
 
         # Look for the link_name in INBOUND edges from the current
         # entity
         for edge in edge_cls._get_edges_with_dst(entity.__name__):
             if edge.__dst_src_assoc__ == link_name:
-                return (edge, edge.dst_id, edge.src_id,
-                        node_cls.get_subclass_named(edge.__src_class__))
+                return (
+                    edge,
+                    edge.dst_id,
+                    edge.src_id,
+                    node_cls.get_subclass_named(edge.__src_class__),
+                )
 
-        raise AttributeError(
-            "type object '{}' has no attribute '{}'"
-            .format(entity.__name__, link_name))
+        raise AttributeError(f"type object '{entity.__name__}' has no attribute '{link_name}'")
 
     def subq_path(self, path, filters=None, __recurse_level=0):
         """This function will performs very similarly to `path()`.  It emits a
@@ -280,15 +286,16 @@ class GraphQuery(Query):
             # we only want to mutate for recursive calls!
             filters = copy(filters)
 
-        assert not self.entity().is_abstract_base(),\
-            'Please narrow your search by specifying a node subclass'
+        assert (
+            not self.entity().is_abstract_base()
+        ), "Please narrow your search by specifying a node subclass"
 
         if not path:
             return self
 
         # Munge arguments to lists
-        if isinstance(path, six.string_types):
-            path = path.strip().split('.')
+        if isinstance(path, str):
+            path = path.strip().split(".")
         if not isinstance(filters, list):
             filters = [filters]
 
@@ -301,7 +308,7 @@ class GraphQuery(Query):
 
         # Construct the next recursive level's base query and recurse
         next_node_q = self.session.query(target_class, package_namespace=self.package_namespace)
-        next_node_q = next_node_q.subq_path(path, filters, __recurse_level+1)
+        next_node_q = next_node_q.subq_path(path, filters, __recurse_level + 1)
 
         # Pop a filter from the filter stack and apply if non-null
         if filters:
@@ -310,8 +317,7 @@ class GraphQuery(Query):
                 next_node_q = f(next_node_q)
         next_node_sq = next_node_q.subquery()
 
-        return self.filter(entity.node_id == this_id)\
-                   .filter(next_id == next_node_sq.c.node_id)
+        return self.filter(entity.node_id == this_id).filter(next_id == next_node_sq.c.node_id)
 
     def subq_without_path(self, path, filters=None, __recurse_level=0):
         """This function is similar to ``subq_path`` but will filter for
@@ -434,15 +440,18 @@ class GraphQuery(Query):
 
         """
 
-        keys = [keys] if isinstance(keys, six.string_types) else keys
+        keys = [keys] if isinstance(keys, str) else keys
         keys += args if args else []
 
-        assert keys, 'No keys provided to `null_prop()` filter'
+        assert keys, "No keys provided to `null_prop()` filter"
 
         for key in keys:
-            self = self.filter(or_(self.entity()._props.contains({key: None}),
-                not_(self.entity()._props.has_key(key))
-            ))
+            self = self.filter(
+                or_(
+                    self.entity()._props.contains({key: None}),
+                    not_(self.entity()._props.has_key(key)),
+                )
+            )
 
         return self
 
@@ -469,9 +478,8 @@ class GraphQuery(Query):
             # see https://www.postgresql.org/docs/9.4/functions-json.html
             # has_any is `?|` under the hood and that requires the right operand to be a text array
             return self.filter(col[key].has_any(array(values)))
-        assert isinstance(key, six.string_types) and isinstance(values, list)
-        return self.filter(col[key].astext.in_([
-            str(v) for v in values]))
+        assert isinstance(key, str) and isinstance(values, list)
+        return self.filter(col[key].astext.in_([str(v) for v in values]))
 
     def prop(self, key, value):
         """Filter query results by key value pair.
@@ -534,8 +542,7 @@ class GraphQuery(Query):
         sysans = sysans or {}
         assert isinstance(sysans, dict)
         kwargs.update(sysans)
-        return self.filter(
-            not_(self.entity()._sysan.contains(kwargs)))
+        return self.filter(not_(self.entity()._sysan.contains(kwargs)))
 
     def has_sysan(self, keys):
         """Filter only entities that have a key `key` in system_annotations
@@ -545,7 +552,7 @@ class GraphQuery(Query):
         :type keys: str|list[str]
         :returns GraphQuery: Active GraphQuery instance
         """
-        if isinstance(keys, six.string_types):
+        if isinstance(keys, str):
             keys = [keys]
         for key in keys:
             self = self.filter(self.entity()._sysan.has_key(key))
@@ -554,7 +561,7 @@ class GraphQuery(Query):
 
 def is_list_prop(entity, prop):
     """Determine if a property on an entity is a list type."""
-    if entity.label == 'node':
+    if entity.label == "node":
         # By default a query that starts with g.nodes() will use
         # gdcdatamodel.models.Node as the node type. We want prop_in to
         # continue to work for list types so check Node's subclasses.

@@ -1,18 +1,18 @@
 import uuid
+from test import models
 
 import pytest
 
 import psqlgraph
-from test import models
 
 
 @pytest.fixture(scope="session")
 def pg_conf():
     return {
-        'host': "localhost",
-        'user': "test",
-        'password': "test",
-        'database': "automated_test"
+        "host": "localhost",
+        "user": "test",
+        "password": "test",
+        "database": "automated_test",
     }
 
 
@@ -40,7 +40,7 @@ SAMPLES = [
         fobble=25,
         studies=["P1", "P2"],
         ages=[23, 45],
-        node_id=str(uuid.uuid4())
+        node_id=str(uuid.uuid4()),
     ),
     dict(
         bar="bar2",
@@ -48,7 +48,7 @@ SAMPLES = [
         fobble=25,
         studies=["C1", "P2"],
         ages=[29, 45],
-        node_id=str(uuid.uuid4())
+        node_id=str(uuid.uuid4()),
     ),
     dict(
         bar="bar3",
@@ -56,8 +56,8 @@ SAMPLES = [
         fobble=25,
         studies=["P2"],
         ages=[29],
-        node_id=str(uuid.uuid4())
-    )
+        node_id=str(uuid.uuid4()),
+    ),
 ]
 
 
@@ -73,4 +73,6 @@ def samples_with_array(pg_driver):
 
     with pg_driver.session_scope():
         for node in nodes:
-            pg_driver.node_delete(node=node)
+            n = pg_driver.nodes().get(node.node_id)
+            if n:
+                pg_driver.node_delete(node=n)

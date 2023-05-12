@@ -1,9 +1,9 @@
 import uuid
+from test import models
 
 import pytest
 
 from psqlgraph import Edge, Node
-from test import models
 
 
 def no_allowed_2_please(edge):
@@ -22,10 +22,10 @@ def clean_tables(pg_driver):
     conn.execute("commit")
     for table in Node().get_subclass_table_names():
         if table != Node.__tablename__:
-            conn.execute("delete from {}".format(table))
+            conn.execute(f"delete from {table}")
     for table in Edge.get_subclass_table_names():
         if table != Edge.__tablename__:
-            conn.execute("delete from {}".format(table))
+            conn.execute(f"delete from {table}")
     conn.execute("delete from _voided_nodes")
     conn.execute("delete from _voided_edges")
     conn.close()
@@ -131,19 +131,7 @@ def fake_nodes(fake_graph):
             "depths_results": {
                 0: [root_node],
                 1: [root_node, foo1, foo2, foo3, foo4, test1],
-                2: [
-                    root_node,
-                    foo1,
-                    foo2,
-                    foo3,
-                    foo4,
-                    test1,
-                    test2,
-                    test3,
-                    test4,
-                    test6,
-                    test7,
-                ],
+                2: [root_node, foo1, foo2, foo3, foo4, test1, test2, test3, test4, test6, test7,],
                 3: [
                     root_node,
                     foo1,
@@ -220,13 +208,10 @@ def test_traversal__max_depth(depth, fake_graph, fake_nodes, mode):
 @pytest.mark.parametrize("mode", ("bfs", "dfs"))
 @pytest.mark.parametrize(
     "key,expected",
-    (
-        ("test5", ["test5", "test2", "foo1", "root"]),
-        ("test3", ["test3", "foo2", "root"]),
-    ),
+    (("test5", ["test5", "test2", "foo1", "root"]), ("test3", ["test3", "foo2", "root"]),),
 )
 def test_traversal__path_bottom_up(fake_nodes, fake_graph, mode, key, expected):
-    """ Tests walking towards the root node from a leaf """
+    """Tests walking towards the root node from a leaf"""
     with fake_graph.session_scope():
         leaf = fake_graph.nodes().props(key1=key).first()
         actual = [node.node_id for node in leaf.traverse(mode=mode, edge_pointer="out")]

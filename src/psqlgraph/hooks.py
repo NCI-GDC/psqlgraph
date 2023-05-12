@@ -9,8 +9,7 @@ from psqlgraph.node import AbstractNode
 
 
 def history(target, column, attr):
-    """
-    """
+    """ """
     old = getattr(inspect(target).attrs.get(column).history, attr)
     return old[0] if old else {}
 
@@ -27,12 +26,12 @@ def get_old_version(target, *attrs):
 
     sysan, props = dict(), dict()
     for attr in attrs:
-        old_props = history(target, '_props', attr)
+        old_props = history(target, "_props", attr)
         if old_props is None:
             old_props = {}
         props.update(old_props)
 
-        old_sysan = history(target, '_sysan', attr)
+        old_sysan = history(target, "_sysan", attr)
         if old_sysan is None:
             old_sysan = {}
         sysan.update(old_sysan)
@@ -40,9 +39,7 @@ def get_old_version(target, *attrs):
 
 
 def is_psqlgraph_entity(target):
-    """Only attempt to track history on Nodes and Edges
-
-    """
+    """Only attempt to track history on Nodes and Edges"""
     return isinstance(target, ExtMixin)
 
 
@@ -66,16 +63,15 @@ def receive_before_flush(session, flush_context, instances):
     """
 
     if session._set_flush_timestamps:
-        session._flush_timestamp = list(
-            session.execute("SELECT CURRENT_TIMESTAMP"))[0][0]
+        session._flush_timestamp = list(session.execute("SELECT CURRENT_TIMESTAMP"))[0][0]
 
     for target in session.dirty:
         if not is_psqlgraph_entity(target):
             continue
 
         target._validate()
-        props, sysan = get_old_version(target, 'unchanged', 'deleted')
-        props_diff, sysan_diff = get_old_version(target, 'deleted', 'added')
+        props, sysan = get_old_version(target, "unchanged", "deleted")
+        props_diff, sysan_diff = get_old_version(target, "deleted", "added")
         if props_diff or sysan_diff:
             target._snapshot_existing(session, props, sysan)
         target._merge_onto_existing(props, sysan)
@@ -88,7 +84,7 @@ def receive_before_flush(session, flush_context, instances):
         if not is_psqlgraph_entity(target):
             continue
 
-        props, sysan = get_old_version(target, 'unchanged', 'deleted', 'added')
+        props, sysan = get_old_version(target, "unchanged", "deleted", "added")
         target._snapshot_existing(session, props, sysan)
 
         # Call custom session hook

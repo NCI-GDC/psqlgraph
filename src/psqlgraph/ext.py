@@ -2,19 +2,19 @@ from collections import defaultdict
 
 from sqlalchemy.ext import declarative
 
-from psqlgraph import Node, Edge
+from psqlgraph import Edge, Node
 from psqlgraph.base import CommonBase, LocalConcreteBase
 from psqlgraph.edge import AbstractEdge
 from psqlgraph.node import AbstractNode
 
 BASE_CLASSES = defaultdict(dict)
-BASE_CLASSES[None] = {'node': Node, 'edge': Edge}
+BASE_CLASSES[None] = {"node": Node, "edge": Edge}
 
 ORM_BASES = defaultdict(lambda: declarative.declarative_base(cls=CommonBase))
 
 
 def get_orm_base(package_namespace):
-    """ Helper function to get the appropriate sqlalchemy base class
+    """Helper function to get the appropriate sqlalchemy base class
     Args:
        package_namespace (str): module namespace
     """
@@ -30,17 +30,17 @@ def get_abstract_node(package_namespace=None):
 
 
 def get_class_prefix(pkg_namespace):
-    """ Return an abstract class name prefix for the provided package
+    """Return an abstract class name prefix for the provided package
     Args:
         pkg_namespace (str): valid package name e.g gpas, bio
     Returns:
         str: class name prefix eg. AbstractGpas
     """
-    return "{}".format(pkg_namespace.title())
+    return f"{pkg_namespace.title()}"
 
 
 def create_base_class(pkg_namespace, is_node=True):
-    """ Dynamically creates an abstract base class that extends either the Node or Edge class
+    """Dynamically creates an abstract base class that extends either the Node or Edge class
     Args:
         pkg_namespace (str): package namespace
         is_node (bool): if True creates a node abstract class else creates an edge
@@ -49,12 +49,12 @@ def create_base_class(pkg_namespace, is_node=True):
     """
 
     base_class = AbstractNode if is_node else AbstractEdge
-    name = "{}{}".format(get_class_prefix(pkg_namespace), base_class.__name__)
+    name = f"{get_class_prefix(pkg_namespace)}{base_class.__name__}"
     return type(name, (LocalConcreteBase, base_class, get_orm_base(pkg_namespace)), {})
 
 
 def register_base_class(package_namespace=None):
-    """ Registers or returns a registered base node and edge classes as tuple for the package namespace
+    """Registers or returns a registered base node and edge classes as tuple for the package namespace
         Example:
             if package_namespace = `bio`
             This function will dynamically create and cache the following classes

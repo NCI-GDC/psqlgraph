@@ -6,7 +6,7 @@ default:
   image: python:3.8
   before_script:
     - apt update
-    - apt install python3-pip
+    - apt install -y python3-pip
     - /usr/bin/python3 -m pip install pipx
     - pipx install poetry~=1.4.0
 

@@ -5,9 +5,7 @@ stages:
 default:
   image: python:3.8
   services:
-    - pipx
-  before_script:
-    - pipx install poetry~=1.4.0
+    - python-poetry
 
 build:
   stage: build
@@ -23,7 +21,7 @@ build:
     PY_PATTERN: 's/Python \([0-9]\+\).\([0-9]\+\).[0-9]\+/py\1\2/'
   services:
     - postgres:13
-    - pipx
+    - python-poetry
   script:
     - poetry install --only test
     - tox -e gitlab-$(python -V | sed $PY_PATTERN)

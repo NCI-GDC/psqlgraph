@@ -26,6 +26,11 @@ build:
   script:
     - poetry install --only test
     - tox -e gitlab-$(python -V | sed $PY_PATTERN)
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: .test-reports/coverage.xml
 
 test 3.6:
   extends: .test

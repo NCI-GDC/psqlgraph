@@ -1,15 +1,39 @@
+[tool.poetry]
+authors = ["Genomic Data Commons <support@nci-gdc.datacommons.io>"]
+description = "A library for interacting with a graph model via SQLAlchemy."
+license = "Apache-2.0"
+name = "psqlgraph"
+readme = "README.md"
+version = "0.0.0"
+
+[tool.poetry.dependencies]
+psycopg2 = "^2.9.6"
+python = "^3.6.2"
+rstr = [{ version = "^3.2.1", python = "^3.7" }, { version = "3.0.0", python = "<3.7" }]
+sqlalchemy = ">=1.3.0,<1.4.0"
+xlocal = "^0.5"
+
+[tool.poetry.group.test.dependencies]
+coverage = [{ version = "^6.2.0", python = "^3.6", extras = ["toml"] }, { version = "^6.4.0", python = "^3.7", extras = ["toml"] }]
+pytest = "^7.0.0"
+
+[tool.poetry.group.dev.dependencies]
+isort = { version = ">=5.11.0,<5.12.0", python = "^3.7" }
+mypy = { version = "^1.3.0", python = "^3.7" }
+black = {version = "^23.3.0", python = "^3.7"}
+
 [build-system]
-requires = ["setuptools>=45", "wheel", "tomli>=1.0", "packaging>=20.0", "pyparsing>2,<3", "setuptools_scm>=6.2"]
-build-backend = "setuptools.build_meta"
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
 
 [tool.black]
-line-length = 98
 include = '\.pyi?$'
+line-length = 98
 
 [tool.coverage.html]
-title = "psqlgraph coverage report"
 directory = "docs/htmlcov"
 show_contexts = true
+title = "psqlgraph coverage report"
 
 [tool.coverage.run]
 branch = true
@@ -17,14 +41,11 @@ context = "unit tests"
 source = ["psqlgraph"]
 
 [tool.isort]
-profile = "black"
 known_first_party = ["psqlgraph"]
-
-[tool.setuptools_scm]
-local_scheme = "no-local-version"
+profile = "black"
 
 [tool.towncrier]
+directory = "changelog"
+filename = "changelog.rst"
 package = "psqlgraph"
 package_dir = "src"
-filename = "changelog.rst"
-directory = "changelog"

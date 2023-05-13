@@ -1,0 +1,57 @@
+stages:
+  - build
+  - test
+
+default:
+  image: python:3.8
+  before_script:
+    - apt install python3-pip
+    - /usr/bin/python3 -m pip install pipx
+    - pipx install poetry~=1.4.0
+
+build:
+  stage: build
+  script:
+    - tox -e build
+  artifacts:
+    paths:
+      - dist/
+
+.test:
+  stage: test
+  variables:
+    PY_PATTERN: 's/Python \([0-9]\+\).\([0-9]\+\).[0-9]\+/py\1\2/'
+  services:
+    - postgres:13
+  script:
+    - poetry install --only test
+    - tox -e gitlab-$(python -V | sed $PY_PATTERN)
+
+test 3.6:
+  extends: .test
+  image: python:3.6
+
+test 3.7:
+  extends: .test
+  image: python:3.7
+
+test 3.8:
+  extends: .test
+  image: python:3.8
+
+test 3.9:
+  extends: .test
+  image: python:3.9
+
+test 3.10:
+  extends: .test
+  image: python:3.10
+
+test 3.11:
+  extends: .test
+  image: python:3.11
+
+test 3.12:
+  extends: .test
+  image: python:3.12-rc
+  allow_failure: true

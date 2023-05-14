@@ -9,6 +9,7 @@ default:
     - apt install -y python3-pip python3-venv
     - /usr/bin/python3 -m pip install pipx
     - pipx install poetry~=1.4.0
+    - pipx install tox
 
 build:
   stage: build

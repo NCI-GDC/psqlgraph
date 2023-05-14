@@ -27,6 +27,8 @@ build:
   services:
     - postgres:13
   script:
+    - psql -U postgres -c "create user test with superuser password 'test';"
+    - psql -U postgres -c "create database automated_test with owner test;"
     - poetry install --with test
     - poetry run setup-test
     - tox -e gitlab-$(python -V | sed "$PY_PATTERN")

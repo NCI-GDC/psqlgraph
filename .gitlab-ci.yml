@@ -40,11 +40,12 @@ build:
     POSTGRES_DB: automated_test
     POSTGRES_USER: test
     POSTGRES_PASSWORD: test
+    POSTGRES_HOST_AUTH_METHOD: trust
   services:
     - postgres:13
   script:
     - poetry install --with test
-    - poetry run setup-test
+    - poetry run setup-test --host postgres
     - tox -e gitlab-$(python -V | sed "$PY_PATTERN")
   artifacts:
     reports:

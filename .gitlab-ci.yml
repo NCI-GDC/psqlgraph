@@ -37,6 +37,7 @@ build:
   stage: test
   variables:
     PY_PATTERN: s/Python \([0-9]\+\).\([0-9]\+\).[0-9]\+/py\1\2/
+    POSTGRES_HOST: postgres
     POSTGRES_DB: automated_test
     POSTGRES_USER: test
     POSTGRES_PASSWORD: test
@@ -45,6 +46,7 @@ build:
     - postgres:13
   script:
     - poetry install --with test
+    - dig +short postgres
     - poetry run setup-test --host postgres
     - tox -e gitlab-$(python -V | sed "$PY_PATTERN")
   artifacts:

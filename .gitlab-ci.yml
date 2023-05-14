@@ -8,7 +8,7 @@ include:
 stages:
   - build
   - test
-  - publish
+  - deploy
 
 variables:
   TWINE_USERNAME: ${TWINE_USER}

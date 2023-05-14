@@ -5,6 +5,7 @@ stages:
 default:
   image: python:3.8
   before_script:
+    - export PATH=~/.local/bin:$PATH
     - apt update
     - apt install -y python3-pip python3-venv
     - /usr/bin/python3 -m pip install pipx
@@ -62,3 +63,9 @@ test 3.12:
   extends: .test
   image: python:3.12-rc
   allow_failure: true
+
+deploy:
+  only:
+    - tags
+  script:
+    - poetry publish

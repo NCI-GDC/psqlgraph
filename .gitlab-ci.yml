@@ -15,7 +15,7 @@ variables:
   TWINE_PASSWORD: ${TWINE_PASSWORD}
   TWINE_REPOSITORY_URL: https://nexus.osdc.io/repository/pypi-snapshots/
 
-default:
+.psqlgraph:
   image: python:3.8
   before_script:
     - export PATH=~/.local/bin:$PATH
@@ -26,6 +26,7 @@ default:
     - pipx install tox
 
 build:
+  extends: .psqlgraph
   stage: build
   script:
     - tox -e build
@@ -34,6 +35,7 @@ build:
       - dist/
 
 .test:
+  extends: .psqlgraph
   stage: test
   variables:
     PY_PATTERN: s/Python \([0-9]\+\).\([0-9]\+\).[0-9]\+/py\1\2/

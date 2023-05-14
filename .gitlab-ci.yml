@@ -48,7 +48,8 @@ build:
     - postgres:13
   script:
     - poetry install --with test
-    - PGPASSWORD=${POSTGRES_PASSWORD} psql -h ${POSTGRES_HOST} -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c "SELECT 'OK' AS status;"
+    - PGPASSWORD=${POSTGRES_PASSWORD} psql -h ${POSTGRES_HOST} -U ${POSTGRES_USER}
+      -d ${POSTGRES_DB} -c "SELECT 'OK' AS status;"
     - poetry run setup-test --host postgres
     - tox -e gitlab-$(python -V | sed "$PY_PATTERN")
   artifacts:

@@ -5,6 +5,11 @@ include:
     file:
       - templates/global/full.yaml
 
+stages:
+  - build
+  - test
+  - publish
+
 variables:
   TWINE_USERNAME: ${TWINE_USER}
   TWINE_PASSWORD: ${TWINE_PASSWORD}
@@ -76,8 +81,3 @@ test 3.12:
   image: python:3.12-rc
   allow_failure: true
 
-deploy:
-  only:
-    - tags
-  script:
-    - poetry publish

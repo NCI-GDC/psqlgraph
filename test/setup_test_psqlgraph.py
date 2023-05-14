@@ -13,7 +13,6 @@ from psqlgraph import PsqlGraphDriver, create_all
 
 
 def try_drop_test_data(user, database, root_user="postgres", host=""):
-
     print("Dropping old test data")
 
     engine = create_engine(f"postgresql://{root_user}@{host}/postgres")
@@ -84,15 +83,18 @@ def create_indexes(host, user, password, database):
     return
 
 
-if __name__ == "__main__":
-
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--host", type=str, action="store", default="localhost", help="psql-server host"
     )
     parser.add_argument("--user", type=str, action="store", default="test", help="psql test user")
     parser.add_argument(
-        "--password", type=str, action="store", default="test", help="psql test password",
+        "--password",
+        type=str,
+        action="store",
+        default="test",
+        help="psql test password",
     )
     parser.add_argument(
         "--database",
@@ -106,3 +108,7 @@ if __name__ == "__main__":
     setup_database(args.user, args.password, args.database)
     create_tables(args.host, args.user, args.password, args.database)
     create_indexes(args.host, args.user, args.password, args.database)
+
+
+if __name__ == "__main__":
+    main()

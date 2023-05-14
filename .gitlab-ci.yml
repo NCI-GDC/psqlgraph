@@ -27,7 +27,8 @@ build:
   services:
     - postgres:13
   script:
-    - poetry install --only test
+    - poetry install --with test
+    - poetry run setup-test
     - tox -e gitlab-$(python -V | sed "$PY_PATTERN")
   artifacts:
     reports:

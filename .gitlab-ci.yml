@@ -23,13 +23,12 @@ build:
 .test:
   stage: test
   variables:
-    PY_PATTERN: '"s/Python \([0-9]\+\).\([0-9]\+\).[0-9]\+/py\1\2/"'
+    PY_PATTERN: s/Python \([0-9]\+\).\([0-9]\+\).[0-9]\+/py\1\2/
   services:
     - postgres:13
   script:
     - poetry install --only test
-    - echo $PY_PATTERN
-    - tox -e gitlab-$(python -V | sed $PY_PATTERN)
+    - tox -e gitlab-$(python -V | sed "$PY_PATTERN")
   artifacts:
     reports:
       coverage_report:

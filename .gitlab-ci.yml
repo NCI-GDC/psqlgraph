@@ -1,13 +1,21 @@
-stages:
-  - build
-  - test
+---
+include:
+  - project: nci-gdc/gitlab-templates
+    ref: master
+    file:
+      - templates/global/full.yaml
+
+variables:
+  TWINE_USERNAME: ${TWINE_USER}
+  TWINE_PASSWORD: ${TWINE_PASSWORD}
+  TWINE_REPOSITORY_URL: https://nexus.osdc.io/repository/pypi-snapshots/
 
 default:
   image: python:3.8
   before_script:
     - export PATH=~/.local/bin:$PATH
-    - apt update
-    - apt install -y python3-pip python3-venv
+    - echo $PATH
+    - apt-get update & apt-get install -y python3-pip python3-venv
     - /usr/bin/python3 -m pip install pipx
     - pipx install poetry~=1.4.0
     - pipx install tox
@@ -27,7 +35,6 @@ build:
     POSTGRES_DB: automated_test
     POSTGRES_USER: test
     POSTGRES_PASSWORD: test
-    POSTGRES_HOST_AUTH_METHOD: trust
   services:
     - postgres:13
   script:

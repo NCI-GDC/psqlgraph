@@ -80,4 +80,3 @@ test 3.12:
   extends: .test
   image: python:3.12-rc
   allow_failure: true
-

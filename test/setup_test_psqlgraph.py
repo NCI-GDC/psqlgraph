@@ -90,11 +90,7 @@ def main() -> None:
     )
     parser.add_argument("--user", type=str, action="store", default="test", help="psql test user")
     parser.add_argument(
-        "--password",
-        type=str,
-        action="store",
-        default="test",
-        help="psql test password",
+        "--password", type=str, action="store", default="test", help="psql test password",
     )
     parser.add_argument(
         "--database",

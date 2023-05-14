@@ -20,7 +20,7 @@ variables:
   before_script:
     - export PATH=~/.local/bin:$PATH
     - echo $PATH
-    - apt-get update && apt-get install -y python3-pip python3-venv dnsutils
+    - apt-get update && apt-get install -y python3-pip python3-venv
     - /usr/bin/python3 -m pip install pipx
     - pipx install poetry~=1.4.0
     - pipx install tox
@@ -48,7 +48,7 @@ build:
     - postgres:13
   script:
     - poetry install --with test
-    - dig +short postgres
+    - PGPASSWORD=${POSTGRES_PASSWORD} psql -h ${POSTGRES_HOST} -U ${POSTGRES_USER} -d ${POSTGRES_DB} -c "SELECT 'OK' AS status;"
     - poetry run setup-test --host postgres
     - tox -e gitlab-$(python -V | sed "$PY_PATTERN")
   artifacts:

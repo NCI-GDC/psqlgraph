@@ -15,7 +15,7 @@ from psqlgraph import PsqlGraphDriver, create_all
 def try_drop_test_data(user, database, root_user="postgres", host=""):
     print("Dropping old test data")
 
-    engine = create_engine(f"postgresql://{root_user}@{host}/postgres")
+    engine = create_engine(f"postgresql://{root_user}@{host}:5432/postgres")
 
     conn = engine.connect()
     conn.execute("commit")
@@ -43,7 +43,7 @@ def setup_database(user, password, database, root_user="postgres", host=""):
 
     try_drop_test_data(user, database)
 
-    engine = create_engine(f"postgresql://{root_user}@{host}/postgres")
+    engine = create_engine(f"postgresql://{root_user}@{host}:5432/postgres")
     conn = engine.connect()
     conn.execute("commit")
 

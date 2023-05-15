@@ -14,6 +14,11 @@ variables:
   TWINE_USERNAME: ${TWINE_USER}
   TWINE_PASSWORD: ${TWINE_PASSWORD}
   TWINE_REPOSITORY_URL: https://nexus.osdc.io/repository/pypi-snapshots/
+  PY_PATTERN: s/Python \([0-9]\+\).\([0-9]\+\).[0-9]\+/py\1\2/
+  POSTGRES_HOST: postgres
+  POSTGRES_DB: automated_test
+  POSTGRES_USER: test
+  POSTGRES_PASSWORD: test
 
 .psqlgraph:
   image: python:3.8
@@ -37,18 +42,11 @@ build:
 .test:
   extends: .psqlgraph
   stage: test
-  variables:
-    PY_PATTERN: s/Python \([0-9]\+\).\([0-9]\+\).[0-9]\+/py\1\2/
-    POSTGRES_HOST: postgres
-    POSTGRES_DB: automated_test
-    POSTGRES_USER: test
-    POSTGRES_PASSWORD: test
-    POSTGRES_HOST_AUTH_METHOD: trust
   services:
     - postgres:13
   script:
     - poetry install --with test
-    - docker ps
+    - echo $POSTGRES_USER
     - poetry run setup-test --host postgres
     - tox -e gitlab-$(python -V | sed "$PY_PATTERN")
   artifacts:

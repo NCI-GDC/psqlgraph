@@ -219,12 +219,8 @@ class NodeFactory:
 
         :return: psqlgraph.Node object
         """
-        node_class = None
-        for model in self.models:
-            if model.name == label:
-                node_class = model
-                break
-        else:
+        node_class = self.models.Node.get_subclass(label)
+        if not node_class:
             raise ValueError(f"Node with label '{label}' does not exist")
 
         if not override:

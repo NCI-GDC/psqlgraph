@@ -116,10 +116,7 @@ class TestToFooBarEdge(Edge):
 class Test(Node):
 
     _pg_edges = {}
-    _dictionary = {
-        "links": fake_dictionary.schema["test"]["links"],
-        "properties": fake_dictionary.schema["test"]["properties"],
-    }
+    _dictionary = fake_dictionary.schema["test"]
 
     @pg_property
     def key1(self, value):
@@ -149,10 +146,7 @@ class Foo(Node):
     __label__ = "foo"
 
     _pg_edges = {}
-    _dictionary = {
-        "links": fake_dictionary.schema["foo"]["links"],
-        "properties": fake_dictionary.schema["foo"]["properties"],
-    }
+    _dictionary = fake_dictionary.schema["foo"]
 
     @pg_property
     def bar(self, value):
@@ -180,6 +174,7 @@ class Circle1(Node):
     __label__ = "circle_1"
 
     _pg_edges = {}
+    _dictionary = fake_dictionary.schema["circle_1"]
 
 
 class Circle2(Node):
@@ -187,6 +182,7 @@ class Circle2(Node):
     __label__ = "circle_2"
 
     _pg_edges = {}
+    _dictionary = fake_dictionary.schema["circle_2"]
 
 
 class FooBar(Node):
@@ -195,10 +191,7 @@ class FooBar(Node):
     __nonnull_properties__ = ["bar"]
 
     _pg_edges = {}
-    _dictionary = {
-        "links": fake_dictionary.schema["foo_bar"]["links"],
-        "properties": fake_dictionary.schema["foo_bar"]["properties"],
-    }
+    _dictionary = fake_dictionary.schema["foo_bar"]
 
     @pg_property
     def bar(self, value):
@@ -211,6 +204,7 @@ class TestDefaultValue(Node):
     _pg_edges = {}
 
     _defaults = {"property_with_default": "open"}
+    _dictionary = fake_dictionary.schema["test_default_value"]
 
     @pg_property(enum=("open", "submitted", "closed", "legacy"))
     def property_with_default(self, value):

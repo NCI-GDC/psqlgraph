@@ -43,6 +43,9 @@ class FakeDictionary:
         }
 
 
+fake_dictionary = FakeDictionary()
+
+
 class Edge1(Edge):
 
     __src_class__ = "Test"
@@ -113,6 +116,10 @@ class TestToFooBarEdge(Edge):
 class Test(Node):
 
     _pg_edges = {}
+    _dictionary = {
+        "links": fake_dictionary.schema["test"]["links"],
+        "properties": fake_dictionary.schema["test"]["properties"],
+    }
 
     @pg_property
     def key1(self, value):
@@ -142,6 +149,10 @@ class Foo(Node):
     __label__ = "foo"
 
     _pg_edges = {}
+    _dictionary = {
+        "links": fake_dictionary.schema["foo"]["links"],
+        "properties": fake_dictionary.schema["foo"]["properties"],
+    }
 
     @pg_property
     def bar(self, value):
@@ -184,6 +195,10 @@ class FooBar(Node):
     __nonnull_properties__ = ["bar"]
 
     _pg_edges = {}
+    _dictionary = {
+        "links": fake_dictionary.schema["foo_bar"]["links"],
+        "properties": fake_dictionary.schema["foo_bar"]["properties"],
+    }
 
     @pg_property
     def bar(self, value):

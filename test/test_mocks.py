@@ -245,12 +245,12 @@ UUID2 = str(uuid.uuid4())
 
 
 @pytest.mark.parametrize(
-    "src_id,dst_id,edge_label,circle_1_to_2,circle_2_to_1",
+    "src_id,dst_id,edge_label,cycle_1_to_2,cycle_2_to_1",
     [
-        (UUID1, UUID2, "edge4", "circle_2a", "circle_1a",),
-        (UUID1, UUID2, "edge5", "circle_2b", "circle_1b",),
-        (UUID2, UUID1, "edge4", "circle_2a", "circle_1a",),
-        (UUID2, UUID1, "edge5", "circle_2b", "circle_1b",),
+        (UUID1, UUID2, "edge4", "cycle_2a", "cycle_1a",),
+        (UUID1, UUID2, "edge5", "cycle_2b", "cycle_1b",),
+        (UUID2, UUID1, "edge4", "cycle_2a", "cycle_1a",),
+        (UUID2, UUID1, "edge5", "cycle_2b", "cycle_1b",),
     ],
 )
 def test_graph_factory_with_ambiguous_edges(
@@ -259,13 +259,13 @@ def test_graph_factory_with_ambiguous_edges(
     src_id: str,
     dst_id: str,
     edge_label: str,
-    circle_1_to_2: str,
-    circle_2_to_1: str,
+    cycle_1_to_2: str,
+    cycle_2_to_1: str,
 ) -> None:
     """Test using label to solve ambiguous edges.
 
     For some node couples, there are 2 edges in opposite directions between them.
-    Generating a circle between those 2 nodes.
+    Generating a cycle between those 2 nodes.
     In those cases, to solve the relation correctly, we should provide edge label to
     link them.
 
@@ -277,14 +277,14 @@ def test_graph_factory_with_ambiguous_edges(
         src_id: uuid for edge node
         dst_id: uuid for another edge node
         edge_label: label of edge
-        circle_1_to_2: association name from circle_1 to circle_2
-        circle_2_to_1: association name from circle_2 to circle_1
+        cycle_1_to_2: association name from cycle_1 to cycle_2
+        cycle_2_to_1: association name from cycle_2 to cycle_1
     """
     gf = GraphFactory(gdcmodels, gdcdictionary)
 
     nodes = [
-        {"label": "circle_1", "node_id": UUID1},
-        {"label": "circle_2", "node_id": UUID2},
+        {"label": "cycle_1", "node_id": UUID1},
+        {"label": "cycle_2", "node_id": UUID2},
     ]
 
     edges = [
@@ -295,18 +295,18 @@ def test_graph_factory_with_ambiguous_edges(
 
     assert len(created_nodes) == 2
 
-    circle_1s = [n for n in created_nodes if n.label == "circle_1"]
-    assert len(circle_1s) == 1
-    circle_1 = circle_1s[0]
-    circle_1_to_2_assic = getattr(circle_1, circle_1_to_2)
-    assert len(circle_1_to_2_assic) == 1
-    circle_2s = [n for n in created_nodes if n.label == "circle_2"]
-    assert len(circle_2s) == 1
-    circle_2 = circle_2s[0]
-    circle_2_to_1_assoc = getattr(circle_2, circle_2_to_1)
-    assert len(circle_2_to_1_assoc) == 1
-    assert circle_1_to_2_assic[0] == circle_2
-    assert circle_2_to_1_assoc[0] == circle_1
+    cycle_1s = [n for n in created_nodes if n.label == "cycle_1"]
+    assert len(cycle_1s) == 1
+    cycle_1 = cycle_1s[0]
+    cycle_1_to_2_assic = getattr(cycle_1, cycle_1_to_2)
+    assert len(cycle_1_to_2_assic) == 1
+    cycle_2s = [n for n in created_nodes if n.label == "cycle_2"]
+    assert len(cycle_2s) == 1
+    cycle_2 = cycle_2s[0]
+    cycle_2_to_1_assoc = getattr(cycle_2, cycle_2_to_1)
+    assert len(cycle_2_to_1_assoc) == 1
+    assert cycle_1_to_2_assic[0] == cycle_2
+    assert cycle_2_to_1_assoc[0] == cycle_1
 
-    assert len(circle_1.edges_out + circle_1.edges_in) == 1
-    assert len(circle_2.edges_out + circle_2.edges_in) == 1
+    assert len(cycle_1.edges_out + cycle_1.edges_in) == 1
+    assert len(cycle_2.edges_out + cycle_2.edges_in) == 1

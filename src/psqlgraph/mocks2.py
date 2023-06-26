@@ -1,11 +1,8 @@
-import copy
 import logging
-import random
 import uuid
-from collections import defaultdict, deque
-from typing import Dict, Iterable, List, Optional, Set
+from typing import Dict, Set
 
-from psqlgraph import Node, mocks
+from psqlgraph import mocks
 
 
 class NodeFactory(mocks.NodeFactory):

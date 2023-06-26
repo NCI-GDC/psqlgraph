@@ -6,6 +6,13 @@ from psqlgraph import mocks
 
 
 class NodeFactory(mocks.NodeFactory):
+    """Class to create fake node for test.
+
+    Given gdcdatamodel,
+    Then call the create method with the label of the node you want to create,
+    It will return the node with some random properties.
+    """
+
     def __init__(self, models, graph_globals=None):
         self.models = models
         self.property_factories = {

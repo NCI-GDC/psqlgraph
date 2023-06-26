@@ -291,14 +291,14 @@ def test_graph_factory_with_ambiguous_edges(
     circle_1s = [n for n in created_nodes if n.label == "circle_1"]
     assert len(circle_1s) == 1
     circle_1 = circle_1s[0]
-    circle_1_to_2_assic = getattr(circle_1, circle_1_to_2)
-    assert len(circle_1_to_2_assic) == 1
+    circle_1_to_2_assoc = getattr(circle_1, circle_1_to_2)
+    assert len(circle_1_to_2_assoc) == 1
     circle_2s = [n for n in created_nodes if n.label == "circle_2"]
     assert len(circle_2s) == 1
     circle_2 = circle_2s[0]
     circle_2_to_1_assoc = getattr(circle_2, circle_2_to_1)
     assert len(circle_2_to_1_assoc) == 1
-    assert circle_1_to_2_assic[0] == circle_2
+    assert circle_1_to_2_assoc[0] == circle_2
     assert circle_2_to_1_assoc[0] == circle_1
 
     assert len(circle_1.edges_out + circle_1.edges_in) == 1

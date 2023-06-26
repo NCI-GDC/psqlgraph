@@ -1,3 +1,9 @@
+"""Second mocks for generating mock psqlgraph for testing.
+
+The difference between this mocks2.py and mocks.py is that, this mocks2.py assumes
+node links and node properties are in node_class._dictionary. So we do not have to
+provide gdcdictioanry separately to generate nock graph.
+"""
 import logging
 import uuid
 from typing import Dict, Set

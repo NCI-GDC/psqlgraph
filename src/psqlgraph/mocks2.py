@@ -5,15 +5,14 @@ import uuid
 from collections import defaultdict, deque
 from typing import Dict, Iterable, List, Optional, Set
 
-from psqlgraph import Node
-from psqlgraph.mocks import PropertyFactory
+from psqlgraph import Node, mocks
 
 
-class NodeFactory:
+class NodeFactory(mocks.NodeFactory):
     def __init__(self, models, graph_globals=None):
         self.models = models
         self.property_factories = {
-            node_class.label: PropertyFactory(node_class._dictionary["properties"])
+            node_class.label: mocks.PropertyFactory(node_class._dictionary["properties"])
             for node_class in models.Node.__subclasses__()
         }
         self.graph_globals = graph_globals or {}
@@ -78,38 +77,12 @@ class NodeFactory:
 
         return node_cls(**node_json)
 
-    def get_global_value(self, prop):
-        return self.graph_globals.get("properties", {}).get(prop)
 
-    def validate_override_value(self, prop, label, override):
-        # we allow specific passed values to override if they are valid
-        try:
-            return self.property_factories[label].type_factories[prop].validate_value(override)
-        except (KeyError, ValueError):
-            # if this fails for whatever reason, we'll default to random value
-            return False
-
-
-class GraphFactory:
+class GraphFactory(mocks.GraphFactory):
     def __init__(self, models, graph_globals=None):
         self.models = models
         self.node_factory = NodeFactory(models, graph_globals)
         self.relation_cache: Dict[str, Set[str]] = {}
-
-    @staticmethod
-    def validate_nodes_metadata(nodes, unique_key):
-        for node_meta in nodes:
-            if "label" not in node_meta or unique_key not in node_meta:
-                msg = "Node 'label' or unique property '{}' is missing: {}" "".format(
-                    unique_key, node_meta
-                )
-                raise ValueError(msg)
-
-    @staticmethod
-    def validate_edges_metadata(edges):
-        for edge_meta in edges:
-            if "src" not in edge_meta or "dst" not in edge_meta:
-                raise ValueError(f"Edge metadata is missing 'src' or 'dst': {edge_meta}")
 
     def create_from_nodes_and_edges(
         self,
@@ -321,59 +294,3 @@ class GraphFactory:
         self.relation_cache[node.label] = links
 
         return relation in links
-
-    def make_association(
-        self, src_node: Node, dst_node: Node, edge_label: Optional[str] = None
-    ) -> None:
-        """Create an Edge between 2 nodes
-
-        Given 2 instances of a Node, find appropriate association between the
-        2 nodes and create a relation between them
-
-        There are some special cases like auxiliary_files and
-        structural_variant_calling_workflow, there are 2 different edges between them
-        in opposite directions. In this case, we use the label to differentiate them.
-
-        Bonus: Label could be added to all edges and will make the lookup faster.
-
-        Args:
-            src_node: first node of the edge
-            dst_node: second node of the edge
-            edge_label: label of the edge
-        """
-        if edge_label:
-            edge_class = self.models.Edge.get_subclass(edge_label)
-            if not edge_class:
-                logging.warning(f"Edge with label {edge_label} not found")
-            elif (
-                edge_class.__src_class__ == src_node.__class__.__name__
-                and edge_class.__dst_class__ == dst_node.__class__.__name__
-            ):
-                getattr(src_node, edge_class.__src_dst_assoc__).append(dst_node)
-                return
-            elif (
-                edge_class.__src_class__ == dst_node.__class__.__name__
-                and edge_class.__dst_class__ == src_node.__class__.__name__
-            ):
-                getattr(dst_node, edge_class.__src_dst_assoc__).append(src_node)
-                return
-            else:
-                logging.warning(
-                    "Edge with label {} is not allowed between nodes {} and {}".format(
-                        edge_label, src_node.label, dst_node.label
-                    )
-                )
-
-        link_found = False
-        for assoc_name, assoc_meta in src_node._pg_edges.items():
-            if isinstance(dst_node, assoc_meta["type"]):
-                getattr(src_node, assoc_name).append(dst_node)
-                link_found = True
-                break
-
-        if not link_found:
-            logging.debug(
-                "Could not find a direct relation between '{}'<->'{}'".format(
-                    src_node.label, dst_node.label
-                )
-            )

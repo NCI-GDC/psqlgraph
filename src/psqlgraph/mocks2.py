@@ -84,61 +84,6 @@ class GraphFactory(mocks.GraphFactory):
         self.node_factory = NodeFactory(models, graph_globals)
         self.relation_cache: Dict[str, Set[str]] = {}
 
-    def create_from_nodes_and_edges(
-        self,
-        nodes: List[Dict[str, str]],
-        edges: List[Dict[str, str]],
-        unique_key: str = "submitter_id",
-        all_props: bool = False,
-    ) -> List[Node]:
-        """Create a graph from nodes and edges.
-
-        Given a list of nodes and edges, create a graph. The edge between 2
-        nodes is based on property provided via `unique_key` param.
-
-        Args:
-            nodes: list of nodes metadata in format:
-                [{'label': 'read_group', 'submitter_id': 'read_group_1'},
-                {'label': 'aliquot', 'submitter_id': 'aliquot_1'}]
-            edges:  list of edges in format:
-                [{'src': 'read_group_1', 'dst': 'aliquot_1'}]
-            unique_key:  a name of the property that will be used to connect nodes
-            all_props: generate all node properties or not
-
-        Returns:
-            List of psqlgraph nodes
-        """
-        nodes = copy.deepcopy(nodes)
-
-        self.validate_nodes_metadata(nodes, unique_key)
-
-        self.validate_edges_metadata(edges)
-
-        nodes_map = {}
-
-        for node_meta in nodes:
-            node_object = self.node_factory.create(
-                node_meta.pop("label"), override=node_meta, all_props=all_props
-            )
-            nodes_map[node_object[unique_key]] = node_object
-
-        for edge_meta in edges:
-            sub_id1 = edge_meta["src"]
-            sub_id2 = edge_meta["dst"]
-            edge_label = edge_meta.get("label")
-            node1 = nodes_map.get(sub_id1)
-            node2 = nodes_map.get(sub_id2)
-
-            if not node1 or not node2:
-                logging.debug(
-                    "Could not find nodes for edge: '{}'<->'{}'".format(sub_id1, sub_id2)
-                )
-                continue
-
-            self.make_association(node1, node2, edge_label)
-
-        return list(nodes_map.values())
-
     def create_random_subgraph(
         self,
         label: str,

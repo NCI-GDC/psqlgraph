@@ -39,7 +39,6 @@ tox:
       - RELEASE_PY_VERSION: [python3.6]
 
 release:
-  needs: [tox]
   before_script:
     - git fetch --unshallow || true
   variables:

@@ -12,22 +12,42 @@ class FakeDictionary:
                     "key3": {"type": "string"},
                     "new_key": {"type": "string"},
                     "timestamp": {
-                        "oneOf": [{"type": "string", "format": "date-time"}, {"type": "integer"},]
+                        "oneOf": [
+                            {"type": "string", "format": "date-time"},
+                            {"type": "integer"},
+                        ]
                     },
                 },
-                "links": [{"name": "tests"}, {"name": "foos"},],
+                "links": [
+                    {"name": "tests"},
+                    {"name": "foos"},
+                ],
             },
             "foo": {
                 "properties": {
                     "bar": {"type": "string"},
                     "baz": {"enum": ["allowed_1", "allowed_2"]},
-                    "fobble": {"type": "integer", "minimum": 20, "maximum": 30,},
-                    "studies": {"type": "array", "items": {"enum": ["N/A", "Unknown"],},},
+                    "fobble": {
+                        "type": "integer",
+                        "minimum": 20,
+                        "maximum": 30,
+                    },
+                    "studies": {
+                        "type": "array",
+                        "items": {
+                            "enum": ["N/A", "Unknown"],
+                        },
+                    },
                     "ages": {"type": "array", "items": {"type": "integer"}},
                 },
                 "links": [{"name": "foobars"}],
             },
-            "foo_bar": {"properties": {"bar": {"type": "string"},}, "links": [],},
+            "foo_bar": {
+                "properties": {
+                    "bar": {"type": "string"},
+                },
+                "links": [],
+            },
             "test_default_value": {
                 "properties": {
                     "property_with_default": {
@@ -207,30 +227,64 @@ class TestDefaultValue(Node):
 
 
 Test._pg_edges.update(
-    {"tests": {"backref": "_tests", "type": Test,}, "foos": {"backref": "tests", "type": Foo,},}
+    {
+        "tests": {
+            "backref": "_tests",
+            "type": Test,
+        },
+        "foos": {
+            "backref": "tests",
+            "type": Foo,
+        },
+    }
 )
 
 
 Foo._pg_edges.update(
     {
-        "foobars": {"backref": "foos", "type": FooBar,},
-        "tests": {"backref": "foos", "type": Test,},
+        "foobars": {
+            "backref": "foos",
+            "type": FooBar,
+        },
+        "tests": {
+            "backref": "foos",
+            "type": Test,
+        },
     }
 )
 
 Circle1._pg_edges.update(
     {
-        "circle_2a": {"backref": "bars", "type": Circle2,},
-        "circle_2b": {"backref": "bars", "type": Circle2,},
+        "circle_2a": {
+            "backref": "bars",
+            "type": Circle2,
+        },
+        "circle_2b": {
+            "backref": "bars",
+            "type": Circle2,
+        },
     }
 )
 
 Circle2._pg_edges.update(
     {
-        "circle_1a": {"backref": "bars", "type": Circle1,},
-        "circle_1b": {"backref": "bars", "type": Circle1,},
+        "circle_1a": {
+            "backref": "bars",
+            "type": Circle1,
+        },
+        "circle_1b": {
+            "backref": "bars",
+            "type": Circle1,
+        },
     }
 )
 
 
-FooBar._pg_edges.update({"foos": {"backref": "foobars", "type": Foo,}})
+FooBar._pg_edges.update(
+    {
+        "foos": {
+            "backref": "foobars",
+            "type": Foo,
+        }
+    }
+)

@@ -13,7 +13,10 @@ def id_column(tablename):
     return schema.Column(
         sqltypes.Text,
         schema.ForeignKey(
-            f"{tablename}.node_id", ondelete="CASCADE", deferrable=True, initially="DEFERRED",
+            f"{tablename}.node_id",
+            ondelete="CASCADE",
+            deferrable=True,
+            initially="DEFERRED",
         ),
         primary_key=True,
         nullable=False,
@@ -232,7 +235,12 @@ class Edge(base.LocalConcreteBase, AbstractEdge, base.ORMBase):
 
 
 def PolyEdge(
-    src_id=None, dst_id=None, label=None, acl=None, system_annotations=None, properties=None,
+    src_id=None,
+    dst_id=None,
+    label=None,
+    acl=None,
+    system_annotations=None,
+    properties=None,
 ):
     if not label:
         raise AttributeError("You cannot create a PolyEdge without a label.")

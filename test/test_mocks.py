@@ -66,7 +66,11 @@ def validate_foo_bar(node):
 
 @pytest.mark.parametrize(
     "label, validator",
-    [("test", validate_test), ("foo", validate_foo), ("foo_bar", validate_foo_bar),],
+    [
+        ("test", validate_test),
+        ("foo", validate_foo),
+        ("foo_bar", validate_foo_bar),
+    ],
 )
 def test_node_factory_all_props(node_factory, label, validator):
     node = node_factory.create(label, all_props=True)
@@ -206,7 +210,14 @@ def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
 
     nodes = [
         dict(label="foo", node_id="id_1", studies=["N/A", "STUDY0"]),
-        dict(label="foo", node_id="id_2", baz="allowed_2", bar="hello", fobble=30, ages=[1, 2],),
+        dict(
+            label="foo",
+            node_id="id_2",
+            baz="allowed_2",
+            bar="hello",
+            fobble=30,
+            ages=[1, 2],
+        ),
         dict(label="foo", node_id="id_3", baz="disallowed", studies=["N/A", "Unknown"]),
         dict(label="foo", node_id="id_4", bar=1, fobble="hello"),
     ]
@@ -247,10 +258,34 @@ UUID2 = str(uuid.uuid4())
 @pytest.mark.parametrize(
     "src_id,dst_id,edge_label,circle_1_to_2,circle_2_to_1",
     [
-        (UUID1, UUID2, "edge4", "circle_2a", "circle_1a",),
-        (UUID1, UUID2, "edge5", "circle_2b", "circle_1b",),
-        (UUID2, UUID1, "edge4", "circle_2a", "circle_1a",),
-        (UUID2, UUID1, "edge5", "circle_2b", "circle_1b",),
+        (
+            UUID1,
+            UUID2,
+            "edge4",
+            "circle_2a",
+            "circle_1a",
+        ),
+        (
+            UUID1,
+            UUID2,
+            "edge5",
+            "circle_2b",
+            "circle_1b",
+        ),
+        (
+            UUID2,
+            UUID1,
+            "edge4",
+            "circle_2a",
+            "circle_1a",
+        ),
+        (
+            UUID2,
+            UUID1,
+            "edge5",
+            "circle_2b",
+            "circle_1b",
+        ),
     ],
 )
 def test_graph_factory_with_ambiguous_edges(

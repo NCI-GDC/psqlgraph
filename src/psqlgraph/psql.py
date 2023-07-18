@@ -113,7 +113,12 @@ class PsqlGraphDriver:
 
     @contextmanager
     def session_scope(
-        self, session=None, can_inherit=True, must_inherit=False, auto_flush=None, read_only=None,
+        self,
+        session=None,
+        can_inherit=True,
+        must_inherit=False,
+        auto_flush=None,
+        read_only=None,
     ):
         """Provide a transactional scope around a series of operations.
 

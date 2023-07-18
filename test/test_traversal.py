@@ -131,7 +131,19 @@ def fake_nodes(fake_graph):
             "depths_results": {
                 0: [root_node],
                 1: [root_node, foo1, foo2, foo3, foo4, test1],
-                2: [root_node, foo1, foo2, foo3, foo4, test1, test2, test3, test4, test6, test7,],
+                2: [
+                    root_node,
+                    foo1,
+                    foo2,
+                    foo3,
+                    foo4,
+                    test1,
+                    test2,
+                    test3,
+                    test4,
+                    test6,
+                    test7,
+                ],
                 3: [
                     root_node,
                     foo1,
@@ -208,7 +220,10 @@ def test_traversal__max_depth(depth, fake_graph, fake_nodes, mode):
 @pytest.mark.parametrize("mode", ("bfs", "dfs"))
 @pytest.mark.parametrize(
     "key,expected",
-    (("test5", ["test5", "test2", "foo1", "root"]), ("test3", ["test3", "foo2", "root"]),),
+    (
+        ("test5", ["test5", "test2", "foo1", "root"]),
+        ("test3", ["test3", "foo2", "root"]),
+    ),
 )
 def test_traversal__path_bottom_up(fake_nodes, fake_graph, mode, key, expected):
     """Tests walking towards the root node from a leaf"""

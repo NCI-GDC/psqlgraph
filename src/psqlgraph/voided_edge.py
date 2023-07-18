@@ -10,21 +10,50 @@ class VoidedEdge(VoidedBase):
 
     key = Column(BigInteger, primary_key=True, nullable=False, autoincrement=True)
 
-    src_id = Column(Text, primary_key=True, nullable=False,)
+    src_id = Column(
+        Text,
+        primary_key=True,
+        nullable=False,
+    )
 
-    dst_id = Column(Text, primary_key=True, nullable=False,)
+    dst_id = Column(
+        Text,
+        primary_key=True,
+        nullable=False,
+    )
 
-    created = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"),)
+    created = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
 
-    voided = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"),)
+    voided = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
 
-    acl = Column(ARRAY(Text), default=list(),)
+    acl = Column(
+        ARRAY(Text),
+        default=list(),
+    )
 
-    system_annotations = Column(JSONB, default={},)
+    system_annotations = Column(
+        JSONB,
+        default={},
+    )
 
-    properties = Column(JSONB, default={},)
+    properties = Column(
+        JSONB,
+        default={},
+    )
 
-    label = Column(Text, primary_key=True, nullable=False,)
+    label = Column(
+        Text,
+        primary_key=True,
+        nullable=False,
+    )
 
     def __init__(self, edge):
         self.created = edge.created

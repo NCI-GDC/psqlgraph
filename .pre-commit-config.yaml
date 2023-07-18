@@ -1,21 +1,12 @@
 ---
 repos:
-  - repo: https://github.com/Yelp/detect-secrets
-    rev: v1.2.0
-    hooks:
-      - id: detect-secrets
-        args: [--baseline, .secrets.baseline]
-  - repo: https://github.com/psf/black
-    rev: 19.10b0
-    hooks:
-      - id: black
-        additional_dependencies: [click==8.0.4]
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.1.0 # last version to support py36
     hooks:
       - id: check-json
       - id: check-toml
       - id: check-yaml
+        exclude: ^\.gitlab-ci.yml
       - id: end-of-file-fixer
         exclude: ^tests/integration/mail/templates/
       - id: fix-encoding-pragma
@@ -26,6 +17,10 @@ repos:
         args: [--autofix]
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
+  - repo: https://github.com/psf/black
+    rev: 22.3.0
+    hooks:
+      - id: black
   - repo: https://github.com/pycqa/isort
     rev: 5.11.5
     hooks:
@@ -50,3 +45,8 @@ repos:
     hooks:
       - id: toml-sort
         args: [--in-place]
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]

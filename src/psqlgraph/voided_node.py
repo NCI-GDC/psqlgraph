@@ -10,19 +10,42 @@ class VoidedNode(VoidedBase):
 
     key = Column(BigInteger, primary_key=True, nullable=False)
 
-    node_id = Column(Text, nullable=False,)
+    node_id = Column(
+        Text,
+        nullable=False,
+    )
 
-    created = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"),)
+    created = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
 
-    voided = Column(DateTime(timezone=True), nullable=False, server_default=text("now()"),)
+    voided = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
 
-    acl = Column(ARRAY(Text), default=list(),)
+    acl = Column(
+        ARRAY(Text),
+        default=list(),
+    )
 
-    system_annotations = Column(JSONB, default={},)
+    system_annotations = Column(
+        JSONB,
+        default={},
+    )
 
-    properties = Column(JSONB, default={},)
+    properties = Column(
+        JSONB,
+        default={},
+    )
 
-    label = Column(Text, nullable=False,)
+    label = Column(
+        Text,
+        nullable=False,
+    )
 
     def __init__(self, node):
         self.created = node.created

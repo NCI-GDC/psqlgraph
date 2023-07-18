@@ -65,7 +65,8 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
     def test_subq_path_no_filter(self):
         with self.g.session_scope():
             self.assertEqual(
-                self.g.nodes(models.Test).ids(self.parent_id).subq_path("foos").count(), 4,
+                self.g.nodes(models.Test).ids(self.parent_id).subq_path("foos").count(),
+                4,
             )
 
     def test_subq_path_single_filter(self):

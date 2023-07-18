@@ -1,3 +1,4 @@
+import os
 import uuid
 from test import models
 
@@ -9,10 +10,10 @@ import psqlgraph
 @pytest.fixture(scope="session")
 def pg_conf():
     return {
-        "host": "localhost",
-        "user": "test",
-        "password": "test",
-        "database": "automated_test",
+        "host": os.getenv("PG_HOST", "localhost"),
+        "user": os.getenv("PG_USER", "test"),
+        "password": os.getenv("PG_PASS", "test"),
+        "database": os.getenv("PG_NAME", "automated_test"),
     }
 
 

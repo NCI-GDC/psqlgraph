@@ -46,7 +46,9 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         """Test that integers that only fit in 26 bits round trip correctly."""
         with self.g.session_scope():
             node = PolyNode(
-                node_id=str(uuid.uuid4()), label="foo", properties={"bar": 9223372036854775808},
+                node_id=str(uuid.uuid4()),
+                label="foo",
+                properties={"bar": 9223372036854775808},
             )
             self.g.node_insert(node=node)
             loaded = self.g.node_lookup(node_id=node.node_id).one()
@@ -318,7 +320,13 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
 
         # add first node
         propertiesA = sanitize(
-            {"key1": None, "key2": 1, "key3": timestamp(), "timestamp": None, "new_key": None,}
+            {
+                "key1": None,
+                "key2": 1,
+                "key3": timestamp(),
+                "timestamp": None,
+                "new_key": None,
+            }
         )
         system_annotationsA = sanitize({"key1": None, "key2": 2, "key3": timestamp()})
         self.g.node_merge(
@@ -348,7 +356,13 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         node_id = str(uuid.uuid4())
 
         propertiesA = sanitize(
-            {"key1": None, "key2": 1, "key3": timestamp(), "timestamp": None, "new_key": None,}
+            {
+                "key1": None,
+                "key2": 1,
+                "key3": timestamp(),
+                "timestamp": None,
+                "new_key": None,
+            }
         )
 
         system_annotationsA = sanitize({"key1": None, "key2": 2, "key3": timestamp()})
@@ -379,7 +393,13 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
 
         # add first node
         propertiesA = sanitize(
-            {"key1": None, "key2": 1, "key3": timestamp(), "timestamp": None, "new_key": None,}
+            {
+                "key1": None,
+                "key2": 1,
+                "key3": timestamp(),
+                "timestamp": None,
+                "new_key": None,
+            }
         )
         system_annotationsA = sanitize({"key1": None, "key2": 2, "key3": timestamp()})
         self.g.node_merge(
@@ -509,7 +529,8 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
 
         for node in nodes:
             self.assertEqual(
-                properties[node.node_id], node.properties,
+                properties[node.node_id],
+                node.properties,
             )
 
     @unittest.skip("not implemented")
@@ -631,7 +652,11 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         """
 
         self.assertRaises(
-            AttributeError, PsqlEdge, str(uuid.uuid4()), str(uuid.uuid4), None,
+            AttributeError,
+            PsqlEdge,
+            str(uuid.uuid4()),
+            str(uuid.uuid4),
+            None,
         )
 
     @unittest.skip("not implemented")
@@ -916,7 +941,13 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             for src_id, dst_id in zip(src_ids, dst_ids):
                 self.g.node_merge(src_id, label="test")
                 self.g.node_merge(dst_id, label="test")
-                self.g.edge_insert(PsqlEdge(src_id=src_id, dst_id=dst_id, label="edge1",))
+                self.g.edge_insert(
+                    PsqlEdge(
+                        src_id=src_id,
+                        dst_id=dst_id,
+                        label="edge1",
+                    )
+                )
 
             edges = self.g.get_edges()
             ret_src_ids = []
@@ -969,7 +1000,9 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             self.assertEqual(len(list(self.g.edge_lookup(src_id=src_id, dst_id=dst_id))), 1)
             self.assertEqual(len(list(self.g.edge_lookup(src_id=src_id, dst_id=foo_id))), 1)
             self.assertRaises(
-                Exception, self.g.edge_insert, models.Edge1(src_id=src_id, dst_id=dst_id),
+                Exception,
+                self.g.edge_insert,
+                models.Edge1(src_id=src_id, dst_id=dst_id),
             )
 
     def test_simple_automatic_session(self):

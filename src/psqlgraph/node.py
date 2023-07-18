@@ -100,7 +100,11 @@ class NodeAssociationProxyMixin:
 
 class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
 
-    node_id = Column(Text, primary_key=True, nullable=False,)
+    node_id = Column(
+        Text,
+        primary_key=True,
+        nullable=False,
+    )
 
     @declared_attr
     def __tablename__(cls):
@@ -110,14 +114,22 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
     def __table_args__(cls):
         return (
             UniqueConstraint("node_id", name=f"_{cls.__name__.lower()}_id_uc"),
-            Index(f"{cls.__tablename__}__props_idx", "_props", postgresql_using="gin",),
+            Index(
+                f"{cls.__tablename__}__props_idx",
+                "_props",
+                postgresql_using="gin",
+            ),
             Index(
                 f"{cls.__tablename__}__sysan__props_idx",
                 "_sysan",
                 "_props",
                 postgresql_using="gin",
             ),
-            Index(f"{cls.__tablename__}__sysan_idx", "_sysan", postgresql_using="gin",),
+            Index(
+                f"{cls.__tablename__}__sysan_idx",
+                "_sysan",
+                postgresql_using="gin",
+            ),
             Index(f"{cls.__tablename__}_node_id_idx", "node_id"),
         )
 

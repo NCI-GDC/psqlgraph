@@ -1,8 +1,9 @@
-import logging
+import warnings
 
 from psqlgraph import hydrator
 
-logger = logging.getLogger(__name__)
-logger.warning(f"This module {__name__} is depreciated, please import {hydrator.__name__}")
+warnings.warn(
+    f"This module {__name__} is deprecated, please import {hydrator.__name__}", DeprecationWarning
+)
 
 from psqlgraph.hydrator import GraphFactory, NodeFactory

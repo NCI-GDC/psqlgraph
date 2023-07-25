@@ -1,8 +1,9 @@
-import logging
+import warnings
 
-from psqlgraph_test_utils import mocks
+from psqlgraph import hydrator
 
-logger = logging.getLogger(__name__)
-logger.warning(f"This module {__name__} is depreciated, please import {mocks.__name__}")
+warnings.warn(
+    f"This module {__name__} is deprecated, please import {hydrator.__name__}", DeprecationWarning
+)
 
-from psqlgraph_test_utils.mocks import GraphFactory, NodeFactory
+from psqlgraph.hydrator import GraphFactory, NodeFactory

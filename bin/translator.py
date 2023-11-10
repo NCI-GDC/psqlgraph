@@ -155,9 +155,7 @@ def translate_edge_range(_args):
                     new.created = old.created
                     session.merge(new)
                 except Exception as e:
-                    logging.error(
-                        "unable to add edge {}, {}".format(old.label, old.src_id, old.dst_id)
-                    )
+                    logging.error(f"unable to add edge {old.label}, {old.src_id}")
                     logging.error(e)
 
             try:

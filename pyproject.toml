@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "tomli>=1.0", "packaging>=20.0", "pyparsing>2,<3", "setuptools_scm>=6.2"]
+requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2", "setuptools-git-versioning<2"]
 build-backend = "setuptools.build_meta"
 
 [tool.black]
@@ -19,9 +19,6 @@ source = ["psqlgraph"]
 [tool.isort]
 profile = "black"
 known_first_party = ["psqlgraph"]
-
-[tool.setuptools_scm]
-local_scheme = "no-local-version"
 
 [tool.towncrier]
 package = "psqlgraph"

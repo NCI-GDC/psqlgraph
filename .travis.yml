@@ -26,7 +26,7 @@ before_install:
   - sudo pg_ctlcluster 13 main restart
 
 install:
-  - pip install tox-travis tox
+  - pip install tox
 
 before_script:
   - psql -U postgres -c "create user test with superuser password 'test';"

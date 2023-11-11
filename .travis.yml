@@ -33,7 +33,7 @@ before_script:
   - psql -U postgres -c "create database automated_test with owner test;"
 
 script:
-  - tox
+  - tox -r -e py
 
 after_script:
   - test $TRAVIS_PYTHON_VERSION = "3.9" && tox -e coverage

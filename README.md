@@ -47,7 +47,7 @@ Project dependencies are managed using [PIP](https://pip.readthedocs.org/en/late
 # Mac M2 - assuming you `brew install postgresql@13`
 $ export PATH=$PATH:/opt/homebrew/opt/postgresql@13/bin/
 
-$ pip install --no-deps -r dev-requirements.txt
+$ pip install .[dev]
 ```
 
 ### Building Documentation

@@ -528,8 +528,8 @@ class PsqlGraphDriver:
         node_cls = ext.get_abstract_node(self.package_namespace)
         src_classes = [n for n in node_cls.get_subclasses() if n.get_label() == src_label]
         dst_classes = [n for n in node_cls.get_subclasses() if n.get_label() == dst_label]
-        assert len(src_classes) == 1, "No classes found with src_label {}".format(src_label)
-        assert len(dst_classes) == 1, "No classes found with dst_label {}".format(dst_label)
+        assert len(src_classes) == 1, f"No classes found with src_label {src_label}"
+        assert len(dst_classes) == 1, f"No classes found with dst_label {dst_label}"
 
         edge_cls = ext.get_abstract_edge(self.package_namespace)
         edges = [

@@ -342,9 +342,7 @@ class GraphFactory:
             node2 = nodes_map.get(sub_id2)
 
             if not node1 or not node2:
-                logging.debug(
-                    "Could not find nodes for edge: '{}'<->'{}'".format(sub_id1, sub_id2)
-                )
+                logging.debug(f"Could not find nodes for edge: '{sub_id1}'<->'{sub_id2}'")
                 continue
 
             self.make_association(node1, node2, edge_label)

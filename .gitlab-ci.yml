@@ -55,13 +55,18 @@ trigger:
     - release
   parallel:
     matrix:
-      - TRIGGERED_REPO:
-          - 29        # inspector
-          - 7         # gdcapi
-          - 122       # sheepdog
-          - 79        # esbuild
-          - 30        # graphmanager
-          - 76        # gdcadmin
+      - TRIGGERED_REPO: 29
+        NAME: inspector
+      - TRIGGERED_REPO: 7
+        NAME: gdcapi
+      - TRIGGERED_REPO: 122
+        NAME: sheepdog
+      - TRIGGERED_REPO: 79
+        NAME: esbuild
+      - TRIGGERED_REPO: 30
+        NAME: graphmanager
+      - TRIGGERED_REPO: 76
+        NAME: gdcadmin
   script:
     - apk add --no-cache curl
     - VERSION=$(cat VERSION.txt)

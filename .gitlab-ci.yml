@@ -3,7 +3,7 @@ stages:
   - .pre
   - test
   - build
-  - trigger
+  - .trigger
 
 include:
   - project: nci-gdc/gitlab-templates
@@ -49,10 +49,19 @@ release:
       - VERSION.txt
     expire_in: 1 week
 
-trigger_inspector:
-  stage: trigger
+trigger:
+  stage: .trigger
   dependencies:
     - release
+  parallel:
+    matrix:
+      - TRIGGERED_REPO:
+          - 29        # inspector
+          - 7         # gdcapi
+          - 122       # sheepdog
+          - 79        # esbuild
+          - 30        # graphmanager
+          - 76        # gdcadmin
   script:
     - apk add --no-cache curl
     - VERSION=$(cat VERSION.txt)
@@ -60,9 +69,9 @@ trigger_inspector:
     - >
       curl --fail --request POST
       --form token=$CI_JOB_TOKEN
-      --form ref=${CI_TRIGGERED_BRANCH:=feat/dev-2303-downstream-pipeline}
+      --form ref=${CI_TRIGGERED_BRANCH:=develop}
       --form variables[CI_TRIGGER_VERSION]=$VERSION
       --form variables[CI_TRIGGER_REPO]=$CI_PROJECT_NAME
-      "https://gitlab.datacommons.io/api/v4/projects/29/trigger/pipeline"
+      "https://gitlab.datacommons.io/api/v4/projects/$TRIGGERED_REPO/trigger/pipeline"
   rules:
     - when: manual

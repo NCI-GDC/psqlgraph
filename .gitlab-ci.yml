@@ -78,5 +78,4 @@ trigger:
       --form variables[CI_TRIGGER_VERSION]=$VERSION
       --form variables[CI_TRIGGER_REPO]=$CI_PROJECT_NAME
       "https://gitlab.datacommons.io/api/v4/projects/$TRIGGERED_REPO/trigger/pipeline"
-  rules:
-    - when: manual
+  when: manual

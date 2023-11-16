@@ -10,7 +10,7 @@ def get_version() -> str:
 
     release branch -> 1.2.3rc4
     develop branch -> 1.2.3a4
-    other branch -> 1.2.3.dev4+<branch_name
+    other branch -> 1.2.3.dev4+<branch_name with .>  e.g.: 5.0.2.dev14+feat.dev.2303.downstream.pipeline
 
     Returns:
         version

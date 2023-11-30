@@ -4,7 +4,6 @@ stages:
   - test
   - build
   - stage_trigger
-  - stage_trigger_pre_release
 
 include:
   - project: nci-gdc/gitlab-templates
@@ -87,7 +86,7 @@ trigger:
   when: manual
 
 trigger_pre_release:
-  stage: stage_trigger_pre_release
+  stage: stage_trigger
   parallel: !reference [.downstream_repos, parallel]
   script:
     - apk add --no-cache curl
@@ -100,7 +99,7 @@ trigger_pre_release:
   when: manual
 
 trigger_branch_pattern:
-  stage: stage_trigger_pre_release
+  stage: stage_trigger
   parallel: !reference [.downstream_repos, parallel]
   script:
     - apk add --no-cache curl

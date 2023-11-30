@@ -107,6 +107,6 @@ trigger_branch_pattern:
       curl --fail --request POST
       --form token=$CI_JOB_TOKEN
       --form ref=${CI_TRIGGERED_BRANCH:=develop}
-      --form variables[BRANCH_PATTER]=${BRANCH_PATTER:-${CI_COMMIT_REF_SLUG//_/.}}
+      --form variables[BRANCH_PATTERN]=${BRANCH_PATTER:-${CI_COMMIT_REF_SLUG//_/.}}
       "https://gitlab.datacommons.io/api/v4/projects/$TRIGGERED_REPO/trigger/pipeline"
   when: manual

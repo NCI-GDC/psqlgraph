@@ -95,6 +95,6 @@ trigger_pre_release:
       curl --fail --request POST
       --form token=$CI_JOB_TOKEN
       --form ref=${CI_TRIGGERED_BRANCH:=develop}
-      --form variables[CI_TRIGGER_PRE_RELEASE]=true
+      --form variables[PRE_RELEASE_STAGE]=${PRE_RELEASE_STAGE:-alpha}
       "https://gitlab.datacommons.io/api/v4/projects/$TRIGGERED_REPO/trigger/pipeline"
   when: manual

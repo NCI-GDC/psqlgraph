@@ -85,7 +85,7 @@ trigger:
       "https://gitlab.datacommons.io/api/v4/projects/$TRIGGERED_REPO/trigger/pipeline"
   when: manual
 
-trigger_pre_release:
+trigger_integration:
   stage: stage_trigger
   parallel: !reference [.downstream_repos, parallel]
   script:

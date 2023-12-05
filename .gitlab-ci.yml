@@ -7,7 +7,7 @@ stages:
 
 include:
   - project: nci-gdc/gitlab-templates
-    ref: 0.4.0
+    ref: feat/dev-2303-downstream-pipeline
     file:
       - templates/global/full.yaml
       - templates/python/full.yaml
@@ -40,7 +40,8 @@ tox:
 release:
   variables:
     RELEASE_PY_VERSION: python3.7
-    GIT_DEPTH: 0
+  before_script:
+    - git fetch --unshallow || true
   after_script:
     - pip install "setuptools_scm>=6.2,<8" "setuptools-git-versioning<2"
     - python -m setuptools_git_versioning | tee VERSION.txt

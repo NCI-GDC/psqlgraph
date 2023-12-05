@@ -7,7 +7,7 @@ stages:
 
 include:
   - project: nci-gdc/gitlab-templates
-    ref: feat/dev-2303-downstream-pipeline
+    ref: 0.4.1
     file:
       - templates/global/full.yaml
       - templates/python/full.yaml

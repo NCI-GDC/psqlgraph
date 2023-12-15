@@ -86,8 +86,6 @@ trigger:
       --form variables[CI_TRIGGER_TAG]=$CI_COMMIT_TAG
       "https://gitlab.datacommons.io/api/v4/projects/$TRIGGERED_REPO/trigger/pipeline"
   rules:
-    - if: $CI_COMMIT_BRANCH == 'henddher_qiao_autotrigger'
-      when: on_success
     - if: $CI_COMMIT_BRANCH == 'develop_'
       when: on_success
 

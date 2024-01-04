@@ -17,7 +17,7 @@ def get_version() -> str:
     """
     config = Configuration()
     version = _do_parse(config)
-    if version.distance == 0:
+    if not version.distance:
         return str(version.tag)
 
     from setuptools_scm.version import guess_next_version

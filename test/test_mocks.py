@@ -78,12 +78,11 @@ def test_node_factory_all_props(node_factory, label, validator):
     validator(node)
 
 
-def test_node_factory_sets_required_for_test_node(node_factory):
-    test_node = node_factory.create("test")
+def test_node_factory_sets_required_for_test_node(node_factory: NodeFactory) -> None:
+    test_node = node_factory.create("test", override={"key2": "something good"})
     assert re.match(STRING_MATCH, test_node.key1)
-    assert all(
-        getattr(test_node, key) is None for key in ["key2", "key3", "new_key", "timestamp"]
-    )
+    assert all(getattr(test_node, key) is None for key in ["key3", "new_key", "timestamp"])
+    assert test_node["key2"] == "something good"
 
 
 def test_node_factory_doesnt_set_any_props(node_factory):

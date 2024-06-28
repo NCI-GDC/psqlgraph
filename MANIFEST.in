@@ -1,0 +1,9 @@
+graft src/psqlgraph
+prune tests
+prune bin
+prun doc
+prune docs
+prune travis
+global-exclude */__pycache__/*
+global-exclude *.pyc
+exclude .gitignore .gitlab-ci.yml .pre-commit-config.yaml .secrets.baseline .travis.yml

@@ -1,6 +1,26 @@
 [build-system]
-requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2,<8", "setuptools-git-versioning<2"]
+requires = ["setuptools>=68", "wheel", "setuptools_scm>=6.2,<8", "setuptools-git-versioning<2"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "psqlgraph"
+dynamic = [
+  "version",
+  "description",
+  "readme",
+  "requires-python",
+  "license",
+  "authors",
+  "maintainers",
+  "keywords",
+  "classifiers",
+  "urls",
+  "scripts",
+  "gui-scripts",
+  "entry-points",
+  "dependencies",
+  "optional-dependencies"
+]
 
 [tool.black]
 line-length = 98
@@ -21,8 +41,24 @@ profile = "black"
 line_length = 98
 known_first_party = ["psqlgraph"]
 
-[tool.towncrier]
-package = "psqlgraph"
-package_dir = "src"
-filename = "changelog.rst"
-directory = "changelog"
+[tool.pytest.ini_options]
+minversion = 6.0
+# Silence warning by opting in to use pytest 6's new default value
+junit_family = "xunit2"
+junit_logging = "system-out"
+console_output_style = "classic"
+log_cli_level = "INFO"
+log_cli = "true"
+addopts = "-rfE --color=yes --cov=psqlgraph --cov-report term"
+norecursedirs = [
+  ".git",
+  ".tox",
+  "dist",
+  "build",
+  "doc",
+  "docs",
+  "travis"
+]
+testpaths = [
+  "tests"
+]

@@ -1,6 +1,7 @@
 """
 Session hooks
 """
+
 from sqlalchemy.inspection import inspect
 
 from psqlgraph.base import ExtMixin

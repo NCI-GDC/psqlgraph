@@ -1,27 +1,11 @@
 ---
-stages:
-  - .pre
-  - test
-  - build
-  - stage_trigger
-
 include:
   - project: nci-gdc/gitlab-templates
-    ref: 0.4.1
+    ref: master
     file:
-      - templates/global/full.yaml
-      - templates/python/full.yaml
-      - templates/common/python.yaml
+      - templates/artifacts/python-library.yaml
 
 tox:
-  parallel:
-    matrix:
-      - BUILD_PY_VERSION:
-          - python3.7
-          - python3.8
-          - python3.9
-          - python3.10
-          - python3.11
   services:
     - name: docker.osdc.io/ncigdc/ci-postgres-13:${BASE_CONTAINER_VERSION}
       alias: postgres
@@ -33,22 +17,6 @@ tox:
     POSTGRES_PASSWORD: test
     POSTGRES_HOST_AUTH_METHOD: trust
     PG_HOST: postgres
-  script:
-    - tox -r -e py
-
-
-release:
-  variables:
-    RELEASE_PY_VERSION: python3.7
-  before_script:
-    - git fetch --unshallow || true
-  after_script:
-    - pip install "setuptools_scm>=6.2,<8" "setuptools-git-versioning<2"
-    - python -m setuptools_git_versioning | tee VERSION.txt
-  artifacts:
-    paths:
-      - VERSION.txt
-    expire_in: 1 week
 
 .downstream_repos:
   parallel:
@@ -67,10 +35,10 @@ release:
         NAME: gdcadmin
 
 trigger:
-  stage: stage_trigger
+  stage: .post
   dependencies:
-    - release
-  parallel: !reference [.downstream_repos, parallel]
+    - publish
+  extends: .downstream_repos
   script:
     - apk add --no-cache curl
     - VERSION=$(cat VERSION.txt)
@@ -87,8 +55,8 @@ trigger:
   when: manual
 
 trigger_integration:
-  stage: stage_trigger
-  parallel: !reference [.downstream_repos, parallel]
+  stage: .post
+  extends: .downstream_repos
   script:
     - apk add --no-cache curl
     - >
@@ -100,8 +68,8 @@ trigger_integration:
   when: manual
 
 trigger_branch_pattern:
-  stage: stage_trigger
-  parallel: !reference [.downstream_repos, parallel]
+  stage: .post
+  extends: .downstream_repos
   script:
     - apk add --no-cache curl
     - >

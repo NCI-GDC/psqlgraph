@@ -7,6 +7,7 @@ from test import models
 import pytest
 
 from psqlgraph import Edge, Node
+from psqlgraph.exc import PSQLGraphError
 from psqlgraph.mocks import GraphFactory, NodeFactory
 
 STRING_MATCH = "[a-zA-Z0-9]{32}"
@@ -94,6 +95,38 @@ def test_init_graph_factory(gdcmodels, gdcdictionary):
     _ = GraphFactory(gdcmodels, gdcdictionary)
 
 
+def test_strict_graph_factory(gdcmodels, gdcdictionary) -> None:
+    gf = GraphFactory(gdcmodels, gdcdictionary)
+
+    foobar_uuids = [str(uuid.uuid4())]
+    foo_uuids = [str(uuid.uuid4()), str(uuid.uuid4())]
+    test_uuids = [str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())]
+
+    nodes = [
+        {"label": "test", "node_id": test_uuids[0]},
+        {"label": "test", "node_id": test_uuids[1]},
+        {"label": "test", "node_id": test_uuids[2]},
+        {"label": "foo", "node_id": foo_uuids[0]},
+        {"label": "foo", "node_id": foo_uuids[1]},
+        {"label": "foo_bar", "node_id": foobar_uuids[0]},
+    ]
+
+    edges = [
+        {"src": test_uuids[0], "dst": test_uuids[1]},  # t0 -> t1
+        {"src": test_uuids[0], "dst": foo_uuids[0]},  # t0 -> f0
+        {"src": test_uuids[1], "dst": foo_uuids[1]},  # t1 -> f1
+        {"src": test_uuids[2], "dst": foo_uuids[1]},  # t2 -> f1
+        {"src": test_uuids[0], "dst": foobar_uuids[0]},  # invalid edge
+        {"src": foo_uuids[0], "dst": foobar_uuids[0]},  # f0 -> fb0
+        {"src": foo_uuids[1], "dst": foobar_uuids[0]},  # f1 -> fb0
+    ]
+
+    with pytest.raises(PSQLGraphError):
+        gf.create_from_nodes_and_edges(
+            nodes=nodes, edges=edges, unique_key="node_id", strict=True
+        )
+
+
 def test_graph_factory_with_nodes_and_edges(gdcmodels, gdcdictionary):
     gf = GraphFactory(gdcmodels, gdcdictionary)
 
@@ -115,7 +148,6 @@ def test_graph_factory_with_nodes_and_edges(gdcmodels, gdcdictionary):
         {"src": test_uuids[0], "dst": foo_uuids[0]},  # t0 -> f0
         {"src": test_uuids[1], "dst": foo_uuids[1]},  # t1 -> f1
         {"src": test_uuids[2], "dst": foo_uuids[1]},  # t2 -> f1
-        # {"src": test_uuids[0], "dst": foobar_uuids[0]},  # invalid edge
         {"src": foo_uuids[0], "dst": foobar_uuids[0]},  # f0 -> fb0
         {"src": foo_uuids[1], "dst": foobar_uuids[0]},  # f1 -> fb0
     ]

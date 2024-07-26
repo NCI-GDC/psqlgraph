@@ -11,7 +11,6 @@ import sqlalchemy as sa
 from psqlgraph import PsqlGraphDriver
 from psqlgraph.exc import SessionClosedError, ValidationError
 
-logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 

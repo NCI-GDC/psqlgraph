@@ -70,7 +70,7 @@ class PsqlGraphDriver:
             user=user, password=password, host=host, database=database
         )
         if kwargs["isolation_level"] not in self.acceptable_isolation_levels:
-            logging.warning(
+            logger.warning(
                 (
                     "Using an isolation level '{}' that is not in the list of "
                     "acceptable isolation levels {} is not safe and should be "
@@ -229,7 +229,7 @@ class PsqlGraphDriver:
                 local.commit()
 
         except Exception as msg:
-            logging.error(f"Rolling back session {msg}")
+            logger.error(f"Rolling back session {msg}")
             local.rollback()
             raise
 
@@ -256,10 +256,9 @@ class PsqlGraphDriver:
         try:
             configure_mappers()
         except Exception as e:
-            logging.error(
-                ("{}: Unable to configure mappers. " "Have you imported your models?").format(
-                    str(e)
-                )
+            logger.error(
+                "{}: Unable to configure mappers. "
+                "Have you imported your models?".format(str(e))
             )
 
     def __expand_query(self, query=None):

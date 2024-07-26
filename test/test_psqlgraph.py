@@ -1,4 +1,3 @@
-import logging
 import random
 import unittest
 import uuid
@@ -16,8 +15,6 @@ from psqlgraph import PolyEdge as PsqlEdge
 from psqlgraph import PolyNode
 from psqlgraph import PolyNode as PsqlNode
 from psqlgraph import VoidedEdge, sanitize
-
-logging.basicConfig(level=logging.DEBUG)
 
 
 def timestamp():

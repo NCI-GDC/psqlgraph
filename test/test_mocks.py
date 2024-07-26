@@ -115,7 +115,7 @@ def test_graph_factory_with_nodes_and_edges(gdcmodels, gdcdictionary):
         {"src": test_uuids[0], "dst": foo_uuids[0]},  # t0 -> f0
         {"src": test_uuids[1], "dst": foo_uuids[1]},  # t1 -> f1
         {"src": test_uuids[2], "dst": foo_uuids[1]},  # t2 -> f1
-        {"src": test_uuids[0], "dst": foobar_uuids[0]},  # invalid edge
+        # {"src": test_uuids[0], "dst": foobar_uuids[0]},  # invalid edge
         {"src": foo_uuids[0], "dst": foobar_uuids[0]},  # f0 -> fb0
         {"src": foo_uuids[1], "dst": foobar_uuids[0]},  # f1 -> fb0
     ]

@@ -95,7 +95,10 @@ def test_init_graph_factory(gdcmodels, gdcdictionary):
     _ = GraphFactory(gdcmodels, gdcdictionary)
 
 
-def test_strict_graph_factory(gdcmodels, gdcdictionary) -> None:
+def test_graph_factory__strict_with_invalid_edge(
+    gdcmodels: FakeModels, gdcdictionary: models.FakeDictionary
+) -> None:
+    """Confirm invalid edges raises exception when strict is set to True."""
     gf = GraphFactory(gdcmodels, gdcdictionary)
 
     foobar_uuids = [str(uuid.uuid4())]
@@ -127,7 +130,10 @@ def test_strict_graph_factory(gdcmodels, gdcdictionary) -> None:
         )
 
 
-def test_graph_factory_with_nodes_and_edges(gdcmodels, gdcdictionary):
+def test_graph_factory_with_nodes_and_edges(
+    gdcmodels: FakeModels, gdcdictionary: models.FakeDictionary
+) -> None:
+    """Test GraphFactory can successfully create nodes and edges."""
     gf = GraphFactory(gdcmodels, gdcdictionary)
 
     foobar_uuids = [str(uuid.uuid4())]

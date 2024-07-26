@@ -557,10 +557,11 @@ class GraphFactory:
         if len(association_names) == 1:
             getattr(src_node, association_names[0]).append(dst_node)
 
-        if len(association_names) > 1:
+        elif len(association_names) > 1:
             if strict:
                 raise PSQLGraphError(
-                    f"Multiple associations '{association_names}' found between '{src_node.label}' and '{dst_node.label}'"
+                    f"Multiple associations '{association_names}' found between "
+                    f"'{src_node.label}' and '{dst_node.label}'"
                 )
             logger.warning(
                 "Multiple association '%s' found between '%s' and '%s'",
@@ -568,10 +569,11 @@ class GraphFactory:
                 src_node.label,
                 dst_node.label,
             )
-        if len(association_names) == 0:
+        else:
             if strict:
                 raise PSQLGraphError(
-                    f"Could not find a direct relation (edge name or label = '{edge_label}') between '{src_node.label}' and '{dst_node.label}' "
+                    f"Could not find a direct relation (edge name or label = '{edge_label}') "
+                    f"between '{src_node.label}' and '{dst_node.label}' "
                 )
             logger.warning(
                 "Could not find a direct relation (edge name or label = '%s') between '%s' and '%s'",
@@ -580,7 +582,6 @@ class GraphFactory:
                 dst_node.label,
             )
 
-        if len(association_names) == 0:
             # try the reverse
             self.make_association(dst_node, src_node, edge_label, strict=True)
 

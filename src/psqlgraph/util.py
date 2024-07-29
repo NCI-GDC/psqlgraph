@@ -10,6 +10,7 @@ from psqlgraph.exc import ValidationError
 
 #  PsqlNode modules
 DEFAULT_RETRIES = 0
+logger = logging.getLogger(__name__)
 
 
 def validate(f, value, types, enum=None):
@@ -17,7 +18,7 @@ def validate(f, value, types, enum=None):
     if enum:
         if value not in enum and value is not None:
             raise ValidationError(
-                ("Value '{}' not in allowed value list for {} for property {}.").format(
+                "Value '{}' not in allowed value list for {} for property {}.".format(
                     value, enum, f.__name__
                 )
             )
@@ -113,9 +114,9 @@ def retryable(func):
             try:
                 return func(*args, **kwargs)
             except IntegrityError:
-                logging.debug(f"Race-condition caught? ({retries}/{max_retries} retries)")
+                logger.debug(f"Race-condition caught? ({retries}/{max_retries} retries)")
                 if retries >= max_retries:
-                    logging.error(f"Unable to execute {func}, max retries exceeded")
+                    logger.error(f"Unable to execute {func}, max retries exceeded")
                     raise
                 retries += 1
                 backoff(retries, max_retries)

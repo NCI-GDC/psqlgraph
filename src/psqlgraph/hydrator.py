@@ -10,6 +10,9 @@ import rstr
 
 import psqlgraph
 from psqlgraph import Node
+from psqlgraph.exc import PSQLGraphError
+
+logger = logging.getLogger(__name__)
 
 
 class Randomizer:
@@ -168,7 +171,7 @@ class PropertyFactory:
                     self.properties.get(name, {})
                 )
             except ValueError as ve:
-                logging.debug(
+                logger.debug(
                     "Property: '{}' is most likely a relationship. Error: {}" "".format(name, ve)
                 )
 
@@ -255,7 +258,7 @@ class NodeFactory:
 
                 _, value = self.property_factories[label].create(prop, override_val)
             except (KeyError, ValueError):
-                logging.debug(f"No factory for property: '{prop}'")
+                logger.debug(f"No factory for property: '{prop}'")
                 continue
 
             node_json["properties"][prop] = value
@@ -304,6 +307,7 @@ class GraphFactory:
         edges: List[Dict[str, str]],
         unique_key: str = "submitter_id",
         all_props: bool = False,
+        strict: bool = False,
     ) -> List[Node]:
         """Create a graph from nodes and edges.
 
@@ -318,6 +322,7 @@ class GraphFactory:
                 [{'src': 'read_group_1', 'dst': 'aliquot_1'}]
             unique_key:  a name of the property that will be used to connect nodes
             all_props: generate all node properties or not
+            strict: raises error if invalid links are provided
 
         Returns:
             List of psqlgraph nodes
@@ -344,10 +349,10 @@ class GraphFactory:
             node2 = nodes_map.get(sub_id2)
 
             if not node1 or not node2:
-                logging.debug(f"Could not find nodes for edge: '{sub_id1}'<->'{sub_id2}'")
+                logger.debug(f"Could not find nodes for edge: '{sub_id1}'<->'{sub_id2}'")
                 continue
 
-            self.make_association(node1, node2, edge_label)
+            self.make_association(node1, node2, edge_label, strict)
 
         return list(nodes_map.values())
 
@@ -509,57 +514,118 @@ class GraphFactory:
         return relation in links
 
     def make_association(
-        self, src_node: Node, dst_node: Node, edge_label: Optional[str] = None
+        self,
+        src_node: Node,
+        dst_node: Node,
+        edge_label: Optional[str] = None,
+        strict: bool = False,
     ) -> None:
-        """Create an Edge between 2 nodes
+        """Create an Edge between two nodes
 
         Given 2 instances of a Node, find appropriate association between the
-        2 nodes and create a relation between them
+        two nodes and create a relation between them
 
         There are some special cases like auxiliary_files and
-        structural_variant_calling_workflow, there are 2 different edges between them
+        structural_variant_calling_workflow, there are two different edges between them
         in opposite directions. In this case, we use the label to differentiate them.
 
         Bonus: Label could be added to all edges and will make the lookup faster.
 
         Args:
-            src_node: first node of the edge
-            dst_node: second node of the edge
-            edge_label: label of the edge
+            src_node: source node of the edge
+            dst_node: destination node of the edge
+            edge_label: identifier defined in the dictionary `links` section. It can be
+                the name of the edge, or the label
+            strict: raise error is edge is invalid
+        Raises:
+            PSQLGraphError if either no association is found or multiple associations are found
+            for the source and destination nodes. Specifying a label reduces the chances of finding
+            multiple associations.
         """
+        association_name = None
         if edge_label:
-            edge_class = self.models.Edge.get_subclass(edge_label)
-            if not edge_class:
-                logging.warning(f"Edge with label {edge_label} not found")
-            elif (
-                edge_class.__src_class__ == src_node.__class__.__name__
-                and edge_class.__dst_class__ == dst_node.__class__.__name__
-            ):
-                getattr(src_node, edge_class.__src_dst_assoc__).append(dst_node)
-                return
-            elif (
-                edge_class.__src_class__ == dst_node.__class__.__name__
-                and edge_class.__dst_class__ == src_node.__class__.__name__
-            ):
-                getattr(dst_node, edge_class.__src_dst_assoc__).append(src_node)
-                return
-            else:
-                logging.warning(
-                    "Edge with label {} is not allowed between nodes {} and {}".format(
-                        edge_label, src_node.label, dst_node.label
-                    )
-                )
+            # attempt to get association using link name - e.g., performed_on
+            association_name = self.get_association_by_edge_label(src_node, dst_node, edge_label)
 
-        link_found = False
-        for assoc_name, assoc_meta in src_node._pg_edges.items():
-            if isinstance(dst_node, assoc_meta["type"]):
-                getattr(src_node, assoc_name).append(dst_node)
-                link_found = True
-                break
+        if association_name:
+            getattr(src_node, association_name).append(dst_node)
+            return
 
-        if not link_found:
-            logging.debug(
-                "Could not find a direct relation between '{}'<->'{}'".format(
-                    src_node.label, dst_node.label
+        # attempt to get association by going through all links defined on the source node if needed.
+        association_names = self.get_association_by_edge_name(src_node, dst_node, edge_label)
+
+        if len(association_names) == 1:
+            getattr(src_node, association_names[0]).append(dst_node)
+
+        elif len(association_names) > 1:
+            if strict:
+                raise PSQLGraphError(
+                    f"Multiple associations '{association_names}' found between "
+                    f"'{src_node.label}' and '{dst_node.label}'"
                 )
+            logger.warning(
+                "Multiple association '%s' found between '%s' and '%s'",
+                association_names,
+                src_node.label,
+                dst_node.label,
             )
+        else:
+            if strict:
+                raise PSQLGraphError(
+                    f"Could not find a direct relation (edge name or label = '{edge_label}') "
+                    f"between '{src_node.label}' and '{dst_node.label}' "
+                )
+            logger.warning(
+                "Could not find a direct relation (edge name or label = '%s') between '%s' and '%s'",
+                edge_label,
+                src_node.label,
+                dst_node.label,
+            )
+
+            # try the reverse
+            self.make_association(dst_node, src_node, edge_label, strict=True)
+
+    def get_association_by_edge_name(
+        self, src_node: psqlgraph.Node, dst_node: psqlgraph.Node, edge_name: Optional[str] = None
+    ) -> List[str]:
+        """Get the association name used to link the src and dst nodes
+        Args:
+            src_node: the source node
+            dst_node: the destination node
+            edge_name: the edge name as defined in the dictionary.
+                If None, a unique association between the two nodes will be used.
+                An exception is raised if no unique association is found.
+        Returns:
+            The name of the edge from the source node.
+            For example, if the source node is case and the destination
+            node is aliquot, the name of the edge from the `case` node is `aliquots`
+        """
+        association_names = []
+        for assoc_name, assoc_meta in src_node._pg_edges.items():  # noqa
+            if edge_name and assoc_name != edge_name:
+                continue
+
+            if isinstance(dst_node, assoc_meta["type"]):
+                association_names.append(assoc_name)
+        return association_names
+
+    def get_association_by_edge_label(
+        self, src_node: psqlgraph.Node, dst_node: psqlgraph.Node, edge_label: str
+    ) -> Optional[str]:
+        """Get association name for the unique combination of src and dst node
+
+        Args:
+            src_node: source node
+            dst_node: destination node
+            edge_label: dictionary defined edge label - see links section in the dictionary
+
+        Returns:
+            association name
+        """
+        logger.debug("Resolving association using edge labels")
+        edge_class = self.models.Edge.get_unique_subclass(
+            src_node.label, edge_label, dst_node.label
+        )
+        if edge_class:
+            return edge_class.__src_dst_assoc__
+        return None

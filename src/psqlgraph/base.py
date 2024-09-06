@@ -1,4 +1,6 @@
-from sqlalchemy import event
+import inspect
+from typing import ClassVar
+
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext import declarative
 from sqlalchemy.ext.declarative import declared_attr
@@ -18,6 +20,18 @@ class CommonBase:
     _session_hooks_before_insert = []
     _session_hooks_before_update = []
     _session_hooks_before_delete = []
+    __pg_properties__: ClassVar[dict]
+
+    def __init_subclass__(cls) -> None:
+        cls.__pg_properties__ = {}
+        pg_properties = (
+            (k, v) for k, v in vars(cls).items() if getattr(v, "__pg_setter__", False)
+        )
+
+        for name, property in pg_properties:
+            h_prop = _create_hybrid_property(name, property)
+            setattr(cls, name, h_prop)
+            cls.__pg_properties__[name] = property.__pg_types__
 
     # ======== Columns ========
     created = schema.Column(
@@ -237,7 +251,7 @@ class CommonBase:
         return cls.__pg_properties__
 
 
-def create_hybrid_property(name, fset):
+def _create_hybrid_property(name, fset):
     @hybrid_property
     def hybrid_prop(instance):
         # Note: this does not use an 'in' clause or a .get() with a
@@ -254,26 +268,6 @@ def create_hybrid_property(name, fset):
         fset(instance, value)
 
     return hybrid_prop
-
-
-@event.listens_for(CommonBase, "mapper_configured", propagate=True)
-def create_hybrid_properties(mapper, cls):
-    # This dictionary will be a property name to allowed types
-    # dictionary.  It will be populated at mapper configuration using
-    # all model properties defined with @pg_property
-    cls.__pg_properties__ = {}
-
-    for pg_attr in dir(cls):
-        if pg_attr in ["properties", "props", "system_annotations", "sysan"]:
-            continue
-
-        f = getattr(cls, pg_attr)
-        if not getattr(f, "__pg_setter__", False):
-            continue
-
-        h_prop = create_hybrid_property(pg_attr, f)
-        setattr(cls, pg_attr, h_prop)
-        cls.__pg_properties__[pg_attr] = f.__pg_types__
 
 
 class VoidedBaseClass:

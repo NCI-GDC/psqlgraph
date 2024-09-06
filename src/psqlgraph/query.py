@@ -31,8 +31,10 @@ class GraphQuery(Query):
         entity.
 
         """
+        if self._last_joined_entity:
+            return self._last_joined_entity.entity
 
-        return self._joinpoint_zero().entity
+        return self.column_descriptions[0]["entity"]
 
     # ======== Edges ========
     def with_edge_to_node(self, edge_type, target_node):
@@ -208,13 +210,18 @@ class GraphQuery(Query):
             query.path().reset_joinpoint().filter()
 
         """
-        entities = [p.strip() for path in paths for p in path.split(".")]
+        entities = (p.strip() for path in paths for p in path.split("."))
+        query = self
+
         assert (
             not self.entity().is_abstract_base()
         ), "Please narrow your search by specifying a node subclass"
-        for e in entities:
-            self = self.join(*getattr(self.entity(), e).attr)
-        return self
+
+        for entity in entities:
+            proxy = getattr(query.entity(), entity)
+            query = query.join(proxy.local_attr).join(proxy.remote_attr)
+
+        return query
 
     def _get_link_details(self, entity, link_name):
         """ "Lookup the (edge_class, left_edge_id, right_edge_id, node_class)

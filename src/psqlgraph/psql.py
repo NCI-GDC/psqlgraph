@@ -66,9 +66,7 @@ class PsqlGraphDriver:
 
         # Construct connection string
         host = "" if host is None else host
-        conn_str = "postgresql://{user}:{password}@{host}/{database}".format(
-            user=user, password=password, host=host, database=database
-        )
+        conn_str = f"postgresql+psycopg2://{user}:{password}@{host}/{database}"
         if kwargs["isolation_level"] not in self.acceptable_isolation_levels:
             logger.warning(
                 (

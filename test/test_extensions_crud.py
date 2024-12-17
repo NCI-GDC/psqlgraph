@@ -8,7 +8,9 @@ class E1(MdaEdge):
 
     __label__ = "edge_t1_t2"
     __src_class__ = "T1"
+    __src_table__ = "node_t1"
     __dst_class__ = "T2"
+    __dst_table__ = "node_t2"
     __src_dst_assoc__ = "t2s"
     __dst_src_assoc__ = "t1s"
 

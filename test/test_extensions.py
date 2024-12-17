@@ -1,8 +1,8 @@
 import pytest
 
-from psqlgraph import ext
-from psqlgraph.edge import AbstractEdge, Edge
-from psqlgraph.node import AbstractNode, Node
+from psqlgraph import edge, ext, node
+from psqlgraph.edge import Edge
+from psqlgraph.node import Node
 
 
 @pytest.mark.parametrize(
@@ -16,8 +16,8 @@ from psqlgraph.node import AbstractNode, Node
 def test_register_bases(ns, node_cls_name, edge_cls_name):
 
     node_cls, edge_cls = ext.register_base_class(package_namespace=ns)
-    assert issubclass(node_cls, AbstractNode)
-    assert issubclass(edge_cls, AbstractEdge)
+    assert issubclass(node_cls, node.AbstractNode)
+    assert issubclass(edge_cls, edge.AbstractEdge)
 
     assert node_cls.__name__ == node_cls_name
     assert edge_cls.__name__ == edge_cls_name

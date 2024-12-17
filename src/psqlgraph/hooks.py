@@ -3,10 +3,9 @@ Session hooks
 """
 
 from sqlalchemy.inspection import inspect
+from typing_extensions import TypeGuard
 
-from psqlgraph.base import ExtMixin
-from psqlgraph.edge import AbstractEdge
-from psqlgraph.node import AbstractNode
+from psqlgraph import base
 
 
 def history(target, column, attr):
@@ -39,9 +38,9 @@ def get_old_version(target, *attrs):
     return props, sysan
 
 
-def is_psqlgraph_entity(target):
+def is_psqlgraph_entity(target) -> TypeGuard[base.CommonBase]:
     """Only attempt to track history on Nodes and Edges"""
-    return isinstance(target, ExtMixin)
+    return isinstance(target, base.CommonBase)
 
 
 def receive_before_flush(session, flush_context, instances):
@@ -96,8 +95,7 @@ def receive_before_flush(session, flush_context, instances):
         if not is_psqlgraph_entity(target):
             continue
 
-        if isinstance(target, (AbstractNode, AbstractEdge)):
-            target._validate()
+        target._validate()
 
         # Call custom session hook
         for f in target._session_hooks_before_insert:

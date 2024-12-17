@@ -66,7 +66,9 @@ class FakeDictionary:
 class Edge1(Edge):
 
     __src_class__ = "Test"
+    __src_table__ = "node_test"
     __dst_class__ = "Test"
+    __dst_table__ = "node_test"
     __src_dst_assoc__ = "tests"
     __dst_src_assoc__ = "sub_tests"
 
@@ -87,7 +89,9 @@ class Edge2(Edge):
 
     __label__ = "test_edge_2"
     __src_class__ = "Test"
+    __src_table__ = "node_test"
     __dst_class__ = "Foo"
+    __dst_table__ = "node_foo"
     __src_dst_assoc__ = "foos"
     __dst_src_assoc__ = "tests"
 
@@ -95,7 +99,9 @@ class Edge2(Edge):
 class Edge3(Edge):
 
     __src_class__ = "Foo"
+    __src_table__ = "node_foo"
     __dst_class__ = "FooBar"
+    __dst_table__ = "node_foobar"
     __src_dst_assoc__ = "foobars"
     __dst_src_assoc__ = "foos"
 
@@ -107,7 +113,9 @@ class Edge4(Edge):
     __label__ = "edge4"
 
     __src_class__ = "Circle1"
+    __src_table__ = "node_circle1"
     __dst_class__ = "Circle2"
+    __dst_table__ = "node_circle2"
     __src_dst_assoc__ = "circle_2a"
     __dst_src_assoc__ = "circle_1a"
 
@@ -117,7 +125,9 @@ class Edge5(Edge):
     __label__ = "edge5"
 
     __src_class__ = "Circle2"
+    __src_table__ = "node_circle2"
     __dst_class__ = "Circle1"
+    __dst_table__ = "node_circle1"
     __src_dst_assoc__ = "circle_1b"
     __dst_src_assoc__ = "circle_2b"
 
@@ -125,7 +135,9 @@ class Edge5(Edge):
 class TestToFooBarEdge(Edge):
 
     __src_class__ = "Test"
+    __src_table__ = "node_test"
     __dst_class__ = "FooBar"
+    __dst_table__ = "node_foobar"
     __src_dst_assoc__ = "foobars"
     __dst_src_assoc__ = "tests"
 
@@ -215,7 +227,9 @@ class TestDefaultValue(Node):
 
     _pg_edges = {}
 
-    _defaults = {"property_with_default": "open"}
+    @property
+    def _defaults(self) -> dict:
+        return {"property_with_default": "open"}
 
     @pg_property(enum=("open", "submitted", "closed", "legacy"))
     def property_with_default(self, value):

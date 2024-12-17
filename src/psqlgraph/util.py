@@ -1,8 +1,10 @@
 import logging
 import random
 import time
+from collections.abc import Mapping
 from functools import wraps
 from types import FunctionType
+from typing import Any
 
 from sqlalchemy.exc import IntegrityError
 
@@ -60,7 +62,7 @@ def pg_property(*pg_args, **pg_kwargs):
     return decorator
 
 
-def sanitize(properties):
+def sanitize(properties: Mapping[str, Any]) -> Mapping[str, Any]:
     sanitized = {}
     for key, value in properties.items():
         if not value or isinstance(value, (int, bool, list, float, type(None))):

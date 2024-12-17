@@ -3,6 +3,7 @@
 
 import logging
 import socket
+from collections.abc import Iterator
 
 # External modules
 from contextlib import contextmanager
@@ -13,16 +14,14 @@ from sqlalchemy.orm.attributes import flag_modified
 from xlocal import xlocal
 
 # Custom modules
-from psqlgraph import ext
-from psqlgraph.edge import AbstractEdge
+from psqlgraph import edge, ext
 from psqlgraph.exc import QueryError
 from psqlgraph.hooks import receive_before_flush
 from psqlgraph.node import PolyNode
 from psqlgraph.query import GraphQuery
 from psqlgraph.session import GraphSession
 from psqlgraph.util import default_backoff, retryable
-from psqlgraph.voided_edge import VoidedEdge
-from psqlgraph.voided_node import VoidedNode
+from psqlgraph.voided import VoidedEdge, VoidedNode
 
 DEFAULT_RETRIES = 0
 logger = logging.getLogger(__name__)
@@ -117,7 +116,7 @@ class PsqlGraphDriver:
         must_inherit=False,
         auto_flush=None,
         read_only=None,
-    ):
+    ) -> Iterator[GraphSession]:
         """Provide a transactional scope around a series of operations.
 
         This session scope has a deceptively complex behavior, so be
@@ -410,6 +409,7 @@ class PsqlGraphDriver:
                 node.system_annotations = system_annotations
             if properties is not None:
                 node.properties = properties
+
             local.merge(node)
 
     @retryable
@@ -565,7 +565,7 @@ class PsqlGraphDriver:
     def reload(self, *entities):
         reloaded = []
         for e in entities:
-            if isinstance(e, AbstractEdge):
+            if isinstance(e, edge.Edge):
                 reloaded.append(self.edges(type(e)).src(e.src_id).dst(e.dst_id).one())
             else:
                 reloaded.append(self.nodes(type(e)).ids(e.node_id).one())

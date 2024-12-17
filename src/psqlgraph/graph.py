@@ -65,9 +65,9 @@ class CommonBase:
     __tablename_scheme__: ClassVar[str]
     __is_abstract_base__: ClassVar[bool]
 
-    _session_hooks_before_insert: ClassVar[Iterable[Hook]] = ()
-    _session_hooks_before_update: ClassVar[Iterable[Hook]] = ()
-    _session_hooks_before_delete: ClassVar[Iterable[Hook]] = ()
+    _session_hooks_before_insert: ClassVar[Iterable[Hook]] = []
+    _session_hooks_before_update: ClassVar[Iterable[Hook]] = []
+    _session_hooks_before_delete: ClassVar[Iterable[Hook]] = []
 
     def __init_subclass__(cls, *, is_abstract_base: bool = False) -> None:
         cls.__pg_properties__ = {}

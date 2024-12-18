@@ -3,6 +3,7 @@ import uuid
 from test import PsqlgraphBaseTest, models
 
 import pytest
+from sqlalchemy.exc import ProgrammingError
 
 from psqlgraph import PolyEdge, PolyNode
 
@@ -61,6 +62,14 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
                 self.g.nodes(models.Test).ids(self.parent_id).path("foos").props(bar=1).count(),
                 1,
             )
+
+    def test_path_aliases(self):
+        """Verify path with multiple joins to the same table does not produce an error."""
+        with self.g.session_scope():
+            try:
+                self.g.nodes(models.Foo).path("tests.foos.tests.foos").count()
+            except ProgrammingError as e:
+                assert False, f"Unexpected error occurred: {e}"
 
     def test_subq_path_no_filter(self):
         with self.g.session_scope():

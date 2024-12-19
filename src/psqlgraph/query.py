@@ -2,7 +2,7 @@ from copy import copy
 
 from sqlalchemy import not_, or_
 from sqlalchemy.dialects.postgresql import array
-from sqlalchemy.orm import Query
+from sqlalchemy.orm import Query, aliased
 
 from psqlgraph import ext
 
@@ -212,8 +212,122 @@ class GraphQuery(Query):
         assert (
             not self.entity().is_abstract_base()
         ), "Please narrow your search by specifying a node subclass"
+        # TODO: This is the original
         for e in entities:
             self = self.join(*getattr(self.entity(), e).attr)
+            # _joinpoint after first iteration: {'_joinpoint_entity': <Mapper at 0x1051643a0; Test>, 'prev': ((<Mapper at 0x105127670; Edge2>, <Mapper at 0x1051643a0; Test>, 'src'), {'_joinpoint_entity': <Mapper at 0x105127670; Edge2>, 'prev': ((<Mapper at 0x105116d60; Foo>, <Mapper at 0x105127670; Edge2>, '_Edge2_in'), {(<Mapper at 0x105116d60; Foo>, <Mapper at 0x105127670; Edge2>, '_Edge2_in'): {'_joinpoint_entity': <Mapper at 0x105127670; Edge2>, 'prev': (...), (...): {...}}}), (<Mapper at 0x105127670; Edge2>, <Mapper at 0x1051643a0; Test>, 'src'): {'_joinpoint_entity': <Mapper at 0x1051643a0; Test>, 'prev': ((<Mapper at 0x105127670; Edge2>, <Mapper at 0x1051643a0; Test>, 'src'), {'_joinpoint_entity': <Mapper at 0x105127670; Edge2>, 'prev': (...)})}})}
+            # breakpoint()
+
+        # TODO: always alias tables
+        # for e in entities:
+        #     breakpoint()
+        #     joined_tables = [mapper.class_ for mapper in self._join_entities]
+        #     current_self_type = self.__class__.__name__
+        #     curr_statement = str(self.statement)
+        #     breakpoint()
+        #     # self.entity() breaks when using aliased=true in join, something is going on with _joinpoint_zero.entity()
+        #     curr_entity = self.entity()
+        #     breakpoint()
+        #     # aliased_entity = aliased(self.entity())
+        #     # self = self.join(*getattr(aliased_entity, e).attr)
+        #     self = self.join(*getattr(self.entity(), e).attr, aliased=True)
+        #     # _joinpoint after first iteration: {'_joinpoint_entity': <AliasedClass at 0x10a010e20; Test>}
+        #     breakpoint()
+
+        # TODO: attempt to alias using tuple input to join function
+        # # may change this to a list if it's not necessary to define alias name which requires keeping track of count
+        # alias_counts = {}
+        # for e in entities:
+        #     breakpoint()
+        #     curr_entity = self.entity()
+        #     curr_association = getattr(self.entity(), e).attr
+        #     breakpoint()
+        #
+        #     if count := alias_counts.get(curr_association[1]):
+        #         alias_counts[curr_association[1]] = count + 1
+        #         # temp_alias = aliased(curr_association[1])
+        #         # curr_association = (curr_association[0], aliased(curr_association[1]))  # this breaks
+        #         breakpoint()
+        #     else:
+        #         alias_counts[curr_association[1]] = 1
+        #
+        #     breakpoint()
+        #     # this join statement includes target as the first param and the param for the on clause as the second
+        #     # self = self.join(*curr_association.attr)
+        #     self = self.join(*curr_association)
+        #     breakpoint()
+
+        # TODO: attempt to alias using target class in getattr(self.entity(), e)
+        # # may change this to a list if it's not necessary to define alias name which requires keeping track of count
+        # alias_counts = {}
+        # for e in entities:
+        #     breakpoint()
+        #     curr_entity = self.entity()
+        #     curr_association = getattr(self.entity(), e)
+        #     target_class = curr_association.target_class
+        #     breakpoint()
+        #
+        #     if count := alias_counts.get(target_class):
+        #         alias_counts[target_class] = count + 1
+        #         temp_alias = aliased(target_class)
+        #         curr_association.target_class = temp_alias
+        #         breakpoint()
+        #     else:
+        #         alias_counts[target_class] = 1
+        #
+        #     check_val = curr_association.attr
+        #     breakpoint()
+        #     # this join statement includes target as the first param and the param for the on clause as the second
+        #     self = self.join(*curr_association.attr)
+        #     breakpoint()
+
+        # TODO: track the joined entities and create aliases when duplicates found
+        # for e in entities:
+        #     joined_tables = [mapper.class_ for mapper in self._join_entities]
+        #     breakpoint()
+        #     curr_entity = self.entity()
+        #     curr_association = getattr(self.entity(), e)
+        #     target_class = curr_association.target_class
+        #     owning_class = curr_association.owning_class
+        #     breakpoint()
+        #
+        #     if target_class in joined_tables:
+        #         curr_association.target_class = aliased(target_class)
+        #         breakpoint()
+        #     if owning_class in joined_tables:
+        #         curr_association.owning_class = aliased(owning_class)
+        #         breakpoint()
+        #
+        #     check_val = curr_association.attr
+        #     breakpoint()
+        #     # this join statement includes target as the first param and the param for the on clause as the second
+        #     self = self.join(*curr_association.attr)
+        #     joined_tables = [mapper.class_ for mapper in self._join_entities]
+        #     breakpoint()
+
+        # TODO: attempt to track the entity and alias directly
+        # # may change this to a list if it's not necessary to define alias name which requires keeping track of count
+        # alias_counts = {}
+        # for e in entities:
+        #     curr_entity = self.entity()
+        #     breakpoint()
+        #
+        #     if count := alias_counts.get(curr_entity):
+        #         alias_counts[curr_entity] = count + 1
+        #         # curr_entity = aliased(curr_entity)
+        #         curr_entity = aliased(curr_entity, name="x") # see what naming it does
+        #         breakpoint()
+        #     else:
+        #         alias_counts[curr_entity] = 1
+        #
+        #     check_association = getattr(curr_entity, e)
+        #     check_attribute_tuple = check_association.attr
+        #
+        #     # this join statement includes target as the first param and the param for the on clause as the second
+        #     self = self.join(*getattr(curr_entity, e).attr)
+        #     breakpoint()
+
+        # breakpoint()
         return self
 
     def _get_link_details(self, entity, link_name):

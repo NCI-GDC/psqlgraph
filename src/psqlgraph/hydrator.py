@@ -4,7 +4,8 @@ import logging
 import random
 import uuid
 from collections import defaultdict, deque
-from typing import Dict, Iterable, List, Optional, Union
+from collections.abc import Iterable
+from typing import Dict, List, Optional, Union
 
 import rstr
 
@@ -210,7 +211,7 @@ class NodeFactory:
     def create(
         self,
         label: str,
-        override: Optional[Dict[str, Union[bool, int, str]]] = None,
+        override: Optional[dict[str, Union[bool, int, str]]] = None,
         all_props: bool = False,
     ) -> psqlgraph.Node:
         """Create a node instance of `label` type.
@@ -303,12 +304,12 @@ class GraphFactory:
 
     def create_from_nodes_and_edges(
         self,
-        nodes: List[Dict[str, str]],
-        edges: List[Dict[str, str]],
+        nodes: list[dict[str, str]],
+        edges: list[dict[str, str]],
         unique_key: str = "submitter_id",
         all_props: bool = False,
         strict: bool = False,
-    ) -> List[Node]:
+    ) -> list[Node]:
         """Create a graph from nodes and edges.
 
         Given a list of nodes and edges, create a graph. The edge between 2
@@ -363,7 +364,7 @@ class GraphFactory:
         leaf_labels: Optional[Iterable[str]] = None,
         skip_relations: Optional[Iterable[str]] = None,
         all_props: bool = False,
-    ) -> List[Node]:
+    ) -> list[Node]:
         """
         Generate a randomized graph with root at the given Node `label` type.
 
@@ -587,7 +588,7 @@ class GraphFactory:
 
     def get_association_by_edge_name(
         self, src_node: psqlgraph.Node, dst_node: psqlgraph.Node, edge_name: Optional[str] = None
-    ) -> List[str]:
+    ) -> list[str]:
         """Get the association name used to link the src and dst nodes
         Args:
             src_node: the source node

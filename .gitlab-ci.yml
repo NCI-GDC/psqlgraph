@@ -5,7 +5,13 @@ include:
     file:
       - templates/artifacts/python-library.yaml
 
+variables:
+  BUILD_PY_VERSION: python3.9
+
 tox:
+  parallel:
+    matrix:
+      - LANGUAGE_VERSION: [python3.9, python3.10, python3.11, python3.12, python3.13]
   services:
     - name: docker.osdc.io/ncigdc/ci-postgres-13:${BASE_CONTAINER_VERSION}
       alias: postgres

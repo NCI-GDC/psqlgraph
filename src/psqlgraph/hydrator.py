@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import copy
 import logging
@@ -5,7 +7,6 @@ import random
 import uuid
 from collections import defaultdict, deque
 from collections.abc import Iterable
-from typing import Dict, List, Optional, Union
 
 import rstr
 
@@ -211,7 +212,7 @@ class NodeFactory:
     def create(
         self,
         label: str,
-        override: Optional[dict[str, Union[bool, int, str]]] = None,
+        override: dict[str, bool | int | str] | None = None,
         all_props: bool = False,
     ) -> psqlgraph.Node:
         """Create a node instance of `label` type.
@@ -361,8 +362,8 @@ class GraphFactory:
         self,
         label: str,
         max_depth: int = 10,
-        leaf_labels: Optional[Iterable[str]] = None,
-        skip_relations: Optional[Iterable[str]] = None,
+        leaf_labels: Iterable[str] | None = None,
+        skip_relations: Iterable[str] | None = None,
         all_props: bool = False,
     ) -> list[Node]:
         """
@@ -518,7 +519,7 @@ class GraphFactory:
         self,
         src_node: Node,
         dst_node: Node,
-        edge_label: Optional[str] = None,
+        edge_label: str | None = None,
         strict: bool = False,
     ) -> None:
         """Create an Edge between two nodes
@@ -587,7 +588,7 @@ class GraphFactory:
             self.make_association(dst_node, src_node, edge_label, strict=True)
 
     def get_association_by_edge_name(
-        self, src_node: psqlgraph.Node, dst_node: psqlgraph.Node, edge_name: Optional[str] = None
+        self, src_node: psqlgraph.Node, dst_node: psqlgraph.Node, edge_name: str | None = None
     ) -> list[str]:
         """Get the association name used to link the src and dst nodes
         Args:
@@ -612,7 +613,7 @@ class GraphFactory:
 
     def get_association_by_edge_label(
         self, src_node: psqlgraph.Node, dst_node: psqlgraph.Node, edge_label: str
-    ) -> Optional[str]:
+    ) -> str | None:
         """Get association name for the unique combination of src and dst node
 
         Args:

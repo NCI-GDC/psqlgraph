@@ -29,7 +29,7 @@ For usage documentation please see /doc/build/html.
 
 Before continuing you must have the following programs installed:
 
-- [Python 3.6+](http://python.org/)
+- [Python 3.9+](http://python.org/)
 - [Postgresql 9.4+](http://www.postgresql.org/download/)
 
 The psqlgraph library requires the following pip dependencies

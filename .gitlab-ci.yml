@@ -5,12 +5,18 @@ include:
     file:
       - templates/artifacts/python-library.yaml
 
+variables:
+  BUILD_PY_VERSION: python3.9
+
 tox:
+  parallel:
+    matrix:
+      - LANGUAGE_VERSION: [python3.9, python3.10, python3.11, python3.12, python3.13]
   services:
     - name: docker.osdc.io/ncigdc/ci-postgres-13:${BASE_CONTAINER_VERSION}
       alias: postgres
   variables:
-    BASE_CONTAINER_VERSION: 2.3.1
+    BASE_CONTAINER_VERSION: 3.1.0
     # these are for postgres docker
     POSTGRES_DB: automated_test
     POSTGRES_USER: test

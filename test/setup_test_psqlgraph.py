@@ -5,7 +5,6 @@ Needs to be run as the postgres user.
 
 import argparse
 import logging
-from test import models
 
 from sqlalchemy import create_engine
 

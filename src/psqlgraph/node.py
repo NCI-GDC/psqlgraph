@@ -4,9 +4,8 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import relationship
 
-from psqlgraph import base, traversals
+from psqlgraph import base, traversals, voided
 from psqlgraph.edge import Edge
-from psqlgraph.voided_node import VoidedNode
 
 DST_SRC_ASSOC = "__dst_src_assoc__"
 SRC_DST_ASSOC = "__src_dst_assoc__"
@@ -251,34 +250,27 @@ class AbstractNode(NodeAssociationProxyMixin, base.ExtMixin):
     def get_history(self, session):
         assert self.label, "Specify label for node history"
         return (
-            session.query(VoidedNode)
-            .filter(VoidedNode.node_id == self.node_id)
-            .filter(VoidedNode.label == self.label)
-            .order_by(VoidedNode.voided.desc())
+            session.query(voided.VoidedNode)
+            .filter(voided.VoidedNode.node_id == self.node_id)
+            .filter(voided.VoidedNode.label == self.label)
+            .order_by(voided.VoidedNode.voided.desc())
         )
 
     def _snapshot_existing(self, session, old_props, old_sysan):
-        temp = TmpNode(self.node_id, old_props, self.acl, old_sysan, self.label, self.created)
-        voided = VoidedNode(temp)
-        session.add(voided)
+        voided_node = voided.VoidedNode(
+            node_id=self.node_id,
+            label=self.get_label(),
+            created=self.created,
+            acl=self.acl,
+            system_annotations=old_sysan,
+            properties=old_props,
+        )
+
+        session.add(voided_node)
 
 
 class Node(base.LocalConcreteBase, AbstractNode, base.ORMBase):
     pass
-
-
-class TmpNode:
-    """
-    Temporary object to hold a node information
-    """
-
-    def __init__(self, node_id, props, acl, sysan, label, created):
-        self.node_id = node_id
-        self._props = props
-        self.acl = acl
-        self.system_annotations = sysan
-        self.label = label
-        self.created = created
 
 
 def PolyNode(node_id=None, label=None, acl=None, system_annotations=None, properties=None):

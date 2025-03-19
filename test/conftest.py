@@ -5,6 +5,7 @@ from test import models
 import pytest
 
 import psqlgraph
+from psqlgraph import voided
 
 
 @pytest.fixture(scope="session")
@@ -23,7 +24,7 @@ def pg_driver(request, pg_conf):
 
     def drop_all():
         psqlgraph.base.ORMBase.metadata.drop_all(pg_graph_driver.engine)
-        psqlgraph.base.VoidedBase.metadata.drop_all(pg_graph_driver.engine)
+        voided.Base.metadata.drop_all(pg_graph_driver.engine)
 
     request.addfinalizer(drop_all)
 

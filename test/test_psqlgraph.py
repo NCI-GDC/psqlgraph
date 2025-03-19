@@ -154,7 +154,6 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         if not label:
             label = "test"
 
-        retries = 0 if not given_id else int(1e6)
         # Add first node
         propertiesA = {
             "key1": None,
@@ -163,14 +162,12 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             "timestamp": None,
             "new_key": None,
         }
-        self.g.node_merge(
-            node_id=node_id, properties=propertiesA, label=label, max_retries=retries
-        )
+        self.g.node_merge(node_id=node_id, properties=propertiesA, label=label)
         print("-- committed A")
 
         # Add second node
         propertiesB = {"key1": "2", "new_key": "n", "timestamp": timestamp()}
-        self.g.node_merge(node_id=node_id, properties=propertiesB, max_retries=retries)
+        self.g.node_merge(node_id=node_id, properties=propertiesB)
         print("-- committed B")
 
         # Merge properties
@@ -263,7 +260,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         node_id = str(uuid.uuid4())
 
         props = sanitize({"key1": None, "key2": 2})
-        with self.g.session_scope() as session:
+        with self.g.session_scope():
             node = PolyNode(node_id, "test", properties=props)
         test_string = "This is a test"
         node.properties["key1"] = test_string
@@ -506,7 +503,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         label = "test"
         node_ids = [str(uuid.uuid4()) for i in range(self.REPEAT_COUNT)]
         properties = {}
-        with self.g.session_scope() as session:
+        with self.g.session_scope():
             for node_id in node_ids:
                 properties[node_id] = {
                     "key1": node_id,
@@ -516,12 +513,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
                     "timestamp": None,
                 }
 
-                self.g.node_merge(
-                    node_id=node_id,
-                    label="test",
-                    properties=properties[node_id],
-                    session=session,
-                )
+                self.g.node_merge(node_id=node_id, label="test", properties=properties[node_id])
             nodes = list(self.g.node_lookup(label=label))
 
         for node in nodes:
@@ -849,13 +841,13 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             dst_ids = [str(uuid.uuid4()) for i in range(leaf_count)]
             self.g.node_merge(node_id=src_id, label="test")
 
-            with self.g.session_scope() as session:
+            with self.g.session_scope():
                 for dst_id in dst_ids:
-                    self.g.node_merge(node_id=dst_id, label="test", session=session)
+                    self.g.node_merge(node_id=dst_id, label="test")
 
             with self.g.session_scope() as session:
                 for dst_id in dst_ids:
-                    node = self.g.node_lookup_one(node_id=dst_id, session=session)
+                    node = self.g.node_lookup_one(node_id=dst_id)
                     self.g.edge_insert(
                         PsqlEdge(src_id=src_id, dst_id=node.node_id, label="edge1"),
                         session=session,
@@ -979,8 +971,8 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             node_id = str(uuid.uuid4())
             self.g.node_merge(node_id=node_id, label="test")
             self._create_subtree(node_id)
-            with self.g.session_scope() as session:
-                node = self.g.node_lookup_one(node_id, session=session)
+            with self.g.session_scope():
+                node = self.g.node_lookup_one(node_id)
                 self._walk_tree(node)
 
     def test_edge_multiplicity(self):
@@ -1222,7 +1214,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
         with self.g.session_scope() as session:
             self.g.node_insert(PsqlNode(id1, "foo"))
-            self.g.node_insert(PsqlNode(id2, "foo"), session)
+            self.g.node_insert(PsqlNode(id2, "foo"))
             session.rollback()
         with self.g.session_scope():
             self.assertEqual(self.g.node_lookup(id2).count(), 0)

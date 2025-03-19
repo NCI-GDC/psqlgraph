@@ -1,18 +1,19 @@
 # Driver to implement the graph model in postgres
 #
 
+from __future__ import annotations
+
 import logging
 import socket
-
-# External modules
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine, event
+import sqlalchemy
+import xlocal
+from sqlalchemy import event
 from sqlalchemy.orm import configure_mappers, sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
-from xlocal import xlocal
+from typing_extensions import Literal
 
-# Custom modules
 from psqlgraph import ext
 from psqlgraph.edge import AbstractEdge
 from psqlgraph.exc import QueryError
@@ -20,11 +21,9 @@ from psqlgraph.hooks import receive_before_flush
 from psqlgraph.node import PolyNode
 from psqlgraph.query import GraphQuery
 from psqlgraph.session import GraphSession
-from psqlgraph.util import default_backoff, retryable
 from psqlgraph.voided_edge import VoidedEdge
 from psqlgraph.voided_node import VoidedNode
 
-DEFAULT_RETRIES = 0
 logger = logging.getLogger(__name__)
 
 
@@ -32,43 +31,69 @@ class PsqlGraphDriver:
 
     acceptable_isolation_levels = ["REPEATABLE_READ", "SERIALIZABLE"]
 
-    def __init__(self, host, user, password, database, **kwargs):
-        """Create a Postgresql Graph Driver
+    def __init__(
+        self,
+        host: str,
+        user: str,
+        password: str,
+        database: str,
+        application_name: str | None = None,
+        auto_flush: bool = True,
+        connect_args: dict | None = None,
+        isolation_level: Literal["REPEATABLE_READ", "SERIALIZABLE"] = "REPEATABLE_READ",
+        package_namespace=None,
+        read_only=False,
+        set_flush_timestamps=True,
+        **kwargs,
+    ):
+        """A driver for interacting with the graph represented in the package-namespace.
 
-        :param bool set_flush_timestamps:
-            Is `True` by default.  Setting this to `True` will
-            perform an extra database query to get the server time at
-            flush and store `session._flush_timestamp`.
-        :param bool auto_flush:
-            defaults to `True`, force all newly created sessions to set autoflush.
-            This value will be the default autoflush value and used while creating new sessions. If the user
-            passes a different value while creating the session, this value will be ignored
-        :param bool read_only:
-            defaults to `False`, Controls whether new sessions are set to only allow read only queries or not.
-            This value is used while creating new sessions and can be replaced by passing a different value while
-            creating the session.
+        Args:
+            host: The name of the postgres host with which the driver should connect.
+            user: The user name the driver should use when connecting with the postgres
+                host.
+            password: The password the driver should use for the given user.
+            database: The name of the database backing the graph represented in the
+                package namespace.
+            application_name: The name of this application by default will use the host
+                name. See connection_args.
+            auto_flush: Defaults to `True`; force all newly created sessions to set
+                autoflush. This value will be the default autoflush value and used while
+                creating new sessions. If the user passes a different value while
+                creating the session, this value will be ignored.
+            connection_args: The are the arguments which will be passed to
+                `sqlalchemy.create_engine`. Within this, the application name will be set
+                to the given value or its default.
+            isolation_level: Set the isolation_level kwarg of the
+                `sqlalchemy.create_engine` function. For more details, see its
+                documentation. Will be superseded by any value of the same name within
+                the kwargs.
+            package_namespace: The namespace for the graph that backs this driver. This
+                can be the default Edge/Node based graph provided in within `psqlgraph`
+                or a Edge/Node pair generated in the `psqlgraph.ext` module e.g. `bio`.
+            read_only: Defaults to `False`; controls whether new sessions are set to
+                only allow read only queries or not. This value is used while creating
+                new sessions and can be replaced by passing a different value while
+                creating the session.
+            set_flush_timestamps: Is `True` by default. Setting this to `True` will
+                perform an extra database query to get the server time at flush and
+                store `session._flush_timestamp`.
+            kwargs: Any additional parameters which should be passed to
+                `sqlalchemy.create_engine`. For details on what these are and their
+                usage see their official documentation.
         """
 
         # Parse kwargs
-        self.auto_flush = kwargs.pop("auto_flush", True)
-        self.read_only = kwargs.pop("read_only", False)
-        self.package_namespace = kwargs.pop("package_namespace", None)
-        connect_args = kwargs.pop("connect_args", {})
-        kwargs.pop("node_validator", None)
-        kwargs.pop("edge_validator", None)
-        self.set_flush_timestamps = kwargs.pop("set_flush_timestamps", True)
-        if "isolation_level" not in kwargs:
-            kwargs["isolation_level"] = "REPEATABLE_READ"
-        if "application_name" in kwargs:
-            connect_args["application_name"] = kwargs.pop("application_name")
-        else:
-            connect_args["application_name"] = socket.gethostname()
+        self.auto_flush = auto_flush
+        self.read_only = read_only
+        self.package_namespace = package_namespace
+        self.set_flush_timestamps = set_flush_timestamps
 
-        # Construct connection string
-        host = "" if host is None else host
-        conn_str = "postgresql://{user}:{password}@{host}/{database}".format(
-            user=user, password=password, host=host, database=database
-        )
+        connect_args = connect_args or {}
+        connect_args["application_name"] = application_name or socket.gethostname()
+
+        kwargs.setdefault("isolation_level", isolation_level)
+
         if kwargs["isolation_level"] not in self.acceptable_isolation_levels:
             logger.warning(
                 (
@@ -80,12 +105,15 @@ class PsqlGraphDriver:
             )
 
         # Create driver engine
-        self.engine = create_engine(
-            conn_str, encoding="latin1", connect_args=connect_args, **kwargs
+        self.engine = sqlalchemy.create_engine(
+            f"postgresql+psycopg2://{user}:{password}@{host}/{database}",
+            encoding="latin1",
+            connect_args=connect_args,
+            **kwargs,
         )
 
         # Create context for xlocal sessions
-        self.context = xlocal()
+        self.context = xlocal.xlocal()
 
     def _new_session(self, auto_flush=None, read_only=None):
 
@@ -244,8 +272,8 @@ class PsqlGraphDriver:
         self._configure_driver_mappers()
         return self.__expand_query(query)
 
-    def __call__(self, *args, **kwargs):
-        return self.nodes(*args, **kwargs)
+    def __call__(self, query=None):
+        return self.nodes(query=query)
 
     def edges(self, query=None):
         query = query or ext.get_abstract_edge(self.package_namespace)
@@ -274,22 +302,16 @@ class PsqlGraphDriver:
     def voided_edges(self, query=VoidedEdge):
         return self.__expand_query(query)
 
-    def set_node_validator(self, node_validator):
-        raise NotImplementedError("Deprecated.")
-
-    def set_edge_validator(self, edge_validator):
-        raise NotImplementedError("Deprecated.")
-
-    def get_nodes(self, session=None, batch_size=1000):
+    def get_nodes(self, batch_size=1000):
         return self.nodes().yield_per(batch_size)
 
-    def get_edges(self, session=None, batch_size=1000):
+    def get_edges(self, batch_size=1000):
         return self.edges().yield_per(batch_size)
 
-    def get_node_count(self, session=None):
+    def get_node_count(self):
         return self.nodes().count()
 
-    def get_edge_count(self, session=None):
+    def get_edge_count(self):
         return self.edges().count()
 
     def node_merge(
@@ -300,9 +322,6 @@ class PsqlGraphDriver:
         label=None,
         system_annotations=None,
         properties=None,
-        session=None,
-        max_retries=DEFAULT_RETRIES,
-        backoff=default_backoff,
     ):
 
         properties = properties or {}
@@ -319,17 +338,17 @@ class PsqlGraphDriver:
             if not node:
                 node = PolyNode(node_id, label, acl, system_annotations, properties)
             else:
-                self.node_update(node, system_annotations, acl, properties, local)
+                self.node_update(node, system_annotations, acl, properties)
 
             local.merge(node)
 
         return node
 
-    def node_insert(self, node, session=None):
+    def node_insert(self, node):
         with self.session_scope() as local:
             local.add(node)
 
-    def node_update(self, node, system_annotations=None, acl=None, properties=None, session=None):
+    def node_update(self, node, system_annotations=None, acl=None, properties=None):
 
         properties = properties or {}
         system_annotations = system_annotations or {}
@@ -341,9 +360,6 @@ class PsqlGraphDriver:
             node.properties.update(properties)
             local.merge(node)
 
-    def _node_void(self, node, session=None):
-        raise NotImplementedError("Deprecated.")
-
     def node_lookup(
         self,
         node_id=None,
@@ -351,7 +367,6 @@ class PsqlGraphDriver:
         label=None,
         system_annotation_matches=None,
         voided=False,
-        session=None,
     ):
         if voided:
             query = self.voided_nodes()
@@ -370,28 +385,30 @@ class PsqlGraphDriver:
             query = query.sysan(system_annotation_matches)
         return query
 
-    def node_lookup_one(self, *args, **kwargs):
-        return self.node_lookup(*args, **kwargs).scalar()
+    def node_lookup_one(
+        self,
+        node_id=None,
+        property_matches=None,
+        label=None,
+        system_annotation_matches=None,
+        voided=False,
+    ):
+        return self.node_lookup(
+            node_id, property_matches, label, system_annotation_matches, voided
+        ).scalar()
 
-    def node_lookup_by_id(self, node_id, voided=False, session=None):
-        return self.node_lookup(node_id=node_id, voided=voided, session=session)
+    def node_lookup_by_id(self, node_id, voided=False):
+        return self.node_lookup(node_id=node_id, voided=voided)
 
     def node_lookup_by_matches(
-        self,
-        property_matches=None,
-        system_annotation_matches=None,
-        label=None,
-        voided=False,
-        session=None,
+        self, property_matches=None, system_annotation_matches=None, voided=False
     ):
         return self.node_lookup(
             property_matches=property_matches,
             system_annotation_matches=system_annotation_matches,
             voided=voided,
-            session=session,
         )
 
-    @retryable
     def node_clobber(
         self,
         node_id=None,
@@ -400,8 +417,6 @@ class PsqlGraphDriver:
         system_annotations=None,
         properties=None,
         session=None,
-        max_retries=DEFAULT_RETRIES,
-        backoff=default_backoff,
     ):
         with self.session_scope(session) as local:
             if not node:
@@ -414,27 +429,8 @@ class PsqlGraphDriver:
                 node.properties = properties
             local.merge(node)
 
-    @retryable
-    def node_delete_property_keys(
-        self,
-        property_keys,
-        node_id=None,
-        node=None,
-        session=None,
-        max_retries=DEFAULT_RETRIES,
-        backoff=default_backoff,
-    ):
-        raise NotImplementedError("Deprecated.")
-
-    @retryable
     def node_delete_system_annotation_keys(
-        self,
-        system_annotation_keys,
-        node_id=None,
-        node=None,
-        session=None,
-        max_retries=DEFAULT_RETRIES,
-        backoff=default_backoff,
+        self, system_annotation_keys, node_id=None, node=None, session=None
     ):
         with self.session_scope(session) as local:
             if not node:
@@ -449,25 +445,14 @@ class PsqlGraphDriver:
             flag_modified(node, "_sysan")
             local.merge(node)
 
-    @retryable
-    def node_delete(
-        self,
-        node_id=None,
-        node=None,
-        session=None,
-        max_retries=DEFAULT_RETRIES,
-        backoff=default_backoff,
-    ):
+    def node_delete(self, node_id=None, node=None, session=None):
         with self.session_scope(session) as local:
             local.flush()
             if node is None:
                 node = self.node_lookup(node_id=node_id).one()
             local.delete(node)
 
-    @retryable
-    def edge_insert(
-        self, edge, max_retries=DEFAULT_RETRIES, backoff=default_backoff, session=None
-    ):
+    def edge_insert(self, edge, session=None):
         with self.session_scope(session) as local:
             local.flush()
             local.add(edge)
@@ -484,10 +469,10 @@ class PsqlGraphDriver:
             local.merge(edge)
         return edge
 
-    def edge_lookup_one(self, src_id=None, dst_id=None, label=None, voided=False, session=None):
-        return self.edge_lookup(src_id, dst_id, label, voided, session).scalar()
+    def edge_lookup_one(self, src_id=None, dst_id=None, label=None, voided=False):
+        return self.edge_lookup(src_id, dst_id, label, voided).scalar()
 
-    def edge_lookup(self, src_id=None, dst_id=None, label=None, voided=False, session=None):
+    def edge_lookup(self, src_id=None, dst_id=None, label=None, voided=False):
         if voided:
             queries = [self.voided_edges()]
         elif label is not None:
@@ -505,11 +490,8 @@ class PsqlGraphDriver:
         else:
             return queries[0]
 
-    def edge_lookup_voided(self, src_id=None, dst_id=None, label=None, session=None):
-        return self.edge_lookup(src_id, dst_id, label, True, session).scalar()
-
-    def _edge_void(self, edge, session=None):
-        raise NotImplemented("Deprecated.")
+    def edge_lookup_voided(self, src_id=None, dst_id=None, label=None):
+        return self.edge_lookup(src_id, dst_id, label, True).scalar()
 
     def edge_delete(self, edge, session=None):
         with self.session_scope(session) as local:

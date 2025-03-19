@@ -6,7 +6,7 @@ include:
       - templates/artifacts/python-library.yaml
 
 variables:
-  BUILD_PY_VERSION: python3.9
+  LANGUAGE_VERSION: python3.9
 
 tox:
   parallel:

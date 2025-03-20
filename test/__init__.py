@@ -3,6 +3,7 @@ import unittest
 
 import pytest
 
+import psqlgraph
 from psqlgraph import Edge, Node
 
 
@@ -13,7 +14,7 @@ class PsqlgraphBaseTest(unittest.TestCase):
         self.logger = logging.getLogger(__name__)
 
     @pytest.fixture(autouse=True)
-    def init(self, pg_driver, pg_conf):
+    def init(self, pg_driver: psqlgraph.PsqlGraphDriver, pg_conf: dict):
         self.pg_conf = pg_conf
         self.g = pg_driver
 

@@ -1,7 +1,7 @@
-from psqlgraph import sanitize
+from psqlgraph import util
 
 
 def test_sanitize():
     props = dict(state="PASSED", versions=["a", "b"])
-    sprops = sanitize(props)
+    sprops = util.sanitize(props)
     assert props["state"] == sprops["state"]

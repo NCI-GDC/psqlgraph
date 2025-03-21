@@ -26,6 +26,8 @@ from psqlgraph.voided_node import VoidedNode
 
 logger = logging.getLogger(__name__)
 
+ENGINE_SCHEME = "postgresql+psycopg2"
+
 
 class PsqlGraphDriver:
 
@@ -106,7 +108,7 @@ class PsqlGraphDriver:
 
         # Create driver engine
         self.engine = sqlalchemy.create_engine(
-            f"postgresql+psycopg2://{user}:{password}@{host}/{database}",
+            f"{ENGINE_SCHEME}://{user}:{password}@{host}/{database}",
             encoding="latin1",
             connect_args=connect_args,
             **kwargs,

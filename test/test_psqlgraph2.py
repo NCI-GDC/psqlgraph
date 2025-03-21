@@ -2,14 +2,13 @@ import logging
 import socket
 import uuid
 
-# We have to import models here, even if we don't use them
-from test import PsqlgraphBaseTest, models
-
 import pytest
-import sqlalchemy as sa
+from sqlalchemy import exc as sa_exc
 
-from psqlgraph import PsqlGraphDriver
-from psqlgraph.exc import SessionClosedError, ValidationError
+import psqlgraph
+import test
+from psqlgraph import exc
+from test import models
 
 log = logging.getLogger(__name__)
 
@@ -18,7 +17,7 @@ def _props(target, updates):
     return models.Test().property_template(updates)
 
 
-class TestPsqlGraphDriver(PsqlgraphBaseTest):
+class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
     def setUp(self):
         self.nid = str(uuid.uuid4())
         self._clear_tables()
@@ -37,7 +36,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         cmd = "select application_name from pg_stat_activity;"
         custom_name = "_CUSTOM_NAME"
 
-        g_ = PsqlGraphDriver(application_name=custom_name, **self.pg_conf)
+        g_ = psqlgraph.PsqlGraphDriver(application_name=custom_name, **self.pg_conf)
         with g_.session_scope() as s:
             s.merge(models.Test("a"))
             app_names = {r[0] for r in self.g.engine.execute(cmd)}
@@ -173,14 +172,14 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             self.assertEqual(n.foos[0].node_id, "foonode")
 
     def test_type_enum(self):
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(exc.ValidationError):
             models.Foo().fobble = "test"
 
     def test_validate_enum(self):
         n = models.Foo("foonode")
         n.baz = "allowed_1"
         n.baz = "allowed_2"
-        with self.assertRaises(ValidationError):
+        with self.assertRaises(exc.ValidationError):
             n.baz = "not allowed"
 
     def test_association_proxy(self):
@@ -287,7 +286,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         nid = str(uuid.uuid4())
         with self.g.session_scope() as s:
             s.merge(models.Test(nid))
-        with self.assertRaises(sa.exc.OperationalError):
+        with self.assertRaises(sa_exc.OperationalError):
             with self.g.session_scope() as outer:
                 a = outer.query(models.Test).filter(models.Test.node_id == nid).one()
                 with self.g.session_scope(can_inherit=False) as inner:
@@ -319,7 +318,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
     def test_session_closing(self):
         with self.g.session_scope():
             nodes = self.g.nodes()
-        with self.assertRaises(SessionClosedError):
+        with self.assertRaises(exc.SessionClosedError):
             nodes.first()
 
     def test_sysan_sanitization(self):

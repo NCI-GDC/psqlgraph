@@ -17,7 +17,7 @@ class T2(MdaNode):
 
     _pg_edges = {}
 
-    @psqlgraph.pg_property
+    @psqlgraph.pg_property()
     def bar(self, value):
         self._set_property("bar", value)
 
@@ -26,7 +26,7 @@ class T1(MdaNode):
 
     _pg_edges = {}
 
-    @psqlgraph.pg_property
+    @psqlgraph.pg_property()
     def foo(self, value):
         self._set_property("foo", value)
 

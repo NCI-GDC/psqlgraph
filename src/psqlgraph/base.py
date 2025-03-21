@@ -1,4 +1,5 @@
-from sqlalchemy import event
+import types
+
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext import declarative
 from sqlalchemy.ext.declarative import declared_attr
@@ -7,7 +8,7 @@ from sqlalchemy.orm import object_session, sessionmaker
 from sqlalchemy.sql import expression, schema, sqltypes
 
 from psqlgraph import attributes, voided
-from psqlgraph.util import sanitize, validate
+from psqlgraph.util import sanitize
 
 NODE_TABLENAME_SCHEME = "node_{class_name}"
 EDGE_TABLENAME_SCHEME = "edge_{class_name}"
@@ -44,6 +45,15 @@ class CommonBase:
         postgresql.JSONB,
         server_default="{}",
     )
+
+    def __init_subclass__(cls) -> None:
+        cls.__pg_properties__ = types.MappingProxyType(
+            {
+                name: prop.types
+                for name, prop in vars(cls).items()
+                if isinstance(prop, attributes.PGProperty)
+            }
+        )
 
     # ======== Table Attributes ========
     @declared_attr
@@ -235,45 +245,6 @@ class CommonBase:
     @classmethod
     def get_pg_properties(cls):
         return cls.__pg_properties__
-
-
-def create_hybrid_property(name, fset):
-    @hybrid_property
-    def hybrid_prop(instance):
-        # Note: this does not use an 'in' clause or a .get() with a
-        # default because that doesn't allow you to use
-        # Node.property_key in a filter on a query.
-        try:
-            return instance._props[name]
-        except KeyError:
-            return None
-
-    @hybrid_prop.setter
-    def hybrid_prop(instance, value):
-        validate(fset, value, fset.__pg_types__, fset.__pg_enum__)
-        fset(instance, value)
-
-    return hybrid_prop
-
-
-@event.listens_for(CommonBase, "mapper_configured", propagate=True)
-def create_hybrid_properties(mapper, cls):
-    # This dictionary will be a property name to allowed types
-    # dictionary.  It will be populated at mapper configuration using
-    # all model properties defined with @pg_property
-    cls.__pg_properties__ = {}
-
-    for pg_attr in dir(cls):
-        if pg_attr in ["properties", "props", "system_annotations", "sysan"]:
-            continue
-
-        f = getattr(cls, pg_attr)
-        if not getattr(f, "__pg_setter__", False):
-            continue
-
-        h_prop = create_hybrid_property(pg_attr, f)
-        setattr(cls, pg_attr, h_prop)
-        cls.__pg_properties__[pg_attr] = f.__pg_types__
 
 
 ORMBase = declarative.declarative_base(cls=CommonBase)

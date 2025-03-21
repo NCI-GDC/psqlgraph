@@ -3,8 +3,7 @@ from psqlgraph.edge import AbstractEdge, Edge, PolyEdge
 from psqlgraph.node import AbstractNode, Node, PolyNode
 from psqlgraph.psql import PsqlGraphDriver
 from psqlgraph.util import pg_property
-from psqlgraph.voided_edge import VoidedEdge
-from psqlgraph.voided_node import VoidedNode
+from psqlgraph.voided import VoidedEdge, VoidedNode
 
 __all__ = (
     "AbstractEdge",

@@ -14,15 +14,13 @@ from sqlalchemy.orm import configure_mappers, sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 from typing_extensions import Literal
 
-from psqlgraph import ext
+from psqlgraph import ext, voided
 from psqlgraph.edge import AbstractEdge
 from psqlgraph.exc import QueryError
 from psqlgraph.hooks import receive_before_flush
 from psqlgraph.node import PolyNode
 from psqlgraph.query import GraphQuery
 from psqlgraph.session import GraphSession
-from psqlgraph.voided_edge import VoidedEdge
-from psqlgraph.voided_node import VoidedNode
 
 logger = logging.getLogger(__name__)
 
@@ -298,10 +296,10 @@ class PsqlGraphDriver:
             else:
                 return local.query(query)
 
-    def voided_nodes(self, query=VoidedNode):
+    def voided_nodes(self, query=voided.VoidedNode):
         return self.__expand_query(query)
 
-    def voided_edges(self, query=VoidedEdge):
+    def voided_edges(self, query=voided.VoidedEdge):
         return self.__expand_query(query)
 
     def get_nodes(self, batch_size=1000):

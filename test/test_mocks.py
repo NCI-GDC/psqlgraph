@@ -6,11 +6,11 @@ import uuid
 import pytest
 
 import psqlgraph
-from psqlgraph import exc, mocks
+from psqlgraph import exc, hydrator
 from test import models
 
-STRING_MATCH = "[a-zA-Z0-9]{32}"
-DATE_MATCH = "^[0-9]{4}-[0-9]{2}-[0-9]{2}T00:00:00"
+STRING_MATCH = r"[a-zA-Z0-9]{32}"
+DATE_MATCH = r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T00:00:00"
 
 
 class FakeModels:
@@ -35,7 +35,7 @@ def gdcdictionary():
 
 @pytest.fixture
 def node_factory(gdcmodels, gdcdictionary):
-    return mocks.NodeFactory(gdcmodels, gdcdictionary.schema)
+    return hydrator.NodeFactory(gdcmodels, gdcdictionary.schema)
 
 
 @pytest.fixture
@@ -78,7 +78,7 @@ def test_node_factory_all_props(node_factory, label, validator):
     validator(node)
 
 
-def test_node_factory_sets_required_for_test_node(node_factory: mocks.NodeFactory) -> None:
+def test_node_factory_sets_required_for_test_node(node_factory: hydrator.NodeFactory) -> None:
     test_node = node_factory.create("test", override={"key2": "something good"})
     assert re.match(STRING_MATCH, test_node.key1)
     assert all(getattr(test_node, key) is None for key in ["key3", "new_key", "timestamp"])
@@ -91,14 +91,14 @@ def test_node_factory_doesnt_set_any_props(node_factory):
 
 
 def test_init_graph_factory(gdcmodels, gdcdictionary):
-    _ = mocks.GraphFactory(gdcmodels, gdcdictionary)
+    _ = hydrator.GraphFactory(gdcmodels, gdcdictionary)
 
 
 def test_graph_factory__strict_with_invalid_edge(
     gdcmodels: FakeModels, gdcdictionary: models.FakeDictionary
 ) -> None:
     """Confirm invalid edges raises exception when strict is set to True."""
-    gf = mocks.GraphFactory(gdcmodels, gdcdictionary)
+    gf = hydrator.GraphFactory(gdcmodels, gdcdictionary)
 
     foobar_uuids = [str(uuid.uuid4())]
     foo_uuids = [str(uuid.uuid4()), str(uuid.uuid4())]
@@ -133,7 +133,7 @@ def test_graph_factory_with_nodes_and_edges(
     gdcmodels: FakeModels, gdcdictionary: models.FakeDictionary
 ) -> None:
     """Test GraphFactory can successfully create nodes and edges."""
-    gf = mocks.GraphFactory(gdcmodels, gdcdictionary)
+    gf = hydrator.GraphFactory(gdcmodels, gdcdictionary)
 
     foobar_uuids = [str(uuid.uuid4())]
     foo_uuids = [str(uuid.uuid4()), str(uuid.uuid4())]
@@ -192,7 +192,7 @@ def assert_all_node_types_created_once(nodes):
 
 
 def test_graph_factory_random_subgraph(gdcmodels, gdcdictionary, patched_randrange):
-    gf = mocks.GraphFactory(gdcmodels, gdcdictionary)
+    gf = hydrator.GraphFactory(gdcmodels, gdcdictionary)
 
     nodes = gf.create_random_subgraph("foo_bar")
 
@@ -209,7 +209,7 @@ def test_graph_factory_with_globals(gdcmodels, gdcdictionary, patched_randrange)
         }
     }
 
-    gf = mocks.GraphFactory(gdcmodels, gdcdictionary, graph_globals=graph_globals)
+    gf = hydrator.GraphFactory(gdcmodels, gdcdictionary, graph_globals=graph_globals)
 
     nodes = gf.create_random_subgraph("foo_bar", all_props=True)
 
@@ -242,7 +242,7 @@ def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
         }
     }
 
-    gf = mocks.GraphFactory(gdcmodels, gdcdictionary, graph_globals=graph_globals)
+    gf = hydrator.GraphFactory(gdcmodels, gdcdictionary, graph_globals=graph_globals)
 
     nodes = [
         dict(label="foo", node_id="id_1", studies=["N/A", "STUDY0"]),
@@ -351,7 +351,7 @@ def test_graph_factory_with_ambiguous_edges(
         circle_1_to_2: association name from circle_1 to circle_2
         circle_2_to_1: association name from circle_2 to circle_1
     """
-    gf = mocks.GraphFactory(gdcmodels, gdcdictionary)
+    gf = hydrator.GraphFactory(gdcmodels, gdcdictionary)
 
     nodes = [
         {"label": "circle_1", "node_id": UUID1},

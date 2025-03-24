@@ -39,6 +39,7 @@ class PsqlGraphDriver:
         user: str,
         password: str,
         database: str,
+        scheme: str = ENGINE_SCHEME,
         application_name: str | None = None,
         auto_flush: bool = True,
         connect_args: dict | None = None,
@@ -57,6 +58,8 @@ class PsqlGraphDriver:
             password: The password the driver should use for the given user.
             database: The name of the database backing the graph represented in the
                 package namespace.
+            schema: The scheme to use when making the connection string for connecting
+                to the database via the `sqlalchemy.Engine`.
             application_name: The name of this application by default will use the host
                 name. See connection_args.
             auto_flush: Defaults to `True`; force all newly created sessions to set
@@ -108,7 +111,7 @@ class PsqlGraphDriver:
 
         # Create driver engine
         self.engine = sqlalchemy.create_engine(
-            f"{ENGINE_SCHEME}://{user}:{password}@{host}/{database}",
+            f"{scheme}://{user}:{password}@{host}/{database}",
             encoding="latin1",
             connect_args=connect_args,
             **kwargs,

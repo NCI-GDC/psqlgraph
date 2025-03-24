@@ -5,18 +5,21 @@ Needs to be run as the postgres user.
 
 import argparse
 import logging
-from test import models
 
-from sqlalchemy import create_engine
+import sqlalchemy
 
-from psqlgraph import PsqlGraphDriver, create_all
+import psqlgraph
+from psqlgraph import psql
+from test import models as models
+
+ENGINE_SCHEME = psql.engine_scheme(psql.PostgresDriver.PSYCOPG2)
 
 
 def try_drop_test_data(user, database, root_user="postgres", host=""):
 
     print("Dropping old test data")
 
-    engine = create_engine(f"postgresql://{root_user}@{host}/postgres")
+    engine = sqlalchemy.create_engine(f"{ENGINE_SCHEME}://{root_user}@{host}/postgres")
 
     conn = engine.connect()
     conn.execute("commit")
@@ -44,7 +47,7 @@ def setup_database(user, password, database, root_user="postgres", host=""):
 
     try_drop_test_data(user, database)
 
-    engine = create_engine(f"postgresql://{root_user}@{host}/postgres")
+    engine = sqlalchemy.create_engine(f"{ENGINE_SCHEME}://{root_user}@{host}/postgres")
     conn = engine.connect()
     conn.execute("commit")
 
@@ -73,8 +76,8 @@ def create_tables(host, user, password, database):
     """
     print("Creating tables in test database")
 
-    driver = PsqlGraphDriver(host, user, password, database)
-    create_all(driver.engine)
+    driver = psqlgraph.PsqlGraphDriver(host, user, password, database)
+    psqlgraph.create_all(driver.engine)
 
 
 def create_indexes(host, user, password, database):

@@ -55,7 +55,7 @@ context = "unit tests"
 source = ["psqlgraph"]
 
 [tool.isort]
-known_first_party = ["psqlgraph"]
+known_first_party = ["psqlgraph", "test"]
 line_length = 98
 profile = "black"
 
@@ -69,7 +69,7 @@ junit_logging = "system-out"
 log_cli = true
 log_cli_level = "INFO"
 norecursedirs = [".git", ".tox", "dist", "build", "doc", "docs", "travis"]
-testpaths = ["tests"]
+testpaths = ["test"]
 
 [tool.setuptools_scm]
 local_scheme = "versionista-local-format"

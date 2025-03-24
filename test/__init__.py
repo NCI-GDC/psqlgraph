@@ -4,7 +4,6 @@ import unittest
 import pytest
 
 import psqlgraph
-from psqlgraph import Edge, Node
 
 
 class PsqlgraphBaseTest(unittest.TestCase):
@@ -25,14 +24,5 @@ class PsqlgraphBaseTest(unittest.TestCase):
         self._clear_tables()
 
     def _clear_tables(self):
-        conn = self.g.engine.connect()
-        conn.execute("commit")
-        for table in Node().get_subclass_table_names():
-            if table != Node.__tablename__:
-                conn.execute(f"delete from {table}")
-        for table in Edge.get_subclass_table_names():
-            if table != Edge.__tablename__:
-                conn.execute(f"delete from {table}")
-        conn.execute("delete from _voided_nodes")
-        conn.execute("delete from _voided_edges")
-        conn.close()
+        psqlgraph.drop_all(self.g.engine)
+        psqlgraph.create_all(self.g.engine)

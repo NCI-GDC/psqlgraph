@@ -1,5 +1,5 @@
-from psqlgraph import PsqlGraphDriver, create_all, ext, pg_property
-from psqlgraph.base import drop_all
+import psqlgraph
+from psqlgraph import ext
 
 MdaNode, MdaEdge = ext.register_base_class(package_namespace="mda")
 
@@ -17,7 +17,7 @@ class T2(MdaNode):
 
     _pg_edges = {}
 
-    @pg_property
+    @psqlgraph.pg_property
     def bar(self, value):
         self._set_property("bar", value)
 
@@ -26,19 +26,19 @@ class T1(MdaNode):
 
     _pg_edges = {}
 
-    @pg_property
+    @psqlgraph.pg_property
     def foo(self, value):
         self._set_property("foo", value)
 
 
 def test_create_tables(pg_conf):
 
-    g = PsqlGraphDriver(package_namespace="mda", **pg_conf)
+    g = psqlgraph.PsqlGraphDriver(package_namespace="mda", **pg_conf)
     orm_base = ext.get_orm_base("mda")
 
     # clean out any existing record
-    drop_all(g.engine, base=orm_base)
-    create_all(g.engine, base=orm_base)
+    psqlgraph.drop_all(g.engine, base=orm_base)
+    psqlgraph.create_all(g.engine, base=orm_base)
 
     with g.session_scope() as s:
         # create sample entries

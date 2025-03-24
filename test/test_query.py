@@ -1,21 +1,22 @@
 import logging
 import uuid
-from test import PsqlgraphBaseTest, models
 
 import pytest
 
-from psqlgraph import PolyEdge, PolyNode
+import psqlgraph
+import test
+from test import models
 
 logging.basicConfig(level=logging.INFO)
 
 
-class TestPsqlGraphDriver(PsqlgraphBaseTest):
+class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
     def setUp(self):
         self.parent_id = str(uuid.uuid4())
-        self.g.node_insert(PolyNode(self.parent_id, "test"))
+        self.g.node_insert(psqlgraph.PolyNode(self.parent_id, "test"))
         self._create_subtree(self.parent_id)
         self.lone_id = str(uuid.uuid4())
-        self.g.node_insert(PolyNode(self.lone_id, "test"))
+        self.g.node_insert(psqlgraph.PolyNode(self.lone_id, "test"))
 
     def _create_subtree(self, parent_id, level=0):
         for i in range(4):
@@ -23,8 +24,12 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             foo_id = str(uuid.uuid4())
             self.g.node_merge(node_id=node_id, label="test", properties={"key2": i, "key3": None})
             self.g.node_merge(node_id=foo_id, label="foo", properties={"bar": i})
-            self.g.edge_insert(PolyEdge(src_id=parent_id, dst_id=node_id, label="edge1"))
-            self.g.edge_insert(PolyEdge(src_id=parent_id, dst_id=foo_id, label="test_edge_2"))
+            self.g.edge_insert(
+                psqlgraph.PolyEdge(src_id=parent_id, dst_id=node_id, label="edge1")
+            )
+            self.g.edge_insert(
+                psqlgraph.PolyEdge(src_id=parent_id, dst_id=foo_id, label="test_edge_2")
+            )
             if level < 2:
                 self._create_subtree(node_id, level + 1)
 
@@ -135,7 +140,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
             )
 
 
-@pytest.mark.parametrize("node_type", [models.Foo, models.Node])
+@pytest.mark.parametrize("node_type", [models.Foo, psqlgraph.Node])
 @pytest.mark.parametrize(
     "col, vals, expected_count",
     [
@@ -152,7 +157,7 @@ def test__props_in__list(pg_driver, samples_with_array, node_type, col, vals, ex
         assert r == expected_count
 
 
-@pytest.mark.parametrize("node_type", [models.Foo, models.Node])
+@pytest.mark.parametrize("node_type", [models.Foo, psqlgraph.Node])
 def test__props_in__int(pg_driver, samples_with_array, node_type):
     with pg_driver.session_scope() as s:
         # fobble is type int

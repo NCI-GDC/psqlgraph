@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import enum
 import logging
 import socket
 from contextlib import contextmanager
@@ -26,7 +27,30 @@ from psqlgraph.voided_node import VoidedNode
 
 logger = logging.getLogger(__name__)
 
-ENGINE_SCHEME = "postgresql+psycopg2"
+
+class PostgresDriver(enum.Enum):
+    """The currently supported postgres drivers for sqlalchemy (1.4/2.0)
+
+    NOTE: Currently psqlgraph only supports PSYCOPG2.
+    """
+
+    PSYCOPG2 = "psycopg2"
+    PSYCOPG = "psycopg"
+    PG8000 = "pg8000"
+    ASYNCPG = "asyncpg"
+
+
+def engine_scheme(driver: PostgresDriver = PostgresDriver.PSYCOPG2) -> str:
+    """Generates the engine scheme for the given driver.
+
+    Args:
+        driver: The driver which the `sqlalchemy.Engine` should use when interacting
+            with the database.
+
+    Returns:
+        the url scheme for connecting to the database e.g. 'postgresql+psycopg2'
+    """
+    return f"postgresql+{driver.value}"
 
 
 class PsqlGraphDriver:
@@ -39,7 +63,7 @@ class PsqlGraphDriver:
         user: str,
         password: str,
         database: str,
-        scheme: str = ENGINE_SCHEME,
+        driver: PostgresDriver = PostgresDriver.PSYCOPG2,
         application_name: str | None = None,
         auto_flush: bool = True,
         connect_args: dict | None = None,
@@ -58,8 +82,8 @@ class PsqlGraphDriver:
             password: The password the driver should use for the given user.
             database: The name of the database backing the graph represented in the
                 package namespace.
-            schema: The scheme to use when making the connection string for connecting
-                to the database via the `sqlalchemy.Engine`.
+            driver: The postgres driver to use when making the connecting for to the
+                database via the `sqlalchemy.Engine`.
             application_name: The name of this application by default will use the host
                 name. See connection_args.
             auto_flush: Defaults to `True`; force all newly created sessions to set
@@ -111,7 +135,7 @@ class PsqlGraphDriver:
 
         # Create driver engine
         self.engine = sqlalchemy.create_engine(
-            f"{scheme}://{user}:{password}@{host}/{database}",
+            f"{engine_scheme(driver)}://{user}:{password}@{host}/{database}",
             encoding="latin1",
             connect_args=connect_args,
             **kwargs,

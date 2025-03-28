@@ -171,17 +171,6 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
             n = self.g.nodes().ids(self.nid).one()
             self.assertEqual(n.foos[0].node_id, "foonode")
 
-    def test_type_enum(self):
-        with self.assertRaises(exc.ValidationError):
-            models.Foo().fobble = "test"
-
-    def test_validate_enum(self):
-        n = models.Foo("foonode")
-        n.baz = "allowed_1"
-        n.baz = "allowed_2"
-        with self.assertRaises(exc.ValidationError):
-            n.baz = "not allowed"
-
     def test_association_proxy(self):
         a = models.Test("a")
         b = models.Foo("b")

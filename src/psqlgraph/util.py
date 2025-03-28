@@ -1,6 +1,5 @@
 import logging
 from functools import wraps
-from types import FunctionType
 
 from psqlgraph.exc import ValidationError
 
@@ -30,28 +29,6 @@ def validate(f, value, types, enum=None):
                 "for property {}: {}."
             ).format(value, type(value), f.__name__, _types)
         )
-
-
-def pg_property(*pg_args, **pg_kwargs):
-    if len(pg_args) == 1 and isinstance(pg_args[0], FunctionType):
-        fn = pg_args[0]
-        fn.__pg_setter__ = True
-        fn.__pg_types__ = None
-        fn.__pg_enum__ = pg_kwargs.get("enum", None)
-        return fn
-
-    def decorator(fn):
-        fn.__pg_setter__ = True
-        fn.__pg_types__ = pg_args
-        fn.__pg_enum__ = pg_kwargs.get("enum", None)
-
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            return fn(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
 
 
 def sanitize(properties):

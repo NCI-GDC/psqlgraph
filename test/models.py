@@ -175,6 +175,10 @@ class Foo(psqlgraph.Node):
     def fobble(self, value):
         self._set_property("fobble", value)
 
+    @psqlgraph.pg_property(bool, str)
+    def mixed_value(self, value) -> None:
+        self._set_property("mixed_value", value)
+
     @psqlgraph.pg_property(list)
     def studies(self, value):
         self._set_property("studies", value)

@@ -47,7 +47,7 @@ of the node with the ``pg_property`` method.  Each pg_property needs a
          # Optional: specify a non-null constraint key list
          __nonnull_properties__ = ['key1']
 
-         @pg_property
+         @pg_property()
          def key1(self, value):
              # insert custom validation here!
              self._set_property('key1', value)

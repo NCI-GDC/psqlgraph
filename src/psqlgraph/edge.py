@@ -238,34 +238,5 @@ class Edge(base.LocalConcreteBase, AbstractEdge, base.ORMBase):
     pass
 
 
-def PolyEdge(
-    src_id=None,
-    dst_id=None,
-    label=None,
-    acl=None,
-    system_annotations=None,
-    properties=None,
-):
-    if not label:
-        raise AttributeError("You cannot create a PolyEdge without a label.")
-    try:
-        edge_type_class = Edge.get_subclass(label)
-    except Exception as e:
-        raise RuntimeError(
-            "{}: Unable to determine edge type. If there are more than one "
-            "edges with label {}, you need to specify src_label and dst_label"
-            "using the PsqlGraphDriver.get_PolyEdge())".format(e, label)
-        )
-
-    return edge_type_class(
-        src_id=src_id,
-        dst_id=dst_id,
-        properties=properties or {},
-        acl=acl or [],
-        system_annotations=system_annotations or {},
-        label=label,
-    )
-
-
 # Node and Edge classes depend on each other so this needs to be done down here
 from psqlgraph.node import Node

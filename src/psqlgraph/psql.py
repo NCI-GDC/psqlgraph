@@ -19,7 +19,7 @@ from psqlgraph import ext, voided
 from psqlgraph.edge import AbstractEdge
 from psqlgraph.exc import QueryError
 from psqlgraph.hooks import receive_before_flush
-from psqlgraph.node import PolyNode
+from psqlgraph.poly import PolyNode
 from psqlgraph.query import GraphQuery
 from psqlgraph.session import GraphSession
 
@@ -365,7 +365,13 @@ class PsqlGraphDriver:
                 node = self.nodes(cls).ids([node_id]).scalar()
 
             if not node:
-                node = PolyNode(node_id, label, acl, system_annotations, properties)
+                node = PolyNode(
+                    node_id=node_id,
+                    label=label,
+                    acl=acl,
+                    system_annotations=system_annotations,
+                    properties=properties,
+                )
             else:
                 self.node_update(node, system_annotations, acl, properties)
 

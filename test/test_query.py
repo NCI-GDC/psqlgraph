@@ -13,10 +13,10 @@ logging.basicConfig(level=logging.INFO)
 class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
     def setUp(self):
         self.parent_id = str(uuid.uuid4())
-        self.g.node_insert(psqlgraph.PolyNode(self.parent_id, "test"))
+        self.g.node_insert(psqlgraph.PolyNode(node_id=self.parent_id, label="test"))
         self._create_subtree(self.parent_id)
         self.lone_id = str(uuid.uuid4())
-        self.g.node_insert(psqlgraph.PolyNode(self.lone_id, "test"))
+        self.g.node_insert(psqlgraph.PolyNode(node_id=self.lone_id, label="test"))
 
     def _create_subtree(self, parent_id, level=0):
         for i in range(4):

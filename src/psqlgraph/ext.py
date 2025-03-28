@@ -18,7 +18,7 @@ _ORM_BASES[None] = graph.Base
 # Add the listener for configuring the all graphs before the mapper is configured for
 # them. This generally happens upon the first use of any of the defined entities
 event.listen(
-    orm.mapper, "before_configured", functools.partial(graph.configure_graph, _GRAPHS.values())
+    orm.mapper, "after_configured", functools.partial(graph.configure_graph, _GRAPHS.values())
 )
 
 

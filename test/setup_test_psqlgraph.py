@@ -12,12 +12,14 @@ import psqlgraph
 from psqlgraph import psql
 from test import models as models
 
+ENGINE_SCHEME = psql.engine_scheme(psql.PostgresDriver.PSYCOPG2)
+
 
 def try_drop_test_data(user, database, root_user="postgres", host=""):
 
     print("Dropping old test data")
 
-    engine = sqlalchemy.create_engine(f"{psql.ENGINE_SCHEME}://{root_user}@{host}/postgres")
+    engine = sqlalchemy.create_engine(f"{ENGINE_SCHEME}://{root_user}@{host}/postgres")
 
     conn = engine.connect()
     conn.execute("commit")
@@ -45,7 +47,7 @@ def setup_database(user, password, database, root_user="postgres", host=""):
 
     try_drop_test_data(user, database)
 
-    engine = sqlalchemy.create_engine(f"{psql.ENGINE_SCHEME}://{root_user}@{host}/postgres")
+    engine = sqlalchemy.create_engine(f"{ENGINE_SCHEME}://{root_user}@{host}/postgres")
     conn = engine.connect()
     conn.execute("commit")
 

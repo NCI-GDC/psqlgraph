@@ -1,4 +1,7 @@
-"""A module for recording various voided states within a graph."""
+"""A module for recording various voided states within a graph.
+
+Voided entities represent the history of a graph entity recoding its past states.
+"""
 
 from __future__ import annotations
 

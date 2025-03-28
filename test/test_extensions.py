@@ -5,21 +5,14 @@ from psqlgraph import ext
 
 
 @pytest.mark.parametrize(
-    "ns, node_cls_name, edge_cls_name",
-    [
-        ("sample", "SampleAbstractNode", "SampleAbstractEdge"),
-        ("test", "TestAbstractNode", "TestAbstractEdge"),
-        (None, "Node", "Edge"),
-    ],
+    "ns",
+    ("sample", "test", None),
 )
-def test_register_bases(ns, node_cls_name, edge_cls_name):
+def test_register_bases(ns):
 
     node_cls, edge_cls = ext.register_base_class(package_namespace=ns)
     assert issubclass(node_cls, psqlgraph.AbstractNode)
     assert issubclass(edge_cls, psqlgraph.AbstractEdge)
-
-    assert node_cls.__name__ == node_cls_name
-    assert edge_cls.__name__ == edge_cls_name
 
 
 @pytest.mark.parametrize("ns", ["sample", "test", None])

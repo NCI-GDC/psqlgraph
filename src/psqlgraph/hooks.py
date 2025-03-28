@@ -2,11 +2,14 @@
 Session hooks
 """
 
-from sqlalchemy.inspection import inspect
+from collections.abc import Iterable, Iterator
+from typing import Any
 
-from psqlgraph.base import ExtMixin
-from psqlgraph.edge import AbstractEdge
-from psqlgraph.node import AbstractNode
+from sqlalchemy import orm
+from sqlalchemy.inspection import inspect
+from sqlalchemy.orm import session
+
+from psqlgraph import graph
 
 
 def history(target, column, attr):
@@ -39,12 +42,13 @@ def get_old_version(target, *attrs):
     return props, sysan
 
 
-def is_psqlgraph_entity(target):
-    """Only attempt to track history on Nodes and Edges"""
-    return isinstance(target, ExtMixin)
+def _get_graph_entities(instances: Iterable[Any]) -> Iterator[graph.AbstractEntity]:
+    return (i for i in instances if isinstance(i, graph.AbstractEntity))
 
 
-def receive_before_flush(session, flush_context, instances):
+def receive_before_flush(
+    session: orm.Session, flush_context: session.UOWTransaction, instances: None
+) -> None:
     """Provide a session hook that gets called before the session is
     flushed.
 
@@ -62,42 +66,31 @@ def receive_before_flush(session, flush_context, instances):
     - Merge deleted props/sysan on top of that
 
     """
-
     if session._set_flush_timestamps:
         session._flush_timestamp = list(session.execute("SELECT CURRENT_TIMESTAMP"))[0][0]
 
-    for target in session.dirty:
-        if not is_psqlgraph_entity(target):
-            continue
-
+    for target in _get_graph_entities(session.dirty):
         target._validate()
         props, sysan = get_old_version(target, "unchanged", "deleted")
         props_diff, sysan_diff = get_old_version(target, "deleted", "added")
         if props_diff or sysan_diff:
-            target._snapshot_existing(session, props, sysan)
+            target.__snapshot_existing__(session, props, sysan)
         target._merge_onto_existing(props, sysan)
 
         # Call custom session hook
         for f in target._session_hooks_before_update:
             f(target, session, flush_context, instances)
 
-    for target in session.deleted:
-        if not is_psqlgraph_entity(target):
-            continue
-
+    for target in _get_graph_entities(session.deleted):
         props, sysan = get_old_version(target, "unchanged", "deleted", "added")
-        target._snapshot_existing(session, props, sysan)
+        target.__snapshot_existing__(session, props, sysan)
 
         # Call custom session hook
         for f in target._session_hooks_before_delete:
             f(target, session, flush_context, instances)
 
-    for target in session.new:
-        if not is_psqlgraph_entity(target):
-            continue
-
-        if isinstance(target, (AbstractNode, AbstractEdge)):
-            target._validate()
+    for target in _get_graph_entities(session.new):
+        target._validate()
 
         # Call custom session hook
         for f in target._session_hooks_before_insert:

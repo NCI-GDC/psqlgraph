@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from psqlgraph import edge, node
+from psqlgraph import graph
 
 
 def PolyEdge(
@@ -17,7 +17,7 @@ def PolyEdge(
     system_annotations: Mapping[str, Any] | None = None,
     properties: Mapping[str, Any] | None = None,
 ):
-    edge_cls = edge.Edge.get_subclass(label)
+    edge_cls = graph.Edge.get_subclass(label)
 
     if not edge_cls:
         raise ValueError(f"Cannot resolve edge type with label: {label}")
@@ -39,7 +39,7 @@ def PolyNode(
     system_annotations: Mapping[str, Any] | None = None,
     properties: Mapping[str, Any] | None = None,
 ):
-    node_cls = node.Node.get_subclass(label)
+    node_cls = graph.Node.get_subclass(label)
 
     if not node_cls:
         raise ValueError(f"Cannot resolve node type with label: {label}")

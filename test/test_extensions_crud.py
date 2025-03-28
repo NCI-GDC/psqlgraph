@@ -7,13 +7,19 @@ MdaNode, MdaEdge = ext.register_base_class(package_namespace="mda")
 class E1(MdaEdge):
 
     __label__ = "edge_t1_t2"
+    __tablename__ = "e1"
+
     __src_class__ = "T1"
     __dst_class__ = "T2"
     __src_dst_assoc__ = "t2s"
     __dst_src_assoc__ = "t1s"
+    __src_table__ = "t1"
+    __dst_table__ = "t2"
 
 
 class T2(MdaNode):
+    __label__ = "t2"
+    __tablename__ = "t2"
 
     _pg_edges = {}
 
@@ -23,6 +29,8 @@ class T2(MdaNode):
 
 
 class T1(MdaNode):
+    __label__ = "t1"
+    __tablename__ = "t1"
 
     _pg_edges = {}
 

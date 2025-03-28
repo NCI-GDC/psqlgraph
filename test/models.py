@@ -63,76 +63,12 @@ class FakeDictionary:
         }
 
 
-class Edge1(psqlgraph.Edge):
-
-    __src_class__ = "Test"
-    __dst_class__ = "Test"
-    __src_dst_assoc__ = "tests"
-    __dst_src_assoc__ = "sub_tests"
-
-    @psqlgraph.pg_property(str, int)
-    def test(self, value):
-        self._set_property("test", value)
-
-    @psqlgraph.pg_property()
-    def key1(self, value):
-        self._set_property("key1", value)
-
-    @psqlgraph.pg_property()
-    def key2(self, value):
-        self._set_property("key2", value)
-
-
-class Edge2(psqlgraph.Edge):
-
-    __label__ = "test_edge_2"
-    __src_class__ = "Test"
-    __dst_class__ = "Foo"
-    __src_dst_assoc__ = "foos"
-    __dst_src_assoc__ = "tests"
-
-
-class Edge3(psqlgraph.Edge):
-
-    __src_class__ = "Foo"
-    __dst_class__ = "FooBar"
-    __src_dst_assoc__ = "foobars"
-    __dst_src_assoc__ = "foos"
-
-
-# edge4 and edge5 are used to test special case, Foo->Bar and Bar->Foo are both valid
-# edges.
-class Edge4(psqlgraph.Edge):
-
-    __label__ = "edge4"
-
-    __src_class__ = "Circle1"
-    __dst_class__ = "Circle2"
-    __src_dst_assoc__ = "circle_2a"
-    __dst_src_assoc__ = "circle_1a"
-
-
-class Edge5(psqlgraph.Edge):
-
-    __label__ = "edge5"
-
-    __src_class__ = "Circle2"
-    __dst_class__ = "Circle1"
-    __src_dst_assoc__ = "circle_1b"
-    __dst_src_assoc__ = "circle_2b"
-
-
-class TestToFooBarEdge(psqlgraph.Edge):
-
-    __src_class__ = "Test"
-    __dst_class__ = "FooBar"
-    __src_dst_assoc__ = "foobars"
-    __dst_src_assoc__ = "tests"
-
-
 class Test(psqlgraph.Node):
 
     _pg_edges = {}
+
+    __label__ = "test"
+    __tablename__ = "node_test"
 
     @psqlgraph.pg_property()
     def key1(self, value):
@@ -160,6 +96,7 @@ class Test(psqlgraph.Node):
 class Foo(psqlgraph.Node):
 
     __label__ = "foo"
+    __tablename__ = "node_foo"
 
     _pg_edges = {}
 
@@ -191,6 +128,7 @@ class Foo(psqlgraph.Node):
 class Circle1(psqlgraph.Node):
 
     __label__ = "circle_1"
+    __tablename__ = "node_circle1"
 
     _pg_edges = {}
 
@@ -198,6 +136,7 @@ class Circle1(psqlgraph.Node):
 class Circle2(psqlgraph.Node):
 
     __label__ = "circle_2"
+    __tablename__ = "node_circle2"
 
     _pg_edges = {}
 
@@ -205,6 +144,7 @@ class Circle2(psqlgraph.Node):
 class FooBar(psqlgraph.Node):
 
     __label__ = "foo_bar"
+    __tablename__ = "node_foobar"
     __nonnull_properties__ = ["bar"]
 
     _pg_edges = {}
@@ -216,6 +156,7 @@ class FooBar(psqlgraph.Node):
 
 class TestDefaultValue(psqlgraph.Node):
     __label__ = "test_default_value"
+    __tablename__ = "node_testdefaultvalue"
 
     _pg_edges = {}
 
@@ -228,6 +169,97 @@ class TestDefaultValue(psqlgraph.Node):
     @psqlgraph.pg_property()
     def property_without_default(self, value):
         self._set_property("property_without_default", value)
+
+
+class Edge1(psqlgraph.Edge):
+
+    __label__ = "edge1"
+    __tablename__ = "edge_edge1"
+
+    __src_class__ = Test.__name__
+    __dst_class__ = Test.__name__
+    __src_dst_assoc__ = "tests"
+    __dst_src_assoc__ = "sub_tests"
+    __src_table__ = Test.__tablename__
+    __dst_table__ = Test.__tablename__
+
+    @psqlgraph.pg_property(str, int)
+    def test(self, value):
+        self._set_property("test", value)
+
+    @psqlgraph.pg_property()
+    def key1(self, value):
+        self._set_property("key1", value)
+
+    @psqlgraph.pg_property()
+    def key2(self, value):
+        self._set_property("key2", value)
+
+
+class Edge2(psqlgraph.Edge):
+
+    __label__ = "test_edge_2"
+    __tablename__ = "edge_edge2"
+
+    __src_class__ = Test.__name__
+    __src_table__ = Test.__tablename__
+    __dst_class__ = Foo.__name__
+    __dst_table__ = Foo.__tablename__
+    __src_dst_assoc__ = "foos"
+    __dst_src_assoc__ = "tests"
+
+
+class Edge3(psqlgraph.Edge):
+    __label__ = "edge3"
+    __tablename__ = "edge_edge3"
+
+    __src_class__ = Foo.__name__
+    __src_table__ = Foo.__tablename__
+    __dst_class__ = FooBar.__name__
+    __dst_table__ = FooBar.__tablename__
+    __src_dst_assoc__ = "foobars"
+    __dst_src_assoc__ = "foos"
+
+
+# edge4 and edge5 are used to test special case, Foo->Bar and Bar->Foo are both valid
+# edges.
+class Edge4(psqlgraph.Edge):
+
+    __label__ = "edge4"
+    __tablename__ = "edge_edge4"
+
+    __src_class__ = Circle1.__name__
+    __src_table__ = Circle1.__tablename__
+    __dst_class__ = Circle2.__name__
+    __dst_table__ = Circle2.__tablename__
+    __src_dst_assoc__ = "circle_2a"
+    __dst_src_assoc__ = "circle_1a"
+
+
+class Edge5(psqlgraph.Edge):
+
+    __label__ = "edge5"
+    __tablename__ = "edge_edge5"
+
+    __src_class__ = Circle2.__name__
+    __src_table__ = Circle2.__tablename__
+    __dst_class__ = Circle1.__name__
+    __dst_table__ = Circle1.__tablename__
+
+    __src_dst_assoc__ = "circle_1b"
+    __dst_src_assoc__ = "circle_2b"
+
+
+class TestToFooBarEdge(psqlgraph.Edge):
+    __label__ = "testtofoobaredge"
+    __tablename__ = "edge_testtofoobaredge"
+
+    __src_class__ = Test.__name__
+    __src_table__ = Test.__tablename__
+    __dst_class__ = FooBar.__name__
+    __dst_table__ = FooBar.__tablename__
+    __src_dst_assoc__ = "foobars"
+    __dst_src_assoc__ = "tests"
 
 
 Test._pg_edges.update(

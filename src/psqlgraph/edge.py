@@ -1,8 +1,7 @@
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.sql import schema, sqltypes
 
-from psqlgraph import base
-from psqlgraph.voided_edge import VoidedEdge
+from psqlgraph import base, voided
 
 
 def id_column(tablename):
@@ -219,11 +218,16 @@ class AbstractEdge(DeclareLastEdgeMixin, base.ExtMixin):
         return [c for c in cls.get_subclasses() if c.__dst_class__ == dst_class_name]
 
     def _snapshot_existing(self, session, old_props, old_sysan):
-        temp = self.__class__(
-            self.src_id, self.dst_id, old_props, self.acl, old_sysan, self.label
+        voided_edge = voided.VoidedEdge(
+            src_id=self.src_id,
+            dst_id=self.dst_id,
+            label=self.label,
+            acl=self.acl,
+            system_annotations=old_sysan,
+            properties=self.property_template(old_props),
         )
-        voided = VoidedEdge(temp)
-        session.add(voided)
+
+        session.add(voided_edge)
 
     @classmethod
     def get_node_class(cls):

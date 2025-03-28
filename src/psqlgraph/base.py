@@ -6,7 +6,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import object_session, sessionmaker
 from sqlalchemy.sql import expression, schema, sqltypes
 
-from psqlgraph import attributes
+from psqlgraph import attributes, voided
 from psqlgraph.util import sanitize, validate
 
 NODE_TABLENAME_SCHEME = "node_{class_name}"
@@ -276,29 +276,6 @@ def create_hybrid_properties(mapper, cls):
         cls.__pg_properties__[pg_attr] = f.__pg_types__
 
 
-class VoidedBaseClass:
-    @hybrid_property
-    def props(self):
-        """Alias of properties"""
-        return self.properties
-
-    @props.setter
-    def props(self, properties):
-        """Alias of properties"""
-        self.properties = properties
-
-    @hybrid_property
-    def sysan(self):
-        """Alias of properties"""
-        return self.system_annotations
-
-    @sysan.setter
-    def sysan(self, sysan):
-        """Alias of properties"""
-        self.system_annotations = sysan
-
-
-VoidedBase = declarative.declarative_base(cls=VoidedBaseClass)
 ORMBase = declarative.declarative_base(cls=CommonBase)
 
 
@@ -310,7 +287,7 @@ def create_all(engine, base=ORMBase):
         base (sqlalchemy.ext.declarative.DeclarativeMeta): a declarative base class
     """
     base.metadata.create_all(engine)
-    VoidedBase.metadata.create_all(engine)
+    voided.Base.metadata.create_all(engine)
 
 
 def drop_all(engine, base=ORMBase):
@@ -320,7 +297,7 @@ def drop_all(engine, base=ORMBase):
         base (sqlalchemy.ext.declarative.DeclarativeMeta): a declarative base class
     """
     base.metadata.drop_all(engine)
-    VoidedBase.metadata.drop_all(engine)
+    voided.Base.metadata.drop_all(engine)
 
 
 class ExtMixin:

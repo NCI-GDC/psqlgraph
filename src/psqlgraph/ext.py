@@ -8,12 +8,11 @@ from collections.abc import Iterable
 
 import sqlalchemy
 from sqlalchemy import event, orm, schema
-from sqlalchemy.ext import declarative
 
 from psqlgraph import graph, voided
 
 _GRAPHS: dict[str | None, graph.Graph] = {None: {"node": graph.Node, "edge": graph.Edge}}
-_ORM_BASES: dict[str | None, type] = collections.defaultdict(declarative.declarative_base)
+_ORM_BASES: dict[str | None, type] = collections.defaultdict(orm.declarative_base)
 _ORM_BASES[None] = graph.Base
 
 # Add the listener for configuring the all graphs before the mapper is configured for

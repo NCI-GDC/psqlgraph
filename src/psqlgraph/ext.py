@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import collections
 import functools
+from collections.abc import Iterable
 
 import sqlalchemy
-from sqlalchemy import event, orm
+from sqlalchemy import event, orm, schema
 from sqlalchemy.ext import declarative
 
 from psqlgraph import graph, voided
@@ -18,7 +19,7 @@ _ORM_BASES[None] = graph.Base
 # Add the listener for configuring the all graphs before the mapper is configured for
 # them. This generally happens upon the first use of any of the defined entities
 event.listen(
-    orm.mapper, "after_configured", functools.partial(graph.configure_graph, _GRAPHS.values())
+    orm.mapper, "before_configured", functools.partial(graph.configure_graph, _GRAPHS.values())
 )
 
 
@@ -46,7 +47,7 @@ def create_base_class(package_namespace: str) -> graph.Graph:
     Returns:
         class: A dynamically generated abstract class
     """
-    base = _ORM_BASES[package_namespace]
+    base = get_orm_base(package_namespace)
     edge, node = graph.__bind_orm__(base)
 
     return {"edge": edge, "node": node}
@@ -100,5 +101,9 @@ def drop_all(engine: sqlalchemy.Engine, base: type = graph.Base) -> None:
         engine: The engine which can be invoked to drop the data.
         base: A declarative base class. By default this is the builtin graph.Base.
     """
-    base.metadata.drop_all(engine)
+    tables: Iterable[schema.Table] = reversed(base.metadata.sorted_tables)
+
+    for table in tables:
+        table.drop(engine, checkfirst=True)
+
     voided.Base.metadata.drop_all(engine)

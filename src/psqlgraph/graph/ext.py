@@ -9,11 +9,12 @@ hinting purposes.
 from collections.abc import Iterable, Iterator
 from typing import TypedDict, TypeVar
 
-from sqlalchemy.ext import associationproxy, declarative
+from sqlalchemy.ext import declarative
 
 from psqlgraph.graph import abstract
 
 TGraphEntity = TypeVar("TGraphEntity", abstract.AbstractEdge, abstract.AbstractNode)
+
 Base = declarative.declarative_base()
 
 
@@ -86,41 +87,6 @@ def _get_descendants(cls: type[TGraphEntity]) -> Iterator[type[TGraphEntity]]:
         yield from _get_descendants(sub_cls)
 
 
-def _create_proxy(
-    src: type[abstract.AbstractNode],
-    edge: type[abstract.AbstractEdge],
-    dst: type[abstract.AbstractNode],
-) -> None:
-    """Creates an association proxy between the two nodes via the edge.
-
-    This is were we populate linked node properties. e.g. `project.cases` &
-    `case.projects` in this example this function is what creates the `cases` &
-    `projects` attributes respectively.
-
-    Args:
-        src: The source node which is linked to the dst via the given edge.
-        edge: The edge which connects the given src & dst nodes.
-        dst: The destination node to which the src node is lined via the edge.
-    """
-    if not hasattr(dst, edge.__dst_src_assoc__):
-        setattr(
-            dst,
-            edge.__dst_src_assoc__,
-            associationproxy.association_proxy(
-                edge.__name_in__, "src", creator=lambda node: edge(src=node)
-            ),
-        )
-
-    if not hasattr(src, edge.__src_dst_assoc__):
-        setattr(
-            src,
-            edge.__src_dst_assoc__,
-            associationproxy.association_proxy(
-                edge.__name_out__, "dst", creator=lambda node: edge(dst=node)
-            ),
-        )
-
-
 def _relate_nodes(
     abstract_edge: type[abstract.AbstractEdge], abstract_node: type[abstract.AbstractNode]
 ) -> None:
@@ -134,18 +100,23 @@ def _relate_nodes(
         abstract_edge: The abstract edge which is the base of the graph edges.
         abstract_node: The abstract node which is the base of the graph nodes.
     """
-    edges = frozenset(_get_descendants(abstract_edge))
-    nodes = {c.__name__: c for c in _get_descendants(abstract_node)}
+    edge_classes = frozenset(_get_descendants(abstract_edge))
+    node_classes = {c.__name__: c for c in _get_descendants(abstract_node)}
+    edges = (
+        (node_classes[e.__src_class__], e, node_classes[e.__dst_class__]) for e in edge_classes
+    )
 
-    for edge in edges:
-        src_node = nodes[edge.__src_class__]
-        dst_node = nodes[edge.__dst_class__]
+    for src, edge, dst in edges:
+        src.__add_edge_out__(edge)
+        dst.__add_edge_in__(edge)
 
-        _create_proxy(src_node, edge, dst_node)
-
-    for node in nodes.values():
-        node._edges_out = tuple(e.__name_out__ for e in edges if e.__src_class__ == node.__name__)
-        node._edges_in = tuple(e.__name_in__ for e in edges if e.__dst_class__ == node.__name__)
+    for node in node_classes.values():
+        node._edges_out = tuple(
+            e.__name_out__ for e in edge_classes if e.__src_class__ == node.__name__
+        )
+        node._edges_in = tuple(
+            e.__name_in__ for e in edge_classes if e.__dst_class__ == node.__name__
+        )
 
 
 def configure_graph(graphs: Iterable[Graph]) -> None:

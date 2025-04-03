@@ -10,7 +10,7 @@ import more_itertools
 import sqlalchemy
 from sqlalchemy import orm
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.ext import declarative, hybrid
+from sqlalchemy.ext import associationproxy, declarative, hybrid
 from typing_extensions import Literal, NotRequired, Self
 
 from psqlgraph import attributes, traversals, util, voided
@@ -21,12 +21,12 @@ class AbstractEntity:
     __node_class__: ClassVar[type[AbstractNode]]
     __is_abstract__: ClassVar[bool] = True
     __tablename__: ClassVar[str]
-    __label__: ClassVar[str] = "abstract_entity"
+    __label__: ClassVar[str] = "entity"
     __nonnull_properties__: ClassVar[Sequence[str]] = ()
 
-    _session_hooks_before_insert: Sequence[Callable] = ()
-    _session_hooks_before_update: Sequence[Callable] = ()
-    _session_hooks_before_delete: Sequence[Callable] = ()
+    _session_hooks_before_insert: list[Callable] = []
+    _session_hooks_before_update: list[Callable] = []
+    _session_hooks_before_delete: list[Callable] = []
 
     # ======== Columns ========
 
@@ -99,6 +99,11 @@ class AbstractEntity:
         }
 
     @classmethod
+    def __declare_first__(cls) -> None:
+        if issubclass(cls, declarative.AbstractConcreteBase) and cls.get_subclasses():
+            cls._sa_decl_prepare_nocascade()
+
+    @classmethod
     def get_edge_class(cls) -> type[AbstractEdge]:
         return cls.__edge_class__
 
@@ -112,12 +117,11 @@ class AbstractEntity:
         return cls.__name__
 
     @classmethod
-    def get_label(cls) -> str:
-        return cls.__label__
+    def get_label(cls) -> str: ...
 
     @declarative.declared_attr
     def label(cls) -> str:
-        return cls.__label__
+        return cls.get_label()
 
     @classmethod
     def is_subclass_loaded(cls, name: str) -> bool:
@@ -359,23 +363,6 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
         )
 
     @classmethod
-    def _node_association(cls, node: Literal["src", "dst"]) -> orm.RelationshipProperty | None:
-        if cls.is_abstract_base():
-            return None
-
-        backref_name = cls.__name_out__ if node == "src" else cls.__name_in__
-        node_class = cls.__src_class__ if node == "src" else cls.__dst_class__
-        join = f"{cls.__name__}.{node}_id == {node_class}.node_id"
-
-        return orm.relationship(
-            node_class,
-            primaryjoin=join,
-            backref=orm.backref(
-                backref_name, primaryjoin=join, cascade="all, delete, delete-orphan"
-            ),
-        )
-
-    @classmethod
     def _get_subclasses_labeled(cls, label) -> Iterator[type[Self]]:
         return (c for c in cls.get_subclasses() if c.get_label() == label)
 
@@ -423,6 +410,10 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
             scls, default=None, too_long=KeyError(f"More than one Edge with label {label} found.")
         )
 
+    @classmethod
+    def get_label(cls) -> str:
+        return cls.__label__
+
     # ==================================== Columns =====================================
 
     @declarative.declared_attr
@@ -430,16 +421,26 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
         return cls._id_column("src")
 
     @declarative.declared_attr
+    def src(cls) -> AbstractNode:
+        if cls.is_abstract_base():
+            return None  # type: ignore
+
+        return orm.relationship(
+            cls.__src_class__, back_populates=cls.__name_out__, foreign_keys=[cls.src_id]
+        )
+
+    @declarative.declared_attr
+    def dst(cls) -> AbstractNode:
+        if cls.is_abstract_base():
+            return None  # type: ignore
+
+        return orm.relationship(
+            cls.__dst_class__, back_populates=cls.__name_in__, foreign_keys=[cls.dst_id]
+        )
+
+    @declarative.declared_attr
     def dst_id(cls) -> str | None:
         return cls._id_column("dst")
-
-    @declarative.declared_attr
-    def src(self) -> AbstractNode | None:
-        return self._node_association("src")  # type: ignore
-
-    @declarative.declared_attr
-    def dst(self) -> AbstractNode | None:
-        return self._node_association("dst")  # type: ignore
 
     def __init__(
         self,
@@ -612,6 +613,14 @@ class AbstractNode(AbstractEntity, is_abstract=True):
 
     # ================================= Class Methods ==================================
 
+    def __init_subclass__(cls, is_abstract: bool = False) -> None:
+        super().__init_subclass__(is_abstract)
+
+        if not hasattr(cls, "__label__"):
+            # This has to be here as a hold over b/c nodes currently override the
+            # `get_label` method vs edges which set `__label__`. TODO: DEV-TODO
+            cls.__label__ = cls.get_label()
+
     @declarative.declared_attr
     def __table_args__(cls) -> tuple[sqlalchemy.Constraint, ...]:
         if cls.is_abstract_base():
@@ -654,6 +663,84 @@ class AbstractNode(AbstractEntity, is_abstract=True):
             raise KeyError(f"Node has no subclass named {name}")
 
         return sub
+
+    @classmethod
+    def get_label(cls) -> str:
+        return cls.__label__
+
+    @classmethod
+    def __add_edge_out__(cls, edge: type[AbstractEdge]) -> None:
+        """Adds the edge as an outbound relationship to another node.
+
+        This method will add both the edge as a property to the class which is a SQL
+        relationship to the edge table and the proxy relationship to the the node which
+        is the destination of the associated edge. To do this, the node will have a new
+        attribute added with the edge's configured `__name_out__` value and an attribute
+        with the the edge's configured `__src_dst_assoc__` which will link this node to
+        the node related to the edge's `dst`.
+
+        NOTE: This method is *ONLY* for internal usage to psqlgraph.
+
+        Args:
+            edge: The edge which forms and outbound relationship to another node.
+        """
+        if hasattr(cls, edge.__name_out__):
+            return
+
+        setattr(
+            cls,
+            edge.__name_out__,
+            orm.relationship(
+                edge,
+                back_populates="src",
+                cascade="all,delete,delete-orphan",
+                foreign_keys=[edge.src_id],
+            ),
+        )
+        setattr(
+            cls,
+            edge.__src_dst_assoc__,
+            associationproxy.association_proxy(
+                edge.__name_out__, "dst", creator=lambda node: edge(dst=node)
+            ),
+        )
+
+    @classmethod
+    def __add_edge_in__(cls, edge: type[AbstractEdge]) -> None:
+        """Adds the edge as an inbound relationship from another node.
+
+        This method will add both the edge as a property to the class which is a SQL
+        relationship to the edge table and the proxy relationship to the the node which
+        is the source of the associated edge. To do this, the node will have a new
+        attribute added with the edge's configured `__name_in__` value and an attribute
+        with the the edge's configured `__dst_src_assoc__` which will link this node to
+        the node related to the edge's `src`.
+
+        NOTE: This method is *ONLY* for internal usage to psqlgraph.
+
+        Args:
+            edge: The edge which forms and inbound relationship from another node.
+        """
+        if hasattr(cls, edge.__name_in__):
+            return
+
+        setattr(
+            cls,
+            edge.__name_in__,
+            orm.relationship(
+                edge,
+                back_populates="dst",
+                cascade="all,delete,delete-orphan",
+                foreign_keys=[edge.dst_id],
+            ),
+        )
+        setattr(
+            cls,
+            edge.__dst_src_assoc__,
+            associationproxy.association_proxy(
+                edge.__name_in__, "src", creator=lambda node: edge(src=node)
+            ),
+        )
 
     # =================================== Build-ins ====================================
 

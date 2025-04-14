@@ -47,6 +47,8 @@ def test_base_classes_distinct():
     # Check that the base classes are not the same.
     assert SNode != TNode
     assert SEdge != TEdge
+    assert (SNode, SEdge) == ext.register_base_class("sample")
+    assert (TNode, TEdge) == ext.register_base_class("test")
 
     sample = create_node(SNode)
     test = create_node(TNode)

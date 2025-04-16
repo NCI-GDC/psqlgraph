@@ -22,12 +22,12 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
 
     def test_getitem(self):
         """Test that indexing nodes/edges accesses their properties"""
-        node = psqlgraph.PolyNode(node_id=str(uuid.uuid4()), label="foo", properties={"bar": 1})
+        node = psqlgraph.poly_node(node_id=str(uuid.uuid4()), label="foo", properties={"bar": 1})
         self.assertEqual(node["bar"], 1)
 
     def test_setitem(self):
         """Test that indexing nodes/edges accesses their properties"""
-        node = psqlgraph.PolyNode(node_id=str(uuid.uuid4()), label="foo", properties={"bar": 1})
+        node = psqlgraph.poly_node(node_id=str(uuid.uuid4()), label="foo", properties={"bar": 1})
         node["bar"] = 2
         self.assertEqual(node["bar"], 2)
         edge = models.Edge1(src_id=None, dst_id=None)
@@ -37,7 +37,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
     def test_long_ints_roundtrip(self):
         """Test that integers that only fit in 26 bits round trip correctly."""
         with self.g.session_scope():
-            node = psqlgraph.PolyNode(
+            node = psqlgraph.poly_node(
                 node_id=str(uuid.uuid4()),
                 label="foo",
                 properties={"bar": 9223372036854775808},
@@ -256,7 +256,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
 
         props = util.sanitize({"key1": None, "key2": 2})
         with self.g.session_scope():
-            node = psqlgraph.PolyNode(node_id=node_id, label="test", properties=props)
+            node = psqlgraph.poly_node(node_id=node_id, label="test", properties=props)
         test_string = "This is a test"
         node.properties["key1"] = test_string
         with self.g.session_scope() as session:
@@ -329,7 +329,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
 
         dst = self.g.node_merge(node_id=str(uuid.uuid4()), label="test")
         edge1 = self.g.edge_insert(
-            psqlgraph.PolyEdge(src_id=node_id, dst_id=dst.node_id, label="edge1")
+            psqlgraph.poly_edge(src_id=node_id, dst_id=dst.node_id, label="edge1")
         )
 
         with self.g.session_scope():
@@ -404,7 +404,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
 
         dst = self.g.node_merge(node_id=str(uuid.uuid4()), label="test")
         edge1 = self.g.edge_insert(
-            psqlgraph.PolyEdge(src_id=node_id, dst_id=dst.node_id, label="edge1")
+            psqlgraph.poly_edge(src_id=node_id, dst_id=dst.node_id, label="edge1")
         )
 
         with self.g.session_scope():
@@ -437,7 +437,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
 
         propertiesB = {"key1": None, "key2": 2, "key3": timestamp()}
         with self.assertRaises(exc.IntegrityError):
-            bad_node = psqlgraph.PolyNode(
+            bad_node = psqlgraph.poly_node(
                 node_id=tempid,
                 system_annotations={},
                 acl=[],
@@ -616,7 +616,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
             self.g.node_merge(node_id=dst_id, label="test")
 
             edge = self.g.edge_insert(
-                psqlgraph.PolyEdge(src_id=src_id, dst_id=dst_id, label="edge1")
+                psqlgraph.poly_edge(src_id=src_id, dst_id=dst_id, label="edge1")
             )
             self.g.edge_update(edge, properties={"test": None})
             self.g.edge_update(edge, properties={"test": 2})
@@ -644,7 +644,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
             self.g.node_merge(node_id=src_id, label="test")
             self.g.node_merge(node_id=dst_id, label="test")
             edge = self.g.edge_insert(
-                psqlgraph.PolyEdge(src_id=src_id, dst_id=dst_id, label="edge1")
+                psqlgraph.poly_edge(src_id=src_id, dst_id=dst_id, label="edge1")
             )
         with self.g.session_scope():
             self.g.edge_update(edge, properties={"test": 3})
@@ -660,7 +660,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
             self.g.node_merge(node_id=src_id, label="test")
             self.g.node_merge(node_id=dst_id, label="test")
             self.g.edge_insert(
-                psqlgraph.PolyEdge(src_id=src_id, dst_id=dst_id, properties=props, label="edge1")
+                psqlgraph.poly_edge(src_id=src_id, dst_id=dst_id, properties=props, label="edge1")
             )
             edge = self.g.edge_lookup_one(src_id=src_id, dst_id=dst_id)
             self.assertEqual(edge.src_id, src_id)
@@ -683,7 +683,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
             for dst_id in dst_ids:
                 self.g.node_merge(node_id=dst_id, label="test")
                 self.g.edge_insert(
-                    psqlgraph.PolyEdge(src_id=src_id, dst_id=dst_id, label="edge1")
+                    psqlgraph.poly_edge(src_id=src_id, dst_id=dst_id, label="edge1")
                 )
 
             edge_ids = [e.dst_id for e in self.g.edge_lookup(src_id=src_id)]
@@ -699,7 +699,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         with self.g.session_scope():
             nid1 = self.g.node_merge(node_id=str(uuid.uuid4()), label="test").node_id
             nid2 = self.g.node_merge(node_id=str(uuid.uuid4()), label="test").node_id
-            self.g.edge_insert(psqlgraph.PolyEdge(src_id=nid1, dst_id=nid2, label="edge1"))
+            self.g.edge_insert(psqlgraph.poly_edge(src_id=nid1, dst_id=nid2, label="edge1"))
             self.g.edge_lookup(label="edge1", src_id=nid1, dst_id=nid2).one()
 
     def test_edge_to_json(self):
@@ -711,7 +711,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
             dst = self.g.node_merge(node_id=dst_id, label="test")
 
             edge = self.g.edge_insert(
-                psqlgraph.PolyEdge(src_id=src_id, dst_id=dst_id, label="edge1"), session=session
+                psqlgraph.poly_edge(src_id=src_id, dst_id=dst_id, label="edge1"), session=session
             )
 
             expected_json = {
@@ -771,7 +771,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
             dst = self.g.node_merge(node_id=dst_id, label="test")
 
             edge = self.g.edge_insert(
-                psqlgraph.PolyEdge(src_id=src_id, dst_id=dst_id, label="edge1")
+                psqlgraph.poly_edge(src_id=src_id, dst_id=dst_id, label="edge1")
             )
 
             edge_json = edge.to_json()
@@ -804,7 +804,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
                 for dst_id in dst_ids:
                     node = self.g.node_lookup_one(node_id=dst_id)
                     self.g.edge_insert(
-                        psqlgraph.PolyEdge(src_id=src_id, dst_id=node.node_id, label="edge1"),
+                        psqlgraph.poly_edge(src_id=src_id, dst_id=node.node_id, label="edge1"),
                         session=session,
                     )
 
@@ -830,7 +830,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
             for dst_id in dst_ids:
                 self.g.node_merge(node_id=dst_id, label="test")
                 self.g.edge_insert(
-                    psqlgraph.PolyEdge(src_id=src_id, dst_id=dst_id, label="edge1")
+                    psqlgraph.poly_edge(src_id=src_id, dst_id=dst_id, label="edge1")
                 )
 
             # Verify that the edges there are correct
@@ -888,7 +888,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
                 self.g.node_merge(src_id, label="test")
                 self.g.node_merge(dst_id, label="test")
                 self.g.edge_insert(
-                    psqlgraph.PolyEdge(
+                    psqlgraph.poly_edge(
                         src_id=src_id,
                         dst_id=dst_id,
                         label="edge1",
@@ -914,7 +914,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
                 node_id = str(uuid.uuid4())
                 self.g.node_merge(node_id=node_id, label=f"test")
                 self.g.edge_insert(
-                    psqlgraph.PolyEdge(src_id=parent_id, dst_id=node_id, label="edge1")
+                    psqlgraph.poly_edge(src_id=parent_id, dst_id=node_id, label="edge1")
                 )
                 if level < 2:
                     self._create_subtree(node_id, level + 1)
@@ -942,7 +942,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
             self.g.node_merge(node_id=src_id, label="test")
             self.g.node_merge(node_id=dst_id, label="test")
             self.g.node_merge(node_id=foo_id, label="foo")
-            self.g.edge_insert(psqlgraph.PolyEdge(src_id=src_id, dst_id=dst_id, label="edge1"))
+            self.g.edge_insert(psqlgraph.poly_edge(src_id=src_id, dst_id=dst_id, label="edge1"))
             self.g.edge_insert(models.Edge2(src_id, foo_id))
             s.commit()
             self.assertEqual(len(list(self.g.edge_lookup(src_id=src_id, dst_id=dst_id))), 1)
@@ -956,7 +956,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
     def test_simple_automatic_session(self):
         idA = str(uuid.uuid4())
         with self.g.session_scope():
-            self.g.node_insert(psqlgraph.PolyNode(node_id=idA, label="test"))
+            self.g.node_insert(psqlgraph.poly_node(node_id=idA, label="test"))
         with self.g.session_scope():
             self.g.node_lookup(idA).one()
 
@@ -971,8 +971,8 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         nid = str(uuid.uuid4())
         with self.assertRaises(exc.IntegrityError):
             with self.g.session_scope():
-                self.g.node_insert(psqlgraph.PolyNode(node_id=nid, label="test"))
-                self.g.node_insert(psqlgraph.PolyNode(node_id=nid, label="test"))
+                self.g.node_insert(psqlgraph.poly_node(node_id=nid, label="test"))
+                self.g.node_insert(psqlgraph.poly_node(node_id=nid, label="test"))
         with self.g.session_scope():
             self.assertEqual(len(list(self.g.node_lookup(nid).all())), 0)
 
@@ -986,9 +986,9 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
 
         """
         nid = str(uuid.uuid4())
-        self.g.node_insert(psqlgraph.PolyNode(node_id=nid, label="test"))
+        self.g.node_insert(psqlgraph.poly_node(node_id=nid, label="test"))
         self.assertRaises(
-            exc.IntegrityError, self.g.node_insert, psqlgraph.PolyNode(node_id=nid, label="test")
+            exc.IntegrityError, self.g.node_insert, psqlgraph.poly_node(node_id=nid, label="test")
         )
         with self.g.session_scope():
             self.assertEqual(self.g.node_lookup(nid).one().label, "test")
@@ -1004,9 +1004,9 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         nid = str(uuid.uuid4())
         with self.assertRaises(exc.IntegrityError):
             with self.g.session_scope():
-                self.g.node_insert(psqlgraph.PolyNode(node_id=nid, label="test"))
+                self.g.node_insert(psqlgraph.poly_node(node_id=nid, label="test"))
                 with self.g.session_scope(can_inherit=False):
-                    self.g.node_insert(psqlgraph.PolyNode(node_id=nid, label="test"))
+                    self.g.node_insert(psqlgraph.poly_node(node_id=nid, label="test"))
         with self.g.session_scope():
             self.assertEqual(self.g.node_lookup(nid).one().label, "test")
         self.assertFalse(self.g.has_session())
@@ -1021,12 +1021,12 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         """
         id1 = str(uuid.uuid4())
         id2 = str(uuid.uuid4())
-        self.g.node_insert(psqlgraph.PolyNode(node_id=id1, label="foo"))
+        self.g.node_insert(psqlgraph.poly_node(node_id=id1, label="foo"))
         with self.g.session_scope():
-            self.g.node_insert(psqlgraph.PolyNode(node_id=id2, label="test"))
+            self.g.node_insert(psqlgraph.poly_node(node_id=id2, label="test"))
             with self.assertRaises(exc.IntegrityError):
                 with self.g.session_scope(can_inherit=False):
-                    self.g.node_insert(psqlgraph.PolyNode(node_id=id1, label="foo"))
+                    self.g.node_insert(psqlgraph.poly_node(node_id=id1, label="foo"))
         with self.g.session_scope():
             self.assertEqual(self.g.node_lookup(id2).one().label, "test")
         self.assertFalse(self.g.has_session())
@@ -1040,13 +1040,13 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
 
         """
         id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
-        self.g.node_insert(psqlgraph.PolyNode(node_id=id1, label="foo"))
+        self.g.node_insert(psqlgraph.poly_node(node_id=id1, label="foo"))
         with self.g.session_scope():
-            self.g.node_insert(psqlgraph.PolyNode(node_id=id2, label="test"))
+            self.g.node_insert(psqlgraph.poly_node(node_id=id2, label="test"))
             with self.assertRaises(exc.IntegrityError):
                 with self.g.session_scope(can_inherit=False):
-                    self.g.node_insert(psqlgraph.PolyNode(node_id=id1, label="foo"))
-                    self.g.node_insert(psqlgraph.PolyNode(node_id=id3, label="foo"))
+                    self.g.node_insert(psqlgraph.poly_node(node_id=id1, label="foo"))
+                    self.g.node_insert(psqlgraph.poly_node(node_id=id3, label="foo"))
         with self.g.session_scope():
             self.assertEqual(self.g.node_lookup(id2).one().label, "test")
             self.assertEqual(self.g.node_lookup(id3).count(), 0)
@@ -1061,9 +1061,9 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         """
         id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
         with self.g.session_scope():
-            self.g.node_insert(psqlgraph.PolyNode(node_id=id1, label="test"))
+            self.g.node_insert(psqlgraph.poly_node(node_id=id1, label="test"))
             with self.g.session_scope():
-                self.g.node_insert(psqlgraph.PolyNode(node_id=id2, label="foo"))
+                self.g.node_insert(psqlgraph.poly_node(node_id=id2, label="foo"))
             self.assertEqual(self.g.node_lookup(id1).one().label, "test")
             self.assertEqual(self.g.node_lookup(id2).one().label, "foo")
         self.assertFalse(self.g.has_session())
@@ -1077,10 +1077,10 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         """
         id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
         with self.g.session_scope() as outer:
-            self.g.node_insert(psqlgraph.PolyNode(node_id=id1, label="test"))
+            self.g.node_insert(psqlgraph.poly_node(node_id=id1, label="test"))
             with self.g.session_scope() as inner:
                 self.assertEqual(inner, outer)
-                self.g.node_insert(psqlgraph.PolyNode(node_id=id2, label="foo"))
+                self.g.node_insert(psqlgraph.poly_node(node_id=id2, label="foo"))
                 inner.rollback()
         with self.g.session_scope():
             self.assertEqual(self.g.node_lookup(id1).count(), 0)
@@ -1097,13 +1097,13 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
         outer = self.g._new_session()  # don't do this
         with self.g.session_scope(outer):
-            self.g.node_insert(psqlgraph.PolyNode(node_id=id1, label="test"))
+            self.g.node_insert(psqlgraph.poly_node(node_id=id1, label="test"))
             with self.g.session_scope() as inner:
                 self.assertEqual(inner, outer)
-                self.g.node_insert(psqlgraph.PolyNode(node_id=id2, label="foo"))
+                self.g.node_insert(psqlgraph.poly_node(node_id=id2, label="foo"))
                 with self.g.session_scope() as third:
                     self.assertEqual(third, outer)
-                    self.g.node_insert(psqlgraph.PolyNode(node_id=id3, label="foo"))
+                    self.g.node_insert(psqlgraph.poly_node(node_id=id3, label="foo"))
         with self.g.session_scope():
             self.assertEqual(self.g.node_lookup(id2).count(), 0)
         outer.commit()
@@ -1123,13 +1123,13 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
         outer = self.g._new_session()  # don't do this
         with self.g.session_scope(outer):
-            self.g.node_insert(psqlgraph.PolyNode(node_id=id1, label="test"))
+            self.g.node_insert(psqlgraph.poly_node(node_id=id1, label="test"))
             with self.g.session_scope() as inner:
                 self.assertEqual(inner, outer)
-                self.g.node_insert(psqlgraph.PolyNode(node_id=id2, label="foo"))
+                self.g.node_insert(psqlgraph.poly_node(node_id=id2, label="foo"))
                 with self.g.session_scope() as third:
                     self.assertEqual(third, outer)
-                    self.g.node_insert(psqlgraph.PolyNode(node_id=id3, label="foo"))
+                    self.g.node_insert(psqlgraph.poly_node(node_id=id3, label="foo"))
                     third.rollback()
         with self.g.session_scope():
             self.assertEqual(self.g.node_lookup(id1).count(), 0)
@@ -1148,14 +1148,14 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         id1, id2, id3 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
         external = self.g._new_session()
         with self.g.session_scope() as outer:
-            self.g.node_insert(psqlgraph.PolyNode(node_id=id1, label="foo"))
+            self.g.node_insert(psqlgraph.poly_node(node_id=id1, label="foo"))
             with self.g.session_scope(external) as inner:
                 self.assertEqual(inner, external)
                 self.assertNotEqual(inner, outer)
-                self.g.node_insert(psqlgraph.PolyNode(node_id=id2, label="test"))
+                self.g.node_insert(psqlgraph.poly_node(node_id=id2, label="test"))
                 with self.g.session_scope(outer) as third:
                     self.assertEqual(third, outer)
-                    self.g.node_insert(psqlgraph.PolyNode(node_id=id3, label="foo"))
+                    self.g.node_insert(psqlgraph.poly_node(node_id=id3, label="foo"))
                     third.rollback()
         with self.g.session_scope():
             self.assertEqual(self.g.node_lookup(id2).count(), 0)
@@ -1174,8 +1174,8 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         """
         id1, id2 = str(uuid.uuid4()), str(uuid.uuid4())
         with self.g.session_scope() as session:
-            self.g.node_insert(psqlgraph.PolyNode(node_id=id1, label="foo"))
-            self.g.node_insert(psqlgraph.PolyNode(node_id=id2, label="foo"))
+            self.g.node_insert(psqlgraph.poly_node(node_id=id1, label="foo"))
+            self.g.node_insert(psqlgraph.poly_node(node_id=id2, label="foo"))
             session.rollback()
         with self.g.session_scope():
             self.assertEqual(self.g.node_lookup(id2).count(), 0)
@@ -1186,7 +1186,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         """Test that library functions use the session they're scoped in"""
         id1 = str(uuid.uuid4())
         with self.g.session_scope():
-            self.g.node_insert(psqlgraph.PolyNode(node_id=id1, label="test"))
+            self.g.node_insert(psqlgraph.poly_node(node_id=id1, label="test"))
             self.g.node_lookup(node_id=id1).one()
 
 

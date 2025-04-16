@@ -15,11 +15,10 @@ from sqlalchemy.orm import configure_mappers, sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 from typing_extensions import Literal
 
-from psqlgraph import ext, voided
+from psqlgraph import ext, poly, voided
 from psqlgraph.edge import AbstractEdge
 from psqlgraph.exc import QueryError
 from psqlgraph.hooks import receive_before_flush
-from psqlgraph.node import PolyNode
 from psqlgraph.query import GraphQuery
 from psqlgraph.session import GraphSession
 
@@ -365,7 +364,13 @@ class PsqlGraphDriver:
                 node = self.nodes(cls).ids([node_id]).scalar()
 
             if not node:
-                node = PolyNode(node_id, label, acl, system_annotations, properties)
+                node = poly.poly_node(
+                    node_id=node_id,
+                    label=label,
+                    acl=acl,
+                    system_annotations=system_annotations,
+                    properties=properties,
+                )
             else:
                 self.node_update(node, system_annotations, acl, properties)
 

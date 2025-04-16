@@ -1,7 +1,8 @@
 from psqlgraph.attributes import pg_property
 from psqlgraph.base import create_all, drop_all
-from psqlgraph.edge import AbstractEdge, Edge, PolyEdge
-from psqlgraph.node import AbstractNode, Node, PolyNode
+from psqlgraph.edge import AbstractEdge, Edge
+from psqlgraph.node import AbstractNode, Node
+from psqlgraph.poly import PolyEdge, PolyNode, poly_edge, poly_node
 from psqlgraph.psql import PsqlGraphDriver
 from psqlgraph.voided import VoidedEdge, VoidedNode
 
@@ -18,4 +19,6 @@ __all__ = (
     "create_all",
     "drop_all",
     "pg_property",
+    "poly_node",
+    "poly_edge",
 )

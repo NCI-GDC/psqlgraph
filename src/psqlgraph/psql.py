@@ -14,7 +14,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import configure_mappers, sessionmaker
 from typing_extensions import Literal
 
-from psqlgraph import ext, voided
+from psqlgraph import ext, poly, voided
 from psqlgraph.hooks import receive_before_flush
 from psqlgraph.query import GraphQuery
 from psqlgraph.session import GraphSession

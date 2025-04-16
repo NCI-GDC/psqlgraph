@@ -12,9 +12,11 @@ import sqlalchemy
 import xlocal
 from sqlalchemy import event
 from sqlalchemy.orm import configure_mappers, sessionmaker
+from sqlalchemy.orm.attributes import flag_modified
 from typing_extensions import Literal
 
 from psqlgraph import ext, poly, voided
+from psqlgraph.exc import QueryError
 from psqlgraph.hooks import receive_before_flush
 from psqlgraph.query import GraphQuery
 from psqlgraph.session import GraphSession

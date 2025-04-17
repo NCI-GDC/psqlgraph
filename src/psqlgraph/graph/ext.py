@@ -9,13 +9,14 @@ hinting purposes.
 from collections.abc import Iterable, Iterator
 from typing import TypedDict, TypeVar
 
+from sqlalchemy import orm
 from sqlalchemy.ext import declarative
 
 from psqlgraph.graph import abstract
 
 TGraphEntity = TypeVar("TGraphEntity", abstract.AbstractEdge, abstract.AbstractNode)
 
-Base = declarative.declarative_base()
+Base = orm.declarative_base()
 
 
 class Graph(TypedDict):

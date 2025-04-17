@@ -12,11 +12,6 @@ SBase = ext.get_orm_base("sample")
 TNode, TEdge = ext.register_base_class("test")
 TBase = ext.get_orm_base("test")
 
-globals()["SNode"] = SNode
-
-
-def foo(node: SNode) -> int: ...
-
 
 @pytest.mark.parametrize(
     "ns",

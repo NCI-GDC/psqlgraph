@@ -1,4 +1,5 @@
 from sqlalchemy.orm.session import Session
+from typing_extensions import override
 
 from psqlgraph import exc
 
@@ -21,6 +22,13 @@ class GraphSession(Session):
         self._psqlgraph_closed = False
         self.package_namespace = kwargs.pop("package_namespace", None)
         super().__init__(*args, **kwargs)
+
+    @override
+    def _autobegin(self):
+        if self._psqlgraph_closed:
+            raise exc.SessionClosedError("session closed")
+
+        return super()._autobegin()
 
     @inherit_docstring_from(Session)
     def connection(self, *args, **kwargs):

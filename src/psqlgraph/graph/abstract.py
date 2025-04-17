@@ -16,6 +16,7 @@ from typing_extensions import Literal, NotRequired, Self
 from psqlgraph import attributes, traversals, util, voided
 
 
+@orm.declarative_mixin
 class AbstractEntity:
     __edge_class__: ClassVar[type[AbstractEdge]]
     __node_class__: ClassVar[type[AbstractNode]]

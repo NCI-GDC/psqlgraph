@@ -9,7 +9,7 @@ from test import models
 
 
 def test__poly_edge__generates_defaults() -> None:
-    edge = psqlgraph.PolyEdge(label=models.Edge2.get_label())
+    edge = psqlgraph.poly_edge(label=models.Edge2.get_label())
 
     assert edge.src_id is None
     assert edge.dst_id is None
@@ -44,11 +44,11 @@ def test__poly_edge__generates_defaults() -> None:
     ),
 )
 def test__poly_edge__generates_from_input(inputs: dict) -> None:
-    """Given a PolyEdge or PolyNode
+    """Given a poly_edge or poly_node
     When called with an unknown label (i.e. associated with no graph entity.)
     Then a ValueError is raised.
     """
-    edge = psqlgraph.PolyEdge(**inputs)
+    edge = psqlgraph.poly_edge(**inputs)
 
     assert edge.src_id == inputs["src_id"]
     assert edge.dst_id == inputs["dst_id"]
@@ -66,7 +66,7 @@ def test__poly_edge__generates_from_input(inputs: dict) -> None:
 
 
 def test__poly_node__generates_defaults() -> None:
-    node = psqlgraph.PolyNode(label=models.FooBar.get_label())
+    node = psqlgraph.poly_node(label=models.FooBar.get_label())
 
     assert node.node_id is None
     assert node.acl == []
@@ -98,11 +98,11 @@ def test__poly_node__generates_defaults() -> None:
     ),
 )
 def test__poly_node__generates_from_input(inputs: dict) -> None:
-    """Given a PolyEdge or PolyNode
+    """Given a poly_edge or poly_node
     When called with an unknown label (i.e. associated with no graph entity.)
     Then a ValueError is raised.
     """
-    node = psqlgraph.PolyNode(**inputs)
+    node = psqlgraph.poly_node(**inputs)
 
     assert node.node_id == inputs["node_id"]
     assert node.acl == inputs["acl"]
@@ -119,11 +119,19 @@ def test__poly_node__generates_from_input(inputs: dict) -> None:
 
 
 @pytest.mark.parametrize("label", ("mysterious", None))
-@pytest.mark.parametrize("entity", (psqlgraph.PolyEdge, psqlgraph.PolyNode))
+@pytest.mark.parametrize("entity", (psqlgraph.poly_edge, psqlgraph.poly_node))
 def test__poly_entity__unknown_label(entity: Callable, label: str | None) -> None:
-    """Given a PolyEdge or PolyNode
+    """Given a poly_edge or poly_node
     When called with an unknown label (i.e. associated with no graph entity.)
     Then a ValueError is raised.
     """
     with pytest.raises(ValueError):
         entity(label=label)
+
+
+@pytest.mark.parametrize(
+    "entity",
+    (psqlgraph.PolyEdge, psqlgraph.PolyNode),
+)
+def test__poly_entity__deprecation(entity: Callable) -> None:
+    assert getattr(entity, "__deprecated__", False)

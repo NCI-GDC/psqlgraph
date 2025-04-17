@@ -16,7 +16,6 @@ from sqlalchemy.orm.attributes import flag_modified
 from typing_extensions import Literal
 
 from psqlgraph import ext, poly, voided
-from psqlgraph.edge import AbstractEdge
 from psqlgraph.exc import QueryError
 from psqlgraph.hooks import receive_before_flush
 from psqlgraph.query import GraphQuery
@@ -583,7 +582,7 @@ class PsqlGraphDriver:
     def reload(self, *entities):
         reloaded = []
         for e in entities:
-            if isinstance(e, AbstractEdge):
+            if isinstance(e, graph.AbstractEdge):
                 reloaded.append(self.edges(type(e)).src(e.src_id).dst(e.dst_id).one())
             else:
                 reloaded.append(self.nodes(type(e)).ids(e.node_id).one())

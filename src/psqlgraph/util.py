@@ -1,5 +1,4 @@
 import logging
-from functools import wraps
 
 from psqlgraph.exc import ValidationError
 

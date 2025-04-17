@@ -7,7 +7,7 @@ from typing import Any
 
 from typing_extensions import deprecated
 
-from psqlgraph import edge, node
+from psqlgraph import graph
 
 
 def poly_edge(
@@ -18,7 +18,7 @@ def poly_edge(
     acl: list[str] | None = None,
     system_annotations: Mapping[str, Any] | None = None,
     properties: Mapping[str, Any] | None = None,
-) -> edge.Edge:
+) -> graph.Edge:
     """Creates an edge with the type represented with the given label.
 
     Args:
@@ -33,7 +33,7 @@ def poly_edge(
     Returns:
         A new instance of the edge represented by the given label.
     """
-    edge_cls = edge.Edge.get_subclass(label)
+    edge_cls = graph.Edge.get_subclass(label)
 
     if not edge_cls:
         raise ValueError(f"Cannot resolve edge type with label: {label}")
@@ -56,7 +56,7 @@ def PolyEdge(
     acl: list[str] | None = None,
     system_annotations: Mapping[str, Any] | None = None,
     properties: Mapping[str, Any] | None = None,
-) -> edge.Edge:
+) -> graph.Edge:
     return poly_edge(
         label=label,
         src_id=src_id,
@@ -74,7 +74,7 @@ def poly_node(
     acl: list[str] | None = None,
     system_annotations: Mapping[str, Any] | None = None,
     properties: Mapping[str, Any] | None = None,
-) -> node.Node:
+) -> graph.Node:
     """Creates an node with the type represented with the given label.
 
     Args:
@@ -89,7 +89,7 @@ def poly_node(
         A new instance of the node represented by the given label.
     """
 
-    node_cls = node.Node.get_subclass(label)
+    node_cls = graph.Node.get_subclass(label)
 
     if not node_cls:
         raise ValueError(f"Cannot resolve node type with label: {label}")
@@ -110,7 +110,7 @@ def PolyNode(
     acl: list[str] | None = None,
     system_annotations: Mapping[str, Any] | None = None,
     properties: Mapping[str, Any] | None = None,
-) -> node.Node:
+) -> graph.Node:
     return poly_node(
         label=label,
         node_id=node_id,

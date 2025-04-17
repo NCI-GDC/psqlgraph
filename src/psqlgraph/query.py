@@ -31,8 +31,9 @@ class GraphQuery(Query):
         entity.
 
         """
-
-        return self._joinpoint_zero().entity
+        if self._last_joined_entity:
+            return self._last_joined_entity.entity
+        return self.column_descriptions[0]["entity"]
 
     # ======== Edges ========
     def with_edge_to_node(self, edge_type, target_node):

@@ -30,7 +30,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         cmd = "select application_name from pg_stat_activity;"
         with self.g.session_scope() as s:
             s.merge(models.Test("a"))
-            app_names = {r[0] for r in self.g.engine.execute(cmd)}
+            app_names = {r[0] for r in s.execute(sa.text(cmd))}
         self.assertIn(socket.gethostname(), app_names)
 
     def test_custom_application_name(self):
@@ -40,7 +40,7 @@ class TestPsqlGraphDriver(PsqlgraphBaseTest):
         g_ = PsqlGraphDriver(application_name=custom_name, **self.pg_conf)
         with g_.session_scope() as s:
             s.merge(models.Test("a"))
-            app_names = {r[0] for r in self.g.engine.execute(cmd)}
+            app_names = {r[0] for r in s.execute(sa.text(cmd))}
         self.assertIn(custom_name, app_names)
 
     def test_property_set(self):

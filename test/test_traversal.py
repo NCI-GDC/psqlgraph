@@ -2,6 +2,7 @@ import uuid
 from test import models
 
 import pytest
+import sqlalchemy as sa
 
 from psqlgraph import Edge, Node
 
@@ -19,15 +20,15 @@ def no_allowed_2_please(edge):
 
 def clean_tables(pg_driver):
     conn = pg_driver.engine.connect()
-    conn.execute("commit")
+    conn.execute(sa.text("commit"))
     for table in Node().get_subclass_table_names():
         if table != Node.__tablename__:
-            conn.execute(f"delete from {table}")
+            conn.execute(sa.text(f"delete from {table}"))
     for table in Edge.get_subclass_table_names():
         if table != Edge.__tablename__:
-            conn.execute(f"delete from {table}")
-    conn.execute("delete from _voided_nodes")
-    conn.execute("delete from _voided_edges")
+            conn.execute(sa.text(f"delete from {table}"))
+    conn.execute(sa.text("delete from _voided_nodes"))
+    conn.execute(sa.text("delete from _voided_edges"))
     conn.close()
 
 

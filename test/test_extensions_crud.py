@@ -42,14 +42,16 @@ def test_create_tables(pg_conf):
 
     with g.session_scope() as s:
         # create sample entries
-        t1 = T1(node_id="t1", foo="spez")
+        print(T1.get_property_list())
         t2 = T2(node_id="t2", bar="spez")
+        t1 = T1(node_id="t1", foo="spez")
         t1.t2s.append(t2)
         s.add(t1)
 
     # sample query
     with g.session_scope():
         spezes = g.nodes().props(foo="spez").all()
+        print(spezes)
         assert len(spezes) == 1
 
         node = spezes[0]

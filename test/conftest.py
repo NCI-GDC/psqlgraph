@@ -3,6 +3,8 @@ import uuid
 from test import models
 
 import pytest
+from _pytest import fixtures
+from testcontainers import postgres
 
 import psqlgraph
 
@@ -77,3 +79,17 @@ def samples_with_array(pg_driver):
             n = pg_driver.nodes().get(node.node_id)
             if n:
                 pg_driver.node_delete(node=n)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def reset_database(request: fixtures.SubRequest) -> None:
+    """Clear database migration at the end of tests."""
+
+    if os.getenv("CI_COMMIT_REF_NAME"):
+        return
+
+    pg = postgres.PostgresContainer("postgres:15", driver="psycopg", dbname="automated_test")
+    pg.start()
+
+    os.environ["PG_HOST"] = f"{pg.get_container_host_ip()}:{pg.get_exposed_port(5432)}"
+    request.addfinalizer(pg.stop)

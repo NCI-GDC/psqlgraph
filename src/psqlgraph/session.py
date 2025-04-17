@@ -25,9 +25,7 @@ class GraphSession(Session):
     @inherit_docstring_from(Session)
     def connection(self, *args, **kwargs):
 
-        if self._psqlgraph_closed:
-            raise exc.SessionClosedError("session closed")
-
+        self._raise_if_closed()
         return super().connection(*args, **kwargs)
 
     def close(self, *args, **kwargs):
@@ -46,3 +44,7 @@ class GraphSession(Session):
     def query(self, *entities, **kwargs):
         kwargs["package_namespace"] = self.package_namespace
         return super().query(*entities, **kwargs)
+
+    def _raise_if_closed(self):
+        if self._psqlgraph_closed:
+            raise exc.SessionClosedError("session closed")

@@ -7,6 +7,7 @@ import socket
 # External modules
 from contextlib import contextmanager
 
+import sqlalchemy as sa
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import configure_mappers, sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
@@ -80,9 +81,7 @@ class PsqlGraphDriver:
             )
 
         # Create driver engine
-        self.engine = create_engine(
-            conn_str, encoding="latin1", connect_args=connect_args, **kwargs
-        )
+        self.engine = create_engine(conn_str, connect_args=connect_args, **kwargs)
 
         # Create context for xlocal sessions
         self.context = xlocal()
@@ -101,7 +100,7 @@ class PsqlGraphDriver:
         event.listen(session, "before_flush", receive_before_flush)
 
         if read_only:
-            session.execute("SET TRANSACTION READ ONLY")
+            session.execute(sa.text("SET TRANSACTION READ ONLY"))
 
         return session
 

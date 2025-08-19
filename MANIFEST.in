@@ -1,7 +1,7 @@
 graft src/psqlgraph
 prune tests
 prune bin
-prun doc
+prune doc
 prune docs
 prune travis
 global-exclude */__pycache__/*

@@ -41,10 +41,6 @@ lint = ["mypy", "pre-commit"]
 [project.urls]
 repository = "https://github.com/NCI-GDC/psqlgraph"
 
-[tool.black]
-include = '\.pyi?$'
-line-length = 98
-
 [tool.coverage.html]
 directory = "docs/htmlcov"
 show_contexts = true
@@ -54,11 +50,6 @@ title = "psqlgraph coverage report"
 branch = true
 context = "unit tests"
 source = ["psqlgraph"]
-
-[tool.isort]
-known_first_party = ["psqlgraph", "test"]
-line_length = 98
-profile = "black"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -71,6 +62,23 @@ log_cli = true
 log_cli_level = "INFO"
 norecursedirs = [".git", ".tox", "dist", "build", "doc", "docs", "travis"]
 testpaths = ["test"]
+
+[tool.ruff]
+line-length = 95
+src = ["src", "tests"]
+target-version = "py310"
+
+[tool.ruff.lint]
+# see https://docs.astral.sh/ruff/rules/
+select = [
+  "E", # pydocstyle errors
+  "F", # pyflakes
+  "I", # isort
+  "N", # pep8 naming
+  "RUF", # ruff specific rules
+  "UP", # pyupgrade
+  "W" # pydocstyle warnings
+]
 
 [tool.setuptools_scm]
 local_scheme = "versionista-local-format"

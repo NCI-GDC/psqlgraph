@@ -5,7 +5,6 @@ MdaNode, MdaEdge = ext.register_base_class(package_namespace="mda")
 
 
 class E1(MdaEdge):
-
     __label__ = "edge_t1_t2"
     __tablename__ = "e1"
 
@@ -40,7 +39,6 @@ class T1(MdaNode):
 
 
 def test_create_tables(pg_conf):
-
     g = psqlgraph.PsqlGraphDriver(package_namespace="mda", **pg_conf)
     orm_base = ext.get_orm_base("mda")
 

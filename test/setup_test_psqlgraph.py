@@ -16,7 +16,6 @@ ENGINE_SCHEME = psql.engine_scheme(psql.PostgresDriver.PSYCOPG2)
 
 
 def try_drop_test_data(user, database, root_user="postgres", host=""):
-
     print("Dropping old test data")
 
     engine = sqlalchemy.create_engine(f"{ENGINE_SCHEME}://{root_user}@{host}/postgres")
@@ -60,7 +59,7 @@ def setup_database(user, password, database, root_user="postgres", host=""):
         )
         conn.execute(user_stmt)
 
-        perm_stmt = "GRANT ALL PRIVILEGES ON DATABASE {database} to {password}" "".format(
+        perm_stmt = "GRANT ALL PRIVILEGES ON DATABASE {database} to {password}".format(
             database=database, password=password
         )
         conn.execute(perm_stmt)
@@ -88,12 +87,13 @@ def create_indexes(host, user, password, database):
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--host", type=str, action="store", default="localhost", help="psql-server host"
     )
-    parser.add_argument("--user", type=str, action="store", default="test", help="psql test user")
+    parser.add_argument(
+        "--user", type=str, action="store", default="test", help="psql test user"
+    )
     parser.add_argument(
         "--password",
         type=str,

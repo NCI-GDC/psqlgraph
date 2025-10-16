@@ -11,14 +11,18 @@ from sqlalchemy import event, orm, schema
 
 from psqlgraph import graph, voided
 
-_GRAPHS: dict[str | None, graph.Graph] = {None: {"node": graph.Node, "edge": graph.Edge}}
+_GRAPHS: dict[str | None, graph.Graph] = {
+    None: {"node": graph.Node, "edge": graph.Edge}
+}
 _ORM_BASES: dict[str | None, type] = collections.defaultdict(orm.declarative_base)
 _ORM_BASES[None] = graph.Base
 
 # Add the listener for configuring the all graphs before the mapper is configured for
 # them. This generally happens upon the first use of any of the defined entities
 event.listen(
-    orm.mapper, "before_configured", functools.partial(graph.configure_graph, _GRAPHS.values())
+    orm.mapper,
+    "before_configured",
+    functools.partial(graph.configure_graph, _GRAPHS.values()),
 )
 
 

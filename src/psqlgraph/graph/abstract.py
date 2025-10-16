@@ -303,9 +303,9 @@ class AbstractEntity:
 
         """
         for key in self.__nonnull_properties__:
-            assert (
-                self.properties[key] is not None
-            ), f"Null value in key '{key}' violates non-null constraint for {self}."
+            assert self.properties[key] is not None, (
+                f"Null value in key '{key}' violates non-null constraint for {self}."
+            )
 
     def __snapshot_existing__(
         self, session: orm.Session, old_props: dict[str, Any], old_sysan: dict[str, Any]
@@ -339,7 +339,9 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
             return ()
 
         return (
-            sqlalchemy.Index(f"{cls.__tablename__}_dst_id_src_id_idx", "src_id", "dst_id"),
+            sqlalchemy.Index(
+                f"{cls.__tablename__}_dst_id_src_id_idx", "src_id", "dst_id"
+            ),
             sqlalchemy.Index(f"{cls.__tablename__}_dst_id", "dst_id"),
             sqlalchemy.Index(f"{cls.__tablename__}_src_id", "src_id"),
         )
@@ -390,7 +392,9 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
         )
 
     @classmethod
-    def get_unique_subclass(cls, src_label: str, label: str, dst_label: str) -> type[Self] | None:
+    def get_unique_subclass(
+        cls, src_label: str, label: str, dst_label: str
+    ) -> type[Self] | None:
         """Determines a subclass based on the src and dst."""
         base_node = cls.get_node_class()
         src_class = base_node.get_subclass(src_label)
@@ -408,7 +412,9 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
         )
 
         return more_itertools.only(
-            scls, default=None, too_long=KeyError(f"More than one Edge with label {label} found.")
+            scls,
+            default=None,
+            too_long=KeyError(f"More than one Edge with label {label} found."),
         )
 
     @classmethod
@@ -427,7 +433,9 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
             return None  # type: ignore
 
         return orm.relationship(
-            cls.__src_class__, back_populates=cls.__name_out__, foreign_keys=[cls.src_id]
+            cls.__src_class__,
+            back_populates=cls.__name_out__,
+            foreign_keys=[cls.src_id],
         )
 
     @declarative.declared_attr
@@ -462,7 +470,7 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
         if src is not None:
             if src_id is not None:
                 assert src.node_id == src_id, (
-                    "Edge initialized with src.node_id and src_id" "that don't match."
+                    "Edge initialized with src.node_id and src_idthat don't match."
                 )
             self.src = src
             self.src_id = src.node_id
@@ -472,7 +480,7 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
         if dst is not None:
             if dst_id is not None:
                 assert dst.node_id == dst_id, (
-                    "Edge initialized with dst.node_id and dst_id" "that don't match."
+                    "Edge initialized with dst.node_id and dst_idthat don't match."
                 )
             self.dst = dst
             self.dst_id = dst.node_id
@@ -482,7 +490,9 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
     # =================================== Build-ins ====================================
 
     def __repr__(self) -> str:
-        return f"<{self.get_name()}(({self.src_id})-[{self.get_label()}]->({self.dst_id})>"
+        return (
+            f"<{self.get_name()}(({self.src_id})-[{self.get_label()}]->({self.dst_id})>"
+        )
 
     def __eq__(self, other: Any) -> bool:
         return (
@@ -540,7 +550,6 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
 
     @classmethod
     def from_json(cls, json: FromJSON) -> AbstractEdge:
-
         if cls.is_abstract_base():
             assert "label" in json, "Must provide a label to resolve edge cls."
             assert "src_label" in json, "Must provide a src label to resolve edge cls."
@@ -567,7 +576,10 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
     # ==================================== History =====================================
 
     def __snapshot_existing__(
-        self, session: orm.Session, old_props: Mapping[str, Any], old_sysan: Mapping[str, Any]
+        self,
+        session: orm.Session,
+        old_props: Mapping[str, Any],
+        old_sysan: Mapping[str, Any],
     ):
         voided_edge = voided.VoidedEdge(
             src_id=self.src_id,
@@ -628,7 +640,9 @@ class AbstractNode(AbstractEntity, is_abstract=True):
             return ()
 
         return (
-            sqlalchemy.UniqueConstraint("node_id", name=f"_{cls.get_name().lower()}_id_uc"),
+            sqlalchemy.UniqueConstraint(
+                "node_id", name=f"_{cls.get_name().lower()}_id_uc"
+            ),
             sqlalchemy.Index(
                 f"{cls.__tablename__}__props_idx",
                 "_props",
@@ -807,7 +821,9 @@ class AbstractNode(AbstractEntity, is_abstract=True):
         edge_predicate: Callable[[AbstractEdge], bool] | None = None,
         max_depth: int | None = None,
     ) -> Iterator[AbstractNode]:
-        return self.traverse(mode="dfs", edge_predicate=edge_predicate, max_depth=max_depth)
+        return self.traverse(
+            mode="dfs", edge_predicate=edge_predicate, max_depth=max_depth
+        )
 
     # ==================================== History =====================================
 
@@ -816,7 +832,9 @@ class AbstractNode(AbstractEntity, is_abstract=True):
         session = self.get_session()
 
         if not session:
-            raise RuntimeError(f"{self} not bound to a session. Try get_history(session).")
+            raise RuntimeError(
+                f"{self} not bound to a session. Try get_history(session)."
+            )
 
         return self.get_history(session)
 

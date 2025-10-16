@@ -64,7 +64,6 @@ class FakeDictionary:
 
 
 class Test(psqlgraph.Node):
-
     _pg_edges = {}
 
     __label__ = "test"
@@ -94,7 +93,6 @@ class Test(psqlgraph.Node):
 
 
 class Foo(psqlgraph.Node):
-
     __label__ = "foo"
     __tablename__ = "node_foo"
 
@@ -126,7 +124,6 @@ class Foo(psqlgraph.Node):
 
 
 class Circle1(psqlgraph.Node):
-
     __label__ = "circle_1"
     __tablename__ = "node_circle1"
 
@@ -134,7 +131,6 @@ class Circle1(psqlgraph.Node):
 
 
 class Circle2(psqlgraph.Node):
-
     __label__ = "circle_2"
     __tablename__ = "node_circle2"
 
@@ -142,7 +138,6 @@ class Circle2(psqlgraph.Node):
 
 
 class FooBar(psqlgraph.Node):
-
     __label__ = "foo_bar"
     __tablename__ = "node_foobar"
     __nonnull_properties__ = ["bar"]
@@ -172,7 +167,6 @@ class TestDefaultValue(psqlgraph.Node):
 
 
 class Edge1(psqlgraph.Edge):
-
     __label__ = "edge1"
     __tablename__ = "edge_edge1"
 
@@ -197,7 +191,6 @@ class Edge1(psqlgraph.Edge):
 
 
 class Edge2(psqlgraph.Edge):
-
     __label__ = "test_edge_2"
     __tablename__ = "edge_edge2"
 
@@ -224,7 +217,6 @@ class Edge3(psqlgraph.Edge):
 # edge4 and edge5 are used to test special case, Foo->Bar and Bar->Foo are both valid
 # edges.
 class Edge4(psqlgraph.Edge):
-
     __label__ = "edge4"
     __tablename__ = "edge_edge4"
 
@@ -237,7 +229,6 @@ class Edge4(psqlgraph.Edge):
 
 
 class Edge5(psqlgraph.Edge):
-
     __label__ = "edge5"
     __tablename__ = "edge_edge5"
 

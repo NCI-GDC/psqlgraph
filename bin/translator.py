@@ -4,7 +4,6 @@ import logging
 import sys
 from multiprocessing import Pool
 
-from gdcdatamodel import models
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import joinedload, relationship
@@ -79,7 +78,6 @@ def translate_node_range(_args):
                 .limit(BLOCK)
                 .yield_per(BLOCK)
             ):
-
                 try:
                     new = PolyNode(
                         node_id=old.node_id,
@@ -143,7 +141,9 @@ def translate_edge_range(_args):
                 .all()
             ):
                 try:
-                    Type = dst.get_edge_by_labels(old.src.label, old.label, old.dst.label)
+                    Type = dst.get_edge_by_labels(
+                        old.src.label, old.label, old.dst.label
+                    )
                     print(Type.__name__)
                     new = Type(
                         src_id=old.src_id,
@@ -186,8 +186,12 @@ if __name__ == "__main__":
     parser.add_argument("--nprocs", default=16, type=int, help="number of processes")
 
     # ======== Destination options ========
-    parser.add_argument("--dest", required=True, type=str, help="the database to import to")
-    parser.add_argument("--dest-user", default="test", type=str, help="the user to import as")
+    parser.add_argument(
+        "--dest", required=True, type=str, help="the database to import to"
+    )
+    parser.add_argument(
+        "--dest-user", default="test", type=str, help="the user to import as"
+    )
     parser.add_argument(
         "--dest-password", default="test", type=str, help="the password for import user"
     )
@@ -196,8 +200,12 @@ if __name__ == "__main__":
     )
 
     # ======== Source options ========
-    parser.add_argument("--source", required=True, type=str, help="the database to import from")
-    parser.add_argument("--source-user", default="test", type=str, help="the user to import as")
+    parser.add_argument(
+        "--source", required=True, type=str, help="the database to import from"
+    )
+    parser.add_argument(
+        "--source-user", default="test", type=str, help="the user to import as"
+    )
     parser.add_argument(
         "--source-password",
         default="test",

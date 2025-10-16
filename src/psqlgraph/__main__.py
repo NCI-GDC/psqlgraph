@@ -53,7 +53,7 @@ if __name__ == "__main__":
         "--password",
         default=None,
         type=str,
-        help="password for given user. If no " "password given, one will be prompted.",
+        help="password for given user. If no password given, one will be prompted.",
     )
 
     args = parser.parse_args()

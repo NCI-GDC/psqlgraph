@@ -78,10 +78,14 @@ def test_node_factory_all_props(node_factory, label, validator):
     validator(node)
 
 
-def test_node_factory_sets_required_for_test_node(node_factory: hydrator.NodeFactory) -> None:
+def test_node_factory_sets_required_for_test_node(
+    node_factory: hydrator.NodeFactory,
+) -> None:
     test_node = node_factory.create("test", override={"key2": "something good"})
     assert re.match(STRING_MATCH, test_node.key1)
-    assert all(getattr(test_node, key) is None for key in ["key3", "new_key", "timestamp"])
+    assert all(
+        getattr(test_node, key) is None for key in ["key3", "new_key", "timestamp"]
+    )
     assert test_node["key2"] == "something good"
 
 
@@ -157,7 +161,9 @@ def test_graph_factory_with_nodes_and_edges(
         {"src": foo_uuids[1], "dst": foobar_uuids[0]},  # f1 -> fb0
     ]
 
-    created_nodes = gf.create_from_nodes_and_edges(nodes=nodes, edges=edges, unique_key="node_id")
+    created_nodes = gf.create_from_nodes_and_edges(
+        nodes=nodes, edges=edges, unique_key="node_id"
+    )
 
     expected_adjacency = collections.defaultdict(set)
     for edge_info in edges:
@@ -200,7 +206,6 @@ def test_graph_factory_random_subgraph(gdcmodels, gdcdictionary, patched_randran
 
 
 def test_graph_factory_with_globals(gdcmodels, gdcdictionary, patched_randrange):
-
     graph_globals = {
         "properties": {
             "key1": "abcdefghijklmnopqrstuvwxyz012345",
@@ -233,7 +238,6 @@ def test_graph_factory_with_globals(gdcmodels, gdcdictionary, patched_randrange)
 
 
 def test_graph_factory_with_override_globals(gdcmodels, gdcdictionary):
-
     graph_globals = {
         "properties": {
             "baz": "allowed_1",
@@ -362,7 +366,9 @@ def test_graph_factory_with_ambiguous_edges(
         {"src": src_id, "dst": dst_id, "label": edge_label},
     ]
 
-    created_nodes = gf.create_from_nodes_and_edges(nodes=nodes, edges=edges, unique_key="node_id")
+    created_nodes = gf.create_from_nodes_and_edges(
+        nodes=nodes, edges=edges, unique_key="node_id"
+    )
 
     assert len(created_nodes) == 2
 

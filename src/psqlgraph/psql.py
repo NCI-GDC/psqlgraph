@@ -52,7 +52,6 @@ def engine_scheme(driver: PostgresDriver = PostgresDriver.PSYCOPG2) -> str:
 
 
 class PsqlGraphDriver:
-
     acceptable_isolation_levels = ["REPEATABLE_READ", "SERIALIZABLE"]
 
     def __init__(
@@ -143,12 +142,13 @@ class PsqlGraphDriver:
         self.context = xlocal.xlocal()
 
     def _new_session(self, auto_flush=None, read_only=None):
-
         # use instance level value for auto_flush if nothing is passed
         auto_flush = self.auto_flush if auto_flush is None else auto_flush
         read_only = self.read_only if read_only is None else read_only
 
-        Session = sessionmaker(autoflush=auto_flush, expire_on_commit=False, class_=GraphSession)
+        Session = sessionmaker(
+            autoflush=auto_flush, expire_on_commit=False, class_=GraphSession
+        )
         Session.configure(bind=self.engine, query_cls=GraphQuery)
         session = Session(package_namespace=self.package_namespace)
         session._flush_timestamp = None
@@ -350,7 +350,6 @@ class PsqlGraphDriver:
         system_annotations=None,
         properties=None,
     ):
-
         properties = properties or {}
         system_annotations = system_annotations or {}
 
@@ -382,7 +381,6 @@ class PsqlGraphDriver:
             local.add(node)
 
     def node_update(self, node, system_annotations=None, acl=None, properties=None):
-
         properties = properties or {}
         system_annotations = system_annotations or {}
 
@@ -510,7 +508,9 @@ class PsqlGraphDriver:
             queries = [self.voided_edges()]
         elif label is not None:
             edge_cls = ext.get_abstract_edge(self.package_namespace)
-            queries = [self.edges(cls) for cls in edge_cls._get_subclasses_labeled(label)]
+            queries = [
+                self.edges(cls) for cls in edge_cls._get_subclasses_labeled(label)
+            ]
         else:
             queries = [self.edges()]
 
@@ -540,8 +540,12 @@ class PsqlGraphDriver:
 
     def get_edge_by_labels(self, src_label, edge_label, dst_label):
         node_cls = ext.get_abstract_node(self.package_namespace)
-        src_classes = [n for n in node_cls.get_subclasses() if n.get_label() == src_label]
-        dst_classes = [n for n in node_cls.get_subclasses() if n.get_label() == dst_label]
+        src_classes = [
+            n for n in node_cls.get_subclasses() if n.get_label() == src_label
+        ]
+        dst_classes = [
+            n for n in node_cls.get_subclasses() if n.get_label() == dst_label
+        ]
         assert len(src_classes) == 1, f"No classes found with src_label {src_label}"
         assert len(dst_classes) == 1, f"No classes found with dst_label {dst_label}"
 

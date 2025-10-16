@@ -14,7 +14,7 @@ class TestPGProperties(test.PsqlgraphBaseTest):
         with self.g.session_scope():
             self.g.node_insert(models.Foo(str(uuid.uuid4()), fobble=5))
 
-            fobbles = tuple(f for f, in self.g.nodes(models.Foo.fobble))
+            fobbles = tuple(f for (f,) in self.g.nodes(models.Foo.fobble))
 
             assert fobbles == (5,)
 
@@ -32,7 +32,9 @@ class TestPGProperties(test.PsqlgraphBaseTest):
         """
         with self.g.session_scope():
             self.g.node_insert(models.Foo(str(uuid.uuid4()), mixed_value=True))
-            self.g.node_insert(models.Foo(str(uuid.uuid4()), mixed_value="very important"))
+            self.g.node_insert(
+                models.Foo(str(uuid.uuid4()), mixed_value="very important")
+            )
 
             assert frozenset(self.g.nodes(models.Foo.mixed_value)) == frozenset(
                 ((True,), ("very important",))
@@ -51,7 +53,9 @@ class TestPGProperties(test.PsqlgraphBaseTest):
             )
 
             with pytest.raises(sqlalchemy_exc.DataError):
-                self.g.nodes(models.Foo).filter(models.Foo.mixed_value == "very important").one()
+                self.g.nodes(models.Foo).filter(
+                    models.Foo.mixed_value == "very important"
+                ).one()
 
     def test_type_validation(self):
         """Ensures you cannot set property to the incorrect type."""
@@ -69,7 +73,9 @@ class TestPGProperties(test.PsqlgraphBaseTest):
     def test_list_contains_string(self):
         """Ensures that a basic contains filer works with a list of strings."""
         with self.g.session_scope():
-            self.g.node_insert(models.Foo(str(uuid.uuid4()), studies=["math", "history"]))
+            self.g.node_insert(
+                models.Foo(str(uuid.uuid4()), studies=["math", "history"])
+            )
 
             assert (
                 self.g.nodes(models.Foo.node_id)
@@ -96,6 +102,8 @@ class TestPGProperties(test.PsqlgraphBaseTest):
             self.g.node_insert(models.Foo(str(uuid.uuid4()), ages=[40, 30]))
 
             assert (
-                self.g.nodes(models.Foo.node_id).filter(models.Foo.ages.contains([40])).count()
+                self.g.nodes(models.Foo.node_id)
+                .filter(models.Foo.ages.contains([40]))
+                .count()
                 == 1
             )

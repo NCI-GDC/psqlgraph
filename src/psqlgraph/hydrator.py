@@ -109,7 +109,9 @@ class ArrayRand(Randomizer):
         if self.validate_value(override):
             return override
 
-        return [self.item_randomizer.random_value() for _ in range(0, random.randint(1, 5))]
+        return [
+            self.item_randomizer.random_value() for _ in range(0, random.randint(1, 5))
+        ]
 
     def validate_value(self, value):
         return isinstance(value, list) and all(
@@ -174,7 +176,9 @@ class PropertyFactory:
                 )
             except ValueError as ve:
                 logger.debug(
-                    "Property: '{}' is most likely a relationship. Error: {}" "".format(name, ve)
+                    "Property: '{}' is most likely a relationship. Error: {}".format(
+                        name, ve
+                    )
                 )
 
     def create(self, name, override=None):
@@ -205,7 +209,8 @@ class NodeFactory:
         self.models = models
         self.schema = schema
         self.property_factories = {
-            label: PropertyFactory(node_def["properties"]) for label, node_def in schema.items()
+            label: PropertyFactory(node_def["properties"])
+            for label, node_def in schema.items()
         }
         self.graph_globals = graph_globals or {}
 
@@ -242,7 +247,9 @@ class NodeFactory:
         if all_props:
             prop_list = self.schema[label].get("properties", [])
         else:
-            prop_list = set(self.schema[label].get("required", []) + list(override.keys()))
+            prop_list = set(
+                self.schema[label].get("required", []) + list(override.keys())
+            )
 
         for prop in prop_list:
             # these two props are excluded during the real node creation
@@ -275,7 +282,11 @@ class NodeFactory:
     def validate_override_value(self, prop, label, override):
         # we allow specific passed values to override if they are valid
         try:
-            return self.property_factories[label].type_factories[prop].validate_value(override)
+            return (
+                self.property_factories[label]
+                .type_factories[prop]
+                .validate_value(override)
+            )
         except (KeyError, ValueError):
             # if this fails for whatever reason, we'll default to random value
             return False
@@ -292,7 +303,7 @@ class GraphFactory:
     def validate_nodes_metadata(nodes, unique_key):
         for node_meta in nodes:
             if "label" not in node_meta or unique_key not in node_meta:
-                msg = "Node 'label' or unique property '{}' is missing: {}" "".format(
+                msg = "Node 'label' or unique property '{}' is missing: {}".format(
                     unique_key, node_meta
                 )
                 raise ValueError(msg)
@@ -301,7 +312,9 @@ class GraphFactory:
     def validate_edges_metadata(edges):
         for edge_meta in edges:
             if "src" not in edge_meta or "dst" not in edge_meta:
-                raise ValueError(f"Edge metadata is missing 'src' or 'dst': {edge_meta}")
+                raise ValueError(
+                    f"Edge metadata is missing 'src' or 'dst': {edge_meta}"
+                )
 
     def create_from_nodes_and_edges(
         self,
@@ -351,7 +364,9 @@ class GraphFactory:
             node2 = nodes_map.get(sub_id2)
 
             if not node1 or not node2:
-                logger.debug(f"Could not find nodes for edge: '{sub_id1}'<->'{sub_id2}'")
+                logger.debug(
+                    f"Could not find nodes for edge: '{sub_id1}'<->'{sub_id2}'"
+                )
                 continue
 
             self.make_association(node1, node2, edge_label, strict)
@@ -438,7 +453,9 @@ class GraphFactory:
 
                 child_cls = edge_info["type"]
 
-                child_node = self.node_factory.create(child_cls.get_label(), all_props=all_props)
+                child_node = self.node_factory.create(
+                    child_cls.get_label(), all_props=all_props
+                )
 
                 label_node_map[child_node.get_label()].add(child_node[unique_key])
                 nodes_map[child_node[unique_key]] = child_node
@@ -547,14 +564,18 @@ class GraphFactory:
         association_name = None
         if edge_label:
             # attempt to get association using link name - e.g., performed_on
-            association_name = self.get_association_by_edge_label(src_node, dst_node, edge_label)
+            association_name = self.get_association_by_edge_label(
+                src_node, dst_node, edge_label
+            )
 
         if association_name:
             getattr(src_node, association_name).append(dst_node)
             return
 
         # attempt to get association by going through all links defined on the source node if needed.
-        association_names = self.get_association_by_edge_name(src_node, dst_node, edge_label)
+        association_names = self.get_association_by_edge_name(
+            src_node, dst_node, edge_label
+        )
 
         if len(association_names) == 1:
             getattr(src_node, association_names[0]).append(dst_node)
@@ -588,7 +609,10 @@ class GraphFactory:
             self.make_association(dst_node, src_node, edge_label, strict=True)
 
     def get_association_by_edge_name(
-        self, src_node: psqlgraph.Node, dst_node: psqlgraph.Node, edge_name: str | None = None
+        self,
+        src_node: psqlgraph.Node,
+        dst_node: psqlgraph.Node,
+        edge_name: str | None = None,
     ) -> list[str]:
         """Get the association name used to link the src and dst nodes
         Args:

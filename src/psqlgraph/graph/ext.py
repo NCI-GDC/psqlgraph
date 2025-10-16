@@ -26,11 +26,15 @@ class Graph(TypedDict):
     node: type[abstract.AbstractNode]
 
 
-class Edge(abstract.AbstractEdge, declarative.AbstractConcreteBase, Base, is_abstract=True):
+class Edge(
+    abstract.AbstractEdge, declarative.AbstractConcreteBase, Base, is_abstract=True
+):
     """A builtin base edge class for constructing an object graph"""
 
 
-class Node(abstract.AbstractNode, declarative.AbstractConcreteBase, Base, is_abstract=True):
+class Node(
+    abstract.AbstractNode, declarative.AbstractConcreteBase, Base, is_abstract=True
+):
     """A builtin base node class for constructing an object graph"""
 
 
@@ -57,11 +61,17 @@ def __bind_orm__(
     """
 
     class Edge(
-        abstract.AbstractEdge, declarative.AbstractConcreteBase, orm_base, is_abstract=True
+        abstract.AbstractEdge,
+        declarative.AbstractConcreteBase,
+        orm_base,
+        is_abstract=True,
     ): ...
 
     class Node(
-        abstract.AbstractNode, declarative.AbstractConcreteBase, orm_base, is_abstract=True
+        abstract.AbstractNode,
+        declarative.AbstractConcreteBase,
+        orm_base,
+        is_abstract=True,
     ): ...
 
     Edge.__edge_class__ = Edge
@@ -89,7 +99,8 @@ def _get_descendants(cls: type[TGraphEntity]) -> Iterator[type[TGraphEntity]]:
 
 
 def _relate_nodes(
-    abstract_edge: type[abstract.AbstractEdge], abstract_node: type[abstract.AbstractNode]
+    abstract_edge: type[abstract.AbstractEdge],
+    abstract_node: type[abstract.AbstractNode],
 ) -> None:
     """Uses edges to relate the nodes to each other in the given graph.
 
@@ -104,7 +115,8 @@ def _relate_nodes(
     edge_classes = frozenset(_get_descendants(abstract_edge))
     node_classes = {c.__name__: c for c in _get_descendants(abstract_node)}
     edges = (
-        (node_classes[e.__src_class__], e, node_classes[e.__dst_class__]) for e in edge_classes
+        (node_classes[e.__src_class__], e, node_classes[e.__dst_class__])
+        for e in edge_classes
     )
 
     for src, edge, dst in edges:

@@ -471,7 +471,7 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
         if src is not None:
             if src_id is not None:
                 assert src.node_id == src_id, (
-                    "Edge initialized with src.node_id and src_idthat don't match."
+                    "Edge initialized with src.node_id and src_id that don't match."
                 )
             self.src = src
             self.src_id = src.node_id
@@ -481,7 +481,7 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
         if dst is not None:
             if dst_id is not None:
                 assert dst.node_id == dst_id, (
-                    "Edge initialized with dst.node_id and dst_idthat don't match."
+                    "Edge initialized with dst.node_id and dst_id that don't match."
                 )
             self.dst = dst
             self.dst_id = dst.node_id

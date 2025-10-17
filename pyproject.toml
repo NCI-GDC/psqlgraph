@@ -88,3 +88,23 @@ version_scheme = "versionista-format"
 env_list = ["py310", "py311", "py312", "py313", "py314"]
 skip_missing_interpreters = true
 isolated_build = true
+
+[tool.tox.env_run_base]
+commands = [
+  [
+    "python",
+    "-m",
+    "pytest",
+    {replace = "posargs", default = [
+      "--cov-report=html",
+      "--cov-report=xml",
+      "--junit-xml=report.xml"
+    ], extend = true}
+  ]
+]
+extras = ["dev"]
+pass_env = ["RABBITMQ_*", "DOCKER_*"]
+
+[tool.tox.env_run_base.set_env]
+NO_PROXY = "localhost,docker"
+no_proxy = "localhost,docker"

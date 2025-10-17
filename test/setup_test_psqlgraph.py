@@ -54,14 +54,10 @@ def setup_database(user, password, database, root_user="postgres", host=""):
     conn.execute(create_stmt)
 
     try:
-        user_stmt = "CREATE USER {user} WITH PASSWORD '{password}'".format(
-            user=user, password=password
-        )
+        user_stmt = f"CREATE USER {user} WITH PASSWORD '{password}'"
         conn.execute(user_stmt)
 
-        perm_stmt = "GRANT ALL PRIVILEGES ON DATABASE {database} to {password}".format(
-            database=database, password=password
-        )
+        perm_stmt = f"GRANT ALL PRIVILEGES ON DATABASE {database} to {password}"
         conn.execute(perm_stmt)
         conn.execute("commit")
     except Exception as msg:

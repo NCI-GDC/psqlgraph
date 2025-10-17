@@ -37,9 +37,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
 
     def test_ids(self):
         with self.g.session_scope():
-            self.assertTrue(
-                self.g.nodes().ids(self.lone_id).one().node_id == self.lone_id
-            )
+            self.assertTrue(self.g.nodes().ids(self.lone_id).one().node_id == self.lone_id)
 
     def test_not_ids(self):
         with self.g.session_scope():
@@ -58,9 +56,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
     def test_not_props(self):
         with self.g.session_scope():
             for i in range(3):
-                ns = (
-                    self.g.nodes(models.Test).not_props({"key2": i, "key3": None}).all()
-                )
+                ns = self.g.nodes(models.Test).not_props({"key2": i, "key3": None}).all()
                 self.assertNotEqual(ns, [])
                 for n in ns:
                     self.assertNotEqual(n["key2"], i)
@@ -138,9 +134,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
 
     def test_subq_without_path_no_filter(self):
         with self.g.session_scope():
-            self.assertEqual(
-                self.g.nodes(models.Foo).subq_without_path("tests").count(), 0
-            )
+            self.assertEqual(self.g.nodes(models.Foo).subq_without_path("tests").count(), 0)
 
     def test_subq_without_path_filter(self):
         with self.g.session_scope():
@@ -162,9 +156,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         ("studies", ["C1", "P1"], 2),
     ],
 )
-def test__props_in__list(
-    pg_driver, samples_with_array, node_type, col, vals, expected_count
-):
+def test__props_in__list(pg_driver, samples_with_array, node_type, col, vals, expected_count):
     with pg_driver.session_scope():
         # studies is type list
         r = pg_driver.nodes(node_type).prop_in(col, vals).count()

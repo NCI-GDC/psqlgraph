@@ -8,8 +8,8 @@ from __future__ import annotations
 import copy
 import datetime
 import types
-from collections.abc import Mapping
-from typing import Any, Iterable, Protocol, overload
+from collections.abc import Iterable, Mapping
+from typing import Any, Protocol, overload
 
 import sqlalchemy
 from sqlalchemy.dialects import postgresql

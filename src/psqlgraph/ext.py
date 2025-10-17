@@ -11,9 +11,7 @@ from sqlalchemy import event, orm, schema
 
 from psqlgraph import graph, voided
 
-_GRAPHS: dict[str | None, graph.Graph] = {
-    None: {"node": graph.Node, "edge": graph.Edge}
-}
+_GRAPHS: dict[str | None, graph.Graph] = {None: {"node": graph.Node, "edge": graph.Edge}}
 _ORM_BASES: dict[str | None, type] = collections.defaultdict(orm.declarative_base)
 _ORM_BASES[None] = graph.Base
 
@@ -59,7 +57,9 @@ def create_base_class(package_namespace: str) -> graph.Graph:
 def register_base_class(
     package_namespace: str | None = None,
 ) -> tuple[type[graph.AbstractNode], type[graph.AbstractEdge]]:
-    """Registers or returns a registered base node and edge classes as tuple for the package namespace
+    """
+        Registers or returns a registered base node and edge classes as tuple
+        for the package namespace
         Example:
             if package_namespace = `bio`
             This function will dynamically create and cache the following classes

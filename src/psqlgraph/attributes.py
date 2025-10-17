@@ -20,7 +20,7 @@ class _HasProps(Protocol):
 
 
 class PGProperty(Generic[T], hybrid.hybrid_property):
-    __slots__ = ("_name", "_setter", "_types", "_enum")
+    __slots__ = ("_enum", "_name", "_setter", "_types")
 
     def __init__(
         self,
@@ -57,9 +57,7 @@ class PGProperty(Generic[T], hybrid.hybrid_property):
         self._types = types
         self._enum = enum
 
-        super().__init__(
-            self.__pg_getter__, self.__pg_setter__, expr=self.__pg_expression__
-        )
+        super().__init__(self.__pg_getter__, self.__pg_setter__, expr=self.__pg_expression__)
 
     @override
     def __get__(self, instance, owner) -> T | None:

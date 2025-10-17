@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import types
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-from typing import Any, ClassVar, TypedDict
+from typing import Any, ClassVar, Literal, TypedDict
 
 import more_itertools
 import sqlalchemy
 from sqlalchemy import orm
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext import associationproxy, declarative, hybrid
-from typing_extensions import Literal, NotRequired, Self
+from typing_extensions import NotRequired, Self
 
 from psqlgraph import attributes, traversals, util, voided
 
@@ -25,9 +25,9 @@ class AbstractEntity:
     __label__: ClassVar[str] = "entity"
     __nonnull_properties__: ClassVar[Sequence[str]] = ()
 
-    _session_hooks_before_insert: list[Callable] = []
-    _session_hooks_before_update: list[Callable] = []
-    _session_hooks_before_delete: list[Callable] = []
+    _session_hooks_before_insert: ClassVar[list[Callable]] = []
+    _session_hooks_before_update: ClassVar[list[Callable]] = []
+    _session_hooks_before_delete: ClassVar[list[Callable]] = []
 
     # ======== Columns ========
 
@@ -90,12 +90,12 @@ class AbstractEntity:
         )
 
     @declarative.declared_attr
-    def __mapper_args__(cls) -> Mapping[str, Any]:
-        if cls.is_abstract_base():
+    def __mapper_args__(self) -> Mapping[str, Any]:
+        if self.is_abstract_base():
             return {}
 
         return {
-            "polymorphic_identity": cls.__tablename__,
+            "polymorphic_identity": self.__tablename__,
             "concrete": True,
         }
 
@@ -121,8 +121,8 @@ class AbstractEntity:
     def get_label(cls) -> str: ...
 
     @declarative.declared_attr
-    def label(cls) -> str:
-        return cls.get_label()
+    def label(self) -> str:
+        return self.get_label()
 
     @classmethod
     def is_subclass_loaded(cls, name: str) -> bool:
@@ -135,7 +135,10 @@ class AbstractEntity:
 
     @classmethod
     def get_subclasses(cls) -> Sequence[type[Self]]:
-        """Limits the scope of subclasses to only those manually specified, else defaults to actual subclasses"""
+        """
+        Limits the scope of subclasses to only those manually specified, else
+        defaults to actual subclasses
+        """
         return cls.__subclasses__()
 
     @classmethod
@@ -294,8 +297,8 @@ class AbstractEntity:
 
         assert session, "No valid session found to base new session on."
 
-        Clean = orm.sessionmaker(session.bind)
-        return Clean()
+        clean = orm.sessionmaker(session.bind)
+        return clean()
 
     def _validate(self, _: orm.Session | None = None) -> None:
         """Final validation currently only includes checking nonnull
@@ -334,16 +337,14 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
         cls.__name_out__ = f"_{cls.__name__}_out"
 
     @declarative.declared_attr
-    def __table_args__(cls) -> tuple[sqlalchemy.Constraint, ...]:
-        if cls.is_abstract_base():
+    def __table_args__(self) -> tuple[sqlalchemy.Constraint, ...]:
+        if self.is_abstract_base():
             return ()
 
         return (
-            sqlalchemy.Index(
-                f"{cls.__tablename__}_dst_id_src_id_idx", "src_id", "dst_id"
-            ),
-            sqlalchemy.Index(f"{cls.__tablename__}_dst_id", "dst_id"),
-            sqlalchemy.Index(f"{cls.__tablename__}_src_id", "src_id"),
+            sqlalchemy.Index(f"{self.__tablename__}_dst_id_src_id_idx", "src_id", "dst_id"),
+            sqlalchemy.Index(f"{self.__tablename__}_dst_id", "dst_id"),
+            sqlalchemy.Index(f"{self.__tablename__}_src_id", "src_id"),
         )
 
     @classmethod
@@ -424,32 +425,32 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
     # ==================================== Columns =====================================
 
     @declarative.declared_attr
-    def src_id(cls) -> str | None:
-        return cls._id_column("src")
+    def src_id(self) -> str | None:
+        return self._id_column("src")
 
     @declarative.declared_attr
-    def src(cls) -> AbstractNode:
-        if cls.is_abstract_base():
+    def src(self) -> AbstractNode:
+        if self.is_abstract_base():
             return None  # type: ignore
 
         return orm.relationship(
-            cls.__src_class__,
-            back_populates=cls.__name_out__,
-            foreign_keys=[cls.src_id],
+            self.__src_class__,
+            back_populates=self.__name_out__,
+            foreign_keys=[self.src_id],
         )
 
     @declarative.declared_attr
-    def dst(cls) -> AbstractNode:
-        if cls.is_abstract_base():
+    def dst(self) -> AbstractNode:
+        if self.is_abstract_base():
             return None  # type: ignore
 
         return orm.relationship(
-            cls.__dst_class__, back_populates=cls.__name_in__, foreign_keys=[cls.dst_id]
+            self.__dst_class__, back_populates=self.__name_in__, foreign_keys=[self.dst_id]
         )
 
     @declarative.declared_attr
-    def dst_id(cls) -> str | None:
-        return cls._id_column("dst")
+    def dst_id(self) -> str | None:
+        return self._id_column("dst")
 
     def __init__(
         self,
@@ -490,9 +491,7 @@ class AbstractEdge(AbstractEntity, is_abstract=True):
     # =================================== Build-ins ====================================
 
     def __repr__(self) -> str:
-        return (
-            f"<{self.get_name()}(({self.src_id})-[{self.get_label()}]->({self.dst_id})>"
-        )
+        return f"<{self.get_name()}(({self.src_id})-[{self.get_label()}]->({self.dst_id})>"
 
     def __eq__(self, other: Any) -> bool:
         return (
@@ -635,31 +634,29 @@ class AbstractNode(AbstractEntity, is_abstract=True):
             cls.__label__ = cls.get_label()
 
     @declarative.declared_attr
-    def __table_args__(cls) -> tuple[sqlalchemy.Constraint, ...]:
-        if cls.is_abstract_base():
+    def __table_args__(self) -> tuple[sqlalchemy.Constraint, ...]:
+        if self.is_abstract_base():
             return ()
 
         return (
-            sqlalchemy.UniqueConstraint(
-                "node_id", name=f"_{cls.get_name().lower()}_id_uc"
-            ),
+            sqlalchemy.UniqueConstraint("node_id", name=f"_{self.get_name().lower()}_id_uc"),
             sqlalchemy.Index(
-                f"{cls.__tablename__}__props_idx",
+                f"{self.__tablename__}__props_idx",
                 "_props",
                 postgresql_using="gin",
             ),
             sqlalchemy.Index(
-                f"{cls.__tablename__}__sysan__props_idx",
+                f"{self.__tablename__}__sysan__props_idx",
                 "_sysan",
                 "_props",
                 postgresql_using="gin",
             ),
             sqlalchemy.Index(
-                f"{cls.__tablename__}__sysan_idx",
+                f"{self.__tablename__}__sysan_idx",
                 "_sysan",
                 postgresql_using="gin",
             ),
-            sqlalchemy.Index(f"{cls.__tablename__}_node_id_idx", "node_id"),
+            sqlalchemy.Index(f"{self.__tablename__}_node_id_idx", "node_id"),
         )
 
     @classmethod
@@ -799,7 +796,8 @@ class AbstractNode(AbstractEntity, is_abstract=True):
         Args:
             mode (str): type of traversal, defaults to breadth first search
             max_depth (int): maximum distance to traverse
-            edge_pointer (str): Determines what edge direction to use, possible values are `in`, `out`
+            edge_pointer (str): Determines what edge direction to use, possible
+                                values are `in`, `out`
                             `in`: use node.edges_in, default behavior
             edge_predicate (func): a predicate performed on an `edge` object in
             order to decided whether to walk that edge or not
@@ -821,9 +819,7 @@ class AbstractNode(AbstractEntity, is_abstract=True):
         edge_predicate: Callable[[AbstractEdge], bool] | None = None,
         max_depth: int | None = None,
     ) -> Iterator[AbstractNode]:
-        return self.traverse(
-            mode="dfs", edge_predicate=edge_predicate, max_depth=max_depth
-        )
+        return self.traverse(mode="dfs", edge_predicate=edge_predicate, max_depth=max_depth)
 
     # ==================================== History =====================================
 
@@ -832,9 +828,7 @@ class AbstractNode(AbstractEntity, is_abstract=True):
         session = self.get_session()
 
         if not session:
-            raise RuntimeError(
-                f"{self} not bound to a session. Try get_history(session)."
-            )
+            raise RuntimeError(f"{self} not bound to a session. Try get_history(session).")
 
         return self.get_history(session)
 

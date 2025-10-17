@@ -8,7 +8,8 @@ def traverse(root, mode="bfs", max_depth=None, edge_pointer="in", edge_predicate
         root (Node): root node to start traverse
         mode (str): type of traversal, defaults to breadth first search
         max_depth (int): maximum distance to traverse
-        edge_pointer (str): Determines what edge direction to use, possible values are `in`, `out`
+        edge_pointer (str): Determines what edge direction to use, possible
+                            values are `in`, `out`
                         `in`: use node.edges_in, default behavior
         edge_predicate (func): a predicate performed on an `edge` object in
         order to decided whether to walk that edge or not

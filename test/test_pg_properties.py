@@ -32,9 +32,7 @@ class TestPGProperties(test.PsqlgraphBaseTest):
         """
         with self.g.session_scope():
             self.g.node_insert(models.Foo(str(uuid.uuid4()), mixed_value=True))
-            self.g.node_insert(
-                models.Foo(str(uuid.uuid4()), mixed_value="very important")
-            )
+            self.g.node_insert(models.Foo(str(uuid.uuid4()), mixed_value="very important"))
 
             assert frozenset(self.g.nodes(models.Foo.mixed_value)) == frozenset(
                 ((True,), ("very important",))
@@ -73,9 +71,7 @@ class TestPGProperties(test.PsqlgraphBaseTest):
     def test_list_contains_string(self):
         """Ensures that a basic contains filer works with a list of strings."""
         with self.g.session_scope():
-            self.g.node_insert(
-                models.Foo(str(uuid.uuid4()), studies=["math", "history"])
-            )
+            self.g.node_insert(models.Foo(str(uuid.uuid4()), studies=["math", "history"]))
 
             assert (
                 self.g.nodes(models.Foo.node_id)
@@ -102,8 +98,6 @@ class TestPGProperties(test.PsqlgraphBaseTest):
             self.g.node_insert(models.Foo(str(uuid.uuid4()), ages=[40, 30]))
 
             assert (
-                self.g.nodes(models.Foo.node_id)
-                .filter(models.Foo.ages.contains([40]))
-                .count()
+                self.g.nodes(models.Foo.node_id).filter(models.Foo.ages.contains([40])).count()
                 == 1
             )

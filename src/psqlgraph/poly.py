@@ -48,7 +48,7 @@ def poly_edge(
 
 
 @deprecated("An alias for `psqlgraph.poly_edge`; please call directly.")
-def PolyEdge(
+def PolyEdge(  # noqa: N802
     *,
     label: str,
     src_id: str | None = None,
@@ -103,7 +103,7 @@ def poly_node(
 
 
 @deprecated("An alias for `psqlgraph.poly_node`; please call directly.")
-def PolyNode(
+def PolyNode(  # noqa: N802
     *,
     label: str,
     node_id: str | None = None,

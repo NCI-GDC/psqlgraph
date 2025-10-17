@@ -109,9 +109,7 @@ class ArrayRand(Randomizer):
         if self.validate_value(override):
             return override
 
-        return [
-            self.item_randomizer.random_value() for _ in range(0, random.randint(1, 5))
-        ]
+        return [self.item_randomizer.random_value() for _ in range(0, random.randint(1, 5))]
 
     def validate_value(self, value):
         return isinstance(value, list) and all(
@@ -175,11 +173,7 @@ class PropertyFactory:
                     self.properties.get(name, {})
                 )
             except ValueError as ve:
-                logger.debug(
-                    "Property: '{}' is most likely a relationship. Error: {}".format(
-                        name, ve
-                    )
-                )
+                logger.debug(f"Property: '{name}' is most likely a relationship. Error: {ve}")
 
     def create(self, name, override=None):
         """
@@ -197,8 +191,7 @@ class PropertyFactory:
 
         if name not in self.type_factories:
             raise ValueError(
-                "No factory defined for property: '{}'. Most likely a "
-                "relationship.".format(name)
+                f"No factory defined for property: '{name}'. Most likely a relationship."
             )
 
         return name, self.type_factories[name].random_value(override)
@@ -247,9 +240,7 @@ class NodeFactory:
         if all_props:
             prop_list = self.schema[label].get("properties", [])
         else:
-            prop_list = set(
-                self.schema[label].get("required", []) + list(override.keys())
-            )
+            prop_list = set(self.schema[label].get("required", []) + list(override.keys()))
 
         for prop in prop_list:
             # these two props are excluded during the real node creation
@@ -282,11 +273,7 @@ class NodeFactory:
     def validate_override_value(self, prop, label, override):
         # we allow specific passed values to override if they are valid
         try:
-            return (
-                self.property_factories[label]
-                .type_factories[prop]
-                .validate_value(override)
-            )
+            return self.property_factories[label].type_factories[prop].validate_value(override)
         except (KeyError, ValueError):
             # if this fails for whatever reason, we'll default to random value
             return False
@@ -303,18 +290,14 @@ class GraphFactory:
     def validate_nodes_metadata(nodes, unique_key):
         for node_meta in nodes:
             if "label" not in node_meta or unique_key not in node_meta:
-                msg = "Node 'label' or unique property '{}' is missing: {}".format(
-                    unique_key, node_meta
-                )
+                msg = f"Node 'label' or unique property '{unique_key}' is missing: {node_meta}"
                 raise ValueError(msg)
 
     @staticmethod
     def validate_edges_metadata(edges):
         for edge_meta in edges:
             if "src" not in edge_meta or "dst" not in edge_meta:
-                raise ValueError(
-                    f"Edge metadata is missing 'src' or 'dst': {edge_meta}"
-                )
+                raise ValueError(f"Edge metadata is missing 'src' or 'dst': {edge_meta}")
 
     def create_from_nodes_and_edges(
         self,
@@ -364,9 +347,7 @@ class GraphFactory:
             node2 = nodes_map.get(sub_id2)
 
             if not node1 or not node2:
-                logger.debug(
-                    f"Could not find nodes for edge: '{sub_id1}'<->'{sub_id2}'"
-                )
+                logger.debug(f"Could not find nodes for edge: '{sub_id1}'<->'{sub_id2}'")
                 continue
 
             self.make_association(node1, node2, edge_label, strict)
@@ -558,8 +539,8 @@ class GraphFactory:
             strict: raise error is edge is invalid
         Raises:
             PSQLGraphError if either no association is found or multiple associations are found
-            for the source and destination nodes. Specifying a label reduces the chances of finding
-            multiple associations.
+            for the source and destination nodes. Specifying a label reduces the chances of
+            finding multiple associations.
         """
         association_name = None
         if edge_label:
@@ -572,10 +553,9 @@ class GraphFactory:
             getattr(src_node, association_name).append(dst_node)
             return
 
-        # attempt to get association by going through all links defined on the source node if needed.
-        association_names = self.get_association_by_edge_name(
-            src_node, dst_node, edge_label
-        )
+        # attempt to get association by going through all links defined on the
+        # source node if needed.
+        association_names = self.get_association_by_edge_name(src_node, dst_node, edge_label)
 
         if len(association_names) == 1:
             getattr(src_node, association_names[0]).append(dst_node)
@@ -599,7 +579,8 @@ class GraphFactory:
                     f"between '{src_node.label}' and '{dst_node.label}' "
                 )
             logger.warning(
-                "Could not find a direct relation (edge name or label = '%s') between '%s' and '%s'",
+                "Could not find a direct relation (edge name or label = '%s') "
+                "between '%s' and '%s'",
                 edge_label,
                 src_node.label,
                 dst_node.label,
@@ -627,7 +608,7 @@ class GraphFactory:
             node is aliquot, the name of the edge from the `case` node is `aliquots`
         """
         association_names = []
-        for assoc_name, assoc_meta in src_node._pg_edges.items():  # noqa
+        for assoc_name, assoc_meta in src_node._pg_edges.items():
             if edge_name and assoc_name != edge_name:
                 continue
 

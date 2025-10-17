@@ -26,15 +26,11 @@ class Graph(TypedDict):
     node: type[abstract.AbstractNode]
 
 
-class Edge(
-    abstract.AbstractEdge, declarative.AbstractConcreteBase, Base, is_abstract=True
-):
+class Edge(abstract.AbstractEdge, declarative.AbstractConcreteBase, Base, is_abstract=True):
     """A builtin base edge class for constructing an object graph"""
 
 
-class Node(
-    abstract.AbstractNode, declarative.AbstractConcreteBase, Base, is_abstract=True
-):
+class Node(abstract.AbstractNode, declarative.AbstractConcreteBase, Base, is_abstract=True):
     """A builtin base node class for constructing an object graph"""
 
 
@@ -45,7 +41,7 @@ Node.__edge_class__ = Edge
 Node.__node_class__ = Node
 
 
-def __bind_orm__(
+def __bind_orm__(  # noqa: N807
     orm_base: type,
 ) -> tuple[type[abstract.AbstractEdge], type[abstract.AbstractNode]]:
     """Binds a edge and node type to the given ORM & each other.
@@ -115,8 +111,7 @@ def _relate_nodes(
     edge_classes = frozenset(_get_descendants(abstract_edge))
     node_classes = {c.__name__: c for c in _get_descendants(abstract_node)}
     edges = (
-        (node_classes[e.__src_class__], e, node_classes[e.__dst_class__])
-        for e in edge_classes
+        (node_classes[e.__src_class__], e, node_classes[e.__dst_class__]) for e in edge_classes
     )
 
     for src, edge, dst in edges:

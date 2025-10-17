@@ -20,7 +20,7 @@ class T2(MdaNode):
     __label__ = "t2"
     __tablename__ = "t2"
 
-    _pg_edges = {}
+    _pg_edges: dict[str, str] | None = None
 
     @psqlgraph.pg_property()
     def bar(self, value):
@@ -31,7 +31,7 @@ class T1(MdaNode):
     __label__ = "t1"
     __tablename__ = "t1"
 
-    _pg_edges = {}
+    _pg_edges: dict[str, str] | None = None
 
     @psqlgraph.pg_property()
     def foo(self, value):

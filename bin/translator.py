@@ -141,11 +141,9 @@ def translate_edge_range(_args):
                 .all()
             ):
                 try:
-                    Type = dst.get_edge_by_labels(
-                        old.src.label, old.label, old.dst.label
-                    )
-                    print(Type.__name__)
-                    new = Type(
+                    a_type = dst.get_edge_by_labels(old.src.label, old.label, old.dst.label)
+                    print(a_type.__name__)
+                    new = a_type(
                         src_id=old.src_id,
                         dst_id=old.dst_id,
                         properties=old.properties,
@@ -186,12 +184,8 @@ if __name__ == "__main__":
     parser.add_argument("--nprocs", default=16, type=int, help="number of processes")
 
     # ======== Destination options ========
-    parser.add_argument(
-        "--dest", required=True, type=str, help="the database to import to"
-    )
-    parser.add_argument(
-        "--dest-user", default="test", type=str, help="the user to import as"
-    )
+    parser.add_argument("--dest", required=True, type=str, help="the database to import to")
+    parser.add_argument("--dest-user", default="test", type=str, help="the user to import as")
     parser.add_argument(
         "--dest-password", default="test", type=str, help="the password for import user"
     )

@@ -1,3 +1,6 @@
+from collections.abc import Mapping, Sequence
+from typing import ClassVar
+
 import psqlgraph
 
 
@@ -64,7 +67,7 @@ class FakeDictionary:
 
 
 class Test(psqlgraph.Node):
-    _pg_edges = {}
+    _pg_edges: dict[str, str] | None = None
 
     __label__ = "test"
     __tablename__ = "node_test"
@@ -96,7 +99,7 @@ class Foo(psqlgraph.Node):
     __label__ = "foo"
     __tablename__ = "node_foo"
 
-    _pg_edges = {}
+    _pg_edges: dict[str, str] | None = None
 
     @psqlgraph.pg_property()
     def bar(self, value):
@@ -127,22 +130,22 @@ class Circle1(psqlgraph.Node):
     __label__ = "circle_1"
     __tablename__ = "node_circle1"
 
-    _pg_edges = {}
+    _pg_edges: dict[str, str] | None = None
 
 
 class Circle2(psqlgraph.Node):
     __label__ = "circle_2"
     __tablename__ = "node_circle2"
 
-    _pg_edges = {}
+    _pg_edges: dict[str, str] | None = None
 
 
 class FooBar(psqlgraph.Node):
     __label__ = "foo_bar"
     __tablename__ = "node_foobar"
-    __nonnull_properties__ = ["bar"]
+    __nonnull_properties__: ClassVar[Sequence[str]] = ["bar"]
 
-    _pg_edges = {}
+    _pg_edges: dict[str, str] | None = None
 
     @psqlgraph.pg_property()
     def bar(self, value):
@@ -153,9 +156,9 @@ class TestDefaultValue(psqlgraph.Node):
     __label__ = "test_default_value"
     __tablename__ = "node_testdefaultvalue"
 
-    _pg_edges = {}
+    _pg_edges: dict[str, str] | None = None
 
-    _defaults = {"property_with_default": "open"}
+    _defaults: ClassVar[Mapping[str, str]] = {"property_with_default": "open"}
 
     @psqlgraph.pg_property(enum=("open", "submitted", "closed", "legacy"))
     def property_with_default(self, value):

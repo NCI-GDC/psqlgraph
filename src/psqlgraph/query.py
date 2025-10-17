@@ -58,9 +58,7 @@ class GraphQuery(Query):
         )
         session = self.session
         sq = (
-            session.query(edge_type)
-            .filter(edge_type.dst_id == target_node.node_id)
-            .subquery()
+            session.query(edge_type).filter(edge_type.dst_id == target_node.node_id).subquery()
         )
         return self.filter(self.entity().node_id == sq.c.src_id)
 
@@ -84,9 +82,7 @@ class GraphQuery(Query):
         )
         session = self.session
         sq = (
-            session.query(edge_type)
-            .filter(edge_type.src_id == source_node.node_id)
-            .subquery()
+            session.query(edge_type).filter(edge_type.src_id == source_node.node_id).subquery()
         )
         return self.filter(self.entity().node_id == sq.c.dst_id)
 
@@ -265,9 +261,7 @@ class GraphQuery(Query):
                     node_cls.get_subclass_named(edge.__src_class__),
                 )
 
-        raise AttributeError(
-            f"type object '{entity.__name__}' has no attribute '{link_name}'"
-        )
+        raise AttributeError(f"type object '{entity.__name__}' has no attribute '{link_name}'")
 
     def subq_path(self, path, filters=None, __recurse_level=0):
         """This function will performs very similarly to `path()`.  It emits a
@@ -317,7 +311,7 @@ class GraphQuery(Query):
         # Lookup link details
         link_name = path.pop(0)
         link_details = self._get_link_details(entity, link_name)
-        edge, this_id, next_id, target_class = link_details
+        _, this_id, next_id, target_class = link_details
 
         # Construct the next recursive level's base query and recurse
         next_node_q = self.session.query(
@@ -332,9 +326,7 @@ class GraphQuery(Query):
                 next_node_q = f(next_node_q)
         next_node_sq = next_node_q.subquery()
 
-        return self.filter(entity.node_id == this_id).filter(
-            next_id == next_node_sq.c.node_id
-        )
+        return self.filter(entity.node_id == this_id).filter(next_id == next_node_sq.c.node_id)
 
     def subq_without_path(self, path, filters=None, __recurse_level=0):
         """This function is similar to ``subq_path`` but will filter for
@@ -493,7 +485,8 @@ class GraphQuery(Query):
         if is_list_prop(entity, key):
             # applicable only to text arrays
             # see https://www.postgresql.org/docs/9.4/functions-json.html
-            # has_any is `?|` under the hood and that requires the right operand to be a text array
+            # has_any is `?|` under the hood and that requires the right operand
+            # to be a text array
             return self.filter(col[key].has_any(array(values)))
         assert isinstance(key, str) and isinstance(values, list)
         return self.filter(col[key].astext.in_([str(v) for v in values]))

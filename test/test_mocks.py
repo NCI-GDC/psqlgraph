@@ -83,9 +83,7 @@ def test_node_factory_sets_required_for_test_node(
 ) -> None:
     test_node = node_factory.create("test", override={"key2": "something good"})
     assert re.match(STRING_MATCH, test_node.key1)
-    assert all(
-        getattr(test_node, key) is None for key in ["key3", "new_key", "timestamp"]
-    )
+    assert all(getattr(test_node, key) is None for key in ["key3", "new_key", "timestamp"])
     assert test_node["key2"] == "something good"
 
 

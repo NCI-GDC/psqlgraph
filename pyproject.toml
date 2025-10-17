@@ -90,11 +90,16 @@ skip_missing_interpreters = true
 isolated_build = true
 
 [tool.tox.env_run_base]
+usedevelop = true
+extras = ["dev"]
+passenv = ["PG_*"]
+set_env = {SQLALCHEMY_WARN_20 = "1"}
 commands = [
   [
     "python",
     "-m",
     "pytest",
+    "-lv",
     {replace = "posargs", default = [
       "--cov-report=html",
       "--cov-report=xml",
@@ -102,9 +107,16 @@ commands = [
     ], extend = true}
   ]
 ]
-extras = ["dev"]
-pass_env = ["RABBITMQ_*", "DOCKER_*"]
 
-[tool.tox.env_run_base.set_env]
-NO_PROXY = "localhost,docker"
-no_proxy = "localhost,docker"
+[tool.tox.testenv.publish]
+changedir = ""
+pass_env = ["TWINE_*", "CI_COMMIT_*"]
+skip_install = true
+deps = ["setuptools_scm", "setuptools_git_versioning", "build", "twine"]
+install_command = ["python", "-m", "pip", "{opts}", "{packages}"]
+commands = [
+  ["python", "-m", "setuptools_git_versioning"],
+  ["python", "-m", "build"],
+  ["python", "-m", "twine", "check", "dist/*"],
+  ["python", "-m", "twine", "upload", "dist/*"]
+]

@@ -334,6 +334,11 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
             system_annotations=system_annotations_a,
         )
 
+        dst = self.g.node_merge(node_id=str(uuid.uuid4()), label="test")
+        self.g.edge_insert(
+            psqlgraph.poly_edge(src_id=node_id, dst_id=dst.node_id, label="edge1")
+        )
+
         with self.g.session_scope():
             node = self.g.node_lookup_one(node_id)
             expected_json = {
@@ -402,6 +407,11 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
             label="test",
             properties=properties_a,
             system_annotations=system_annotations_a,
+        )
+
+        dst = self.g.node_merge(node_id=str(uuid.uuid4()), label="test")
+        self.g.edge_insert(
+            psqlgraph.poly_edge(src_id=node_id, dst_id=dst.node_id, label="edge1")
         )
 
         with self.g.session_scope():
@@ -729,6 +739,10 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
 
     def test_edge_get_unique_subclass(self):
         """Test"""
+        src_id = str(uuid.uuid4())
+        dst_id = str(uuid.uuid4())
+        self.g.node_merge(node_id=src_id, label="test")
+        self.g.node_merge(node_id=dst_id, label="test")
 
         self.assertIs(
             psqlgraph.Edge.get_unique_subclass("test", "edge1", "test"), models.Edge1
@@ -739,6 +753,8 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         with self.g.session_scope():
             src_id = str(uuid.uuid4())
             dst_id = str(uuid.uuid4())
+            self.g.node_merge(node_id=src_id, label="test")
+            self.g.node_merge(node_id=dst_id, label="test")
 
             edge_json = {
                 "src_id": src_id,
@@ -764,6 +780,8 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         with self.g.session_scope():
             src_id = str(uuid.uuid4())
             dst_id = str(uuid.uuid4())
+            self.g.node_merge(node_id=src_id, label="test")
+            self.g.node_merge(node_id=dst_id, label="test")
 
             edge = self.g.edge_insert(
                 psqlgraph.poly_edge(src_id=src_id, dst_id=dst_id, label="edge1")

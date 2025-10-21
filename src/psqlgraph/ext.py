@@ -18,7 +18,9 @@ _ORM_BASES[None] = graph.Base
 # Add the listener for configuring the all graphs before the mapper is configured for
 # them. This generally happens upon the first use of any of the defined entities
 event.listen(
-    orm.mapper, "before_configured", functools.partial(graph.configure_graph, _GRAPHS.values())
+    orm.mapper,
+    "before_configured",
+    functools.partial(graph.configure_graph, _GRAPHS.values()),
 )
 
 
@@ -55,7 +57,9 @@ def create_base_class(package_namespace: str) -> graph.Graph:
 def register_base_class(
     package_namespace: str | None = None,
 ) -> tuple[type[graph.AbstractNode], type[graph.AbstractEdge]]:
-    """Registers or returns a registered base node and edge classes as tuple for the package namespace
+    """
+        Registers or returns a registered base node and edge classes as tuple
+        for the package namespace
         Example:
             if package_namespace = `bio`
             This function will dynamically create and cache the following classes

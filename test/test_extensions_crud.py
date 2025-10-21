@@ -5,7 +5,6 @@ MdaNode, MdaEdge = ext.register_base_class(package_namespace="mda")
 
 
 class E1(MdaEdge):
-
     __label__ = "edge_t1_t2"
     __tablename__ = "e1"
 
@@ -21,7 +20,7 @@ class T2(MdaNode):
     __label__ = "t2"
     __tablename__ = "t2"
 
-    _pg_edges = {}
+    _pg_edges: dict[str, str] | None = None
 
     @psqlgraph.pg_property()
     def bar(self, value):
@@ -32,7 +31,7 @@ class T1(MdaNode):
     __label__ = "t1"
     __tablename__ = "t1"
 
-    _pg_edges = {}
+    _pg_edges: dict[str, str] | None = None
 
     @psqlgraph.pg_property()
     def foo(self, value):
@@ -40,7 +39,6 @@ class T1(MdaNode):
 
 
 def test_create_tables(pg_conf):
-
     g = psqlgraph.PsqlGraphDriver(package_namespace="mda", **pg_conf)
     orm_base = ext.get_orm_base("mda")
 

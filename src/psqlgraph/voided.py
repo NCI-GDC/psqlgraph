@@ -8,8 +8,8 @@ from __future__ import annotations
 import copy
 import datetime
 import types
-from collections.abc import Mapping
-from typing import Any, Iterable, Protocol, overload
+from collections.abc import Iterable, Mapping
+from typing import Any, Protocol, overload
 
 import sqlalchemy
 from sqlalchemy.dialects import postgresql
@@ -180,9 +180,9 @@ class VoidedEdge(VoidedBase, Base):
             self.system_annotations = copy.deepcopy(dict(edge.system_annotations))
             self.properties = copy.deepcopy(dict(edge.properties))
         else:
-            assert (
-                src_id and dst_id and label
-            ), "Edge must have valid src, dst, and label to be voided."
+            assert src_id and dst_id and label, (
+                "Edge must have valid src, dst, and label to be voided."
+            )
 
             self.created = created
             self.src_id = src_id

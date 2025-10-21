@@ -22,7 +22,9 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
         for i in range(4):
             node_id = str(uuid.uuid4())
             foo_id = str(uuid.uuid4())
-            self.g.node_merge(node_id=node_id, label="test", properties={"key2": i, "key3": None})
+            self.g.node_merge(
+                node_id=node_id, label="test", properties={"key2": i, "key3": None}
+            )
             self.g.node_merge(node_id=foo_id, label="foo", properties={"bar": i})
             self.g.edge_insert(
                 psqlgraph.PolyEdge(src_id=parent_id, dst_id=node_id, label="edge1")
@@ -63,7 +65,11 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
     def test_path(self):
         with self.g.session_scope():
             self.assertEqual(
-                self.g.nodes(models.Test).ids(self.parent_id).path("foos").props(bar=1).count(),
+                self.g.nodes(models.Test)
+                .ids(self.parent_id)
+                .path("foos")
+                .props(bar=1)
+                .count(),
                 1,
             )
 
@@ -151,7 +157,7 @@ class TestPsqlGraphDriver(test.PsqlgraphBaseTest):
     ],
 )
 def test__props_in__list(pg_driver, samples_with_array, node_type, col, vals, expected_count):
-    with pg_driver.session_scope() as s:
+    with pg_driver.session_scope():
         # studies is type list
         r = pg_driver.nodes(node_type).prop_in(col, vals).count()
         assert r == expected_count
@@ -159,7 +165,7 @@ def test__props_in__list(pg_driver, samples_with_array, node_type, col, vals, ex
 
 @pytest.mark.parametrize("node_type", [models.Foo, psqlgraph.Node])
 def test__props_in__int(pg_driver, samples_with_array, node_type):
-    with pg_driver.session_scope() as s:
+    with pg_driver.session_scope():
         # fobble is type int
         r = pg_driver.nodes(node_type).prop_in("fobble", [25]).count()
         assert r == 3

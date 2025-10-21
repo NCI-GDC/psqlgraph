@@ -1,11 +1,12 @@
-"""Tests auto_flush and read_only flags are use correctly when applied to psqlgraph
+"""
+Tests auto_flush and read_only flags are use correctly when applied to psqlgraph
+auto_flush and read_only flags can be applied via the PsqlGraphDriver
+constructor or when starting newtransactions using ` with session_scope()`
 
-   auto_flush and read_only flags can be applied via the PsqlGraphDriver constructor or when starting new
-   transactions using ` with session_scope()`
-
-   flags applied to the constructor can be overridden by applying the same flag while starting a transaction.
-   Once a flag is applied to an active session, all child sessions will use the same flag values specified in the
-   parent no matter what was passed in.
+flags applied to the constructor can be overridden by applying the same flag
+while starting a transaction.
+Once a flag is applied to an active session, all child sessions will use the
+same flag values specified in the parent no matter what was passed in.
 """
 
 import pytest
@@ -102,7 +103,10 @@ def test_read_only_driver__write_failure_with_default(pg_read_only):
 
 
 def test_read_only_driver__override_default(pg_read_only):
-    """Tests default read only flag is not applied within a session that specifies its own read only flag"""
+    """
+    Tests default read only flag is not applied within a session that specifies
+    its own read only flag
+    """
 
     with pg_read_only.session_scope(read_only=False) as s:
         m1 = models.Foo(node_id="test-r")
@@ -127,11 +131,12 @@ def test_read_only_driver__merge(pg_read_only, samples_with_array):
 
 
 def test_read_only_driver__nested_inherit(pg_read_only):
-    """Tests read only flag is applied within a nested session if parent is marked as read only"""
+    """
+    Tests read only flag is applied within a nested session if parent is marked
+    as read only"""
 
     with pytest.raises(exc.InternalError):
         with pg_read_only.session_scope():
-
             with pg_read_only.session_scope() as s:
                 m1 = models.Foo(node_id="test-n")
                 s.add(m1)

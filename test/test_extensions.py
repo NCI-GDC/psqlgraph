@@ -18,14 +18,15 @@ TBase = ext.get_orm_base("test")
     ("sample", "test", None),
 )
 def test_register_bases(ns):
-
     node_cls, edge_cls = ext.register_base_class(package_namespace=ns)
     assert issubclass(node_cls, psqlgraph.AbstractNode)
     assert issubclass(edge_cls, psqlgraph.AbstractEdge)
 
 
 def test_base_classes_distinct():
-    def create_node(node_base: type[psqlgraph.AbstractNode]) -> type[psqlgraph.AbstractNode]:
+    def create_node(
+        node_base: type[psqlgraph.AbstractNode],
+    ) -> type[psqlgraph.AbstractNode]:
         class AlignedReads(node_base):
             __label__ = "aligned_reads"
             __tablename__ = "node_aligned_reads"

@@ -53,11 +53,13 @@ class GraphQuery(Query):
             g.nodes().with_edge_to_node(Edge1, node1).filter(...
 
         """
-        assert not isinstance(
-            edge_type, str
-        ), "Argument edge_type must be a subclass of Edge not a string"
+        assert not isinstance(edge_type, str), (
+            "Argument edge_type must be a subclass of Edge not a string"
+        )
         session = self.session
-        sq = session.query(edge_type).filter(edge_type.dst_id == target_node.node_id).subquery()
+        sq = (
+            session.query(edge_type).filter(edge_type.dst_id == target_node.node_id).subquery()
+        )
         return self.filter(self.entity().node_id == sq.c.src_id)
 
     def with_edge_from_node(self, edge_type, source_node):
@@ -75,11 +77,13 @@ class GraphQuery(Query):
             g.nodes().with_edge_from_node(Edge1, node1).filter(...
 
         """
-        assert not isinstance(
-            edge_type, str
-        ), "Argument edge_type must be a subclass of Edge not a string"
+        assert not isinstance(edge_type, str), (
+            "Argument edge_type must be a subclass of Edge not a string"
+        )
         session = self.session
-        sq = session.query(edge_type).filter(edge_type.src_id == source_node.node_id).subquery()
+        sq = (
+            session.query(edge_type).filter(edge_type.src_id == source_node.node_id).subquery()
+        )
         return self.filter(self.entity().node_id == sq.c.dst_id)
 
     def src(self, ids):
@@ -212,9 +216,9 @@ class GraphQuery(Query):
 
         """
         entities = [p.strip() for path in paths for p in path.split(".")]
-        assert (
-            not self.entity().is_abstract_base()
-        ), "Please narrow your search by specifying a node subclass"
+        assert not self.entity().is_abstract_base(), (
+            "Please narrow your search by specifying a node subclass"
+        )
         for e in entities:
             self = self.join(*getattr(self.entity(), e).attr)
         return self
@@ -289,9 +293,9 @@ class GraphQuery(Query):
             # we only want to mutate for recursive calls!
             filters = copy(filters)
 
-        assert (
-            not self.entity().is_abstract_base()
-        ), "Please narrow your search by specifying a node subclass"
+        assert not self.entity().is_abstract_base(), (
+            "Please narrow your search by specifying a node subclass"
+        )
 
         if not path:
             return self
@@ -307,10 +311,12 @@ class GraphQuery(Query):
         # Lookup link details
         link_name = path.pop(0)
         link_details = self._get_link_details(entity, link_name)
-        edge, this_id, next_id, target_class = link_details
+        _, this_id, next_id, target_class = link_details
 
         # Construct the next recursive level's base query and recurse
-        next_node_q = self.session.query(target_class, package_namespace=self.package_namespace)
+        next_node_q = self.session.query(
+            target_class, package_namespace=self.package_namespace
+        )
         next_node_q = next_node_q.subq_path(path, filters, __recurse_level + 1)
 
         # Pop a filter from the filter stack and apply if non-null
@@ -479,7 +485,8 @@ class GraphQuery(Query):
         if is_list_prop(entity, key):
             # applicable only to text arrays
             # see https://www.postgresql.org/docs/9.4/functions-json.html
-            # has_any is `?|` under the hood and that requires the right operand to be a text array
+            # has_any is `?|` under the hood and that requires the right operand
+            # to be a text array
             return self.filter(col[key].has_any(array(values)))
         assert isinstance(key, str) and isinstance(values, list)
         return self.filter(col[key].astext.in_([str(v) for v in values]))

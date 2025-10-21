@@ -41,7 +41,7 @@ Node.__edge_class__ = Edge
 Node.__node_class__ = Node
 
 
-def __bind_orm__(
+def __bind_orm__(  # noqa: N807
     orm_base: type,
 ) -> tuple[type[abstract.AbstractEdge], type[abstract.AbstractNode]]:
     """Binds a edge and node type to the given ORM & each other.
@@ -57,11 +57,17 @@ def __bind_orm__(
     """
 
     class Edge(
-        abstract.AbstractEdge, declarative.AbstractConcreteBase, orm_base, is_abstract=True
+        abstract.AbstractEdge,
+        declarative.AbstractConcreteBase,
+        orm_base,
+        is_abstract=True,
     ): ...
 
     class Node(
-        abstract.AbstractNode, declarative.AbstractConcreteBase, orm_base, is_abstract=True
+        abstract.AbstractNode,
+        declarative.AbstractConcreteBase,
+        orm_base,
+        is_abstract=True,
     ): ...
 
     Edge.__edge_class__ = Edge
@@ -89,7 +95,8 @@ def _get_descendants(cls: type[TGraphEntity]) -> Iterator[type[TGraphEntity]]:
 
 
 def _relate_nodes(
-    abstract_edge: type[abstract.AbstractEdge], abstract_node: type[abstract.AbstractNode]
+    abstract_edge: type[abstract.AbstractEdge],
+    abstract_node: type[abstract.AbstractNode],
 ) -> None:
     """Uses edges to relate the nodes to each other in the given graph.
 

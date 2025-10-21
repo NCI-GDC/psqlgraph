@@ -6,14 +6,15 @@ from __future__ import annotations
 import enum
 import logging
 import socket
+from collections.abc import Sequence
 from contextlib import contextmanager
+from typing import ClassVar, Literal
 
 import sqlalchemy
 import xlocal
 from sqlalchemy import event
 from sqlalchemy.orm import configure_mappers, sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
-from typing_extensions import Literal
 
 from psqlgraph import ext, graph, poly, voided
 from psqlgraph.exc import QueryError
@@ -52,8 +53,7 @@ def engine_scheme(driver: PostgresDriver = PostgresDriver.PSYCOPG2) -> str:
 
 
 class PsqlGraphDriver:
-
-    acceptable_isolation_levels = ["REPEATABLE_READ", "SERIALIZABLE"]
+    acceptable_isolation_levels: ClassVar[Sequence[str]] = ["REPEATABLE_READ", "SERIALIZABLE"]
 
     def __init__(
         self,
@@ -143,14 +143,15 @@ class PsqlGraphDriver:
         self.context = xlocal.xlocal()
 
     def _new_session(self, auto_flush=None, read_only=None):
-
         # use instance level value for auto_flush if nothing is passed
         auto_flush = self.auto_flush if auto_flush is None else auto_flush
         read_only = self.read_only if read_only is None else read_only
 
-        Session = sessionmaker(autoflush=auto_flush, expire_on_commit=False, class_=GraphSession)
-        Session.configure(bind=self.engine, query_cls=GraphQuery)
-        session = Session(package_namespace=self.package_namespace)
+        temp_session = sessionmaker(
+            autoflush=auto_flush, expire_on_commit=False, class_=GraphSession
+        )
+        temp_session.configure(bind=self.engine, query_cls=GraphQuery)
+        session = temp_session(package_namespace=self.package_namespace)
         session._flush_timestamp = None
         session._set_flush_timestamps = self.set_flush_timestamps
         event.listen(session, "before_flush", receive_before_flush)
@@ -270,9 +271,8 @@ class PsqlGraphDriver:
 
         if inherited_session and (read_only is not None or auto_flush is not None):
             logger.warning(
-                "Attempt to mark an inherited session with read_only={} or auto_flush={} will be ignored.".format(
-                    read_only, auto_flush
-                )
+                f"Attempt to mark an inherited session with read_only={read_only} "
+                f"or auto_flush={auto_flush} will be ignored."
             )
 
         # Context manager functionality
@@ -311,10 +311,7 @@ class PsqlGraphDriver:
         try:
             configure_mappers()
         except Exception as e:
-            logger.error(
-                "{}: Unable to configure mappers. "
-                "Have you imported your models?".format(str(e))
-            )
+            logger.error(f"{e!s}: Unable to configure mappers. Have you imported your models?")
 
     def __expand_query(self, query=None):
         with self.session_scope(must_inherit=True) as local:
@@ -350,7 +347,6 @@ class PsqlGraphDriver:
         system_annotations=None,
         properties=None,
     ):
-
         properties = properties or {}
         system_annotations = system_annotations or {}
 
@@ -382,7 +378,6 @@ class PsqlGraphDriver:
             local.add(node)
 
     def node_update(self, node, system_annotations=None, acl=None, properties=None):
-
         properties = properties or {}
         system_annotations = system_annotations or {}
 
@@ -553,12 +548,12 @@ class PsqlGraphDriver:
             and edge.__dst_class__ == dst_classes[0].__name__
             and edge.get_label() == edge_label
         ]
-        assert len(edges) == 1, "Expected 1 edge {}-{}->{}, found {}".format(
-            src_label, edge_label, dst_label, len(edges)
+        assert len(edges) == 1, (
+            f"Expected 1 edge {src_label}-{edge_label}->{dst_label}, found {len(edges)}"
         )
         return edges[0]
 
-    def get_PsqlEdge(
+    def get_PsqlEdge(  # noqa:N802
         self,
         src_id=None,
         dst_id=None,
@@ -569,8 +564,8 @@ class PsqlGraphDriver:
         src_label=None,
         dst_label=None,
     ):
-        Type = self.get_edge_by_labels(src_label, label, dst_label)
-        return Type(
+        return_type = self.get_edge_by_labels(src_label, label, dst_label)
+        return return_type(
             src_id=src_id,
             dst_id=dst_id,
             properties=properties or {},

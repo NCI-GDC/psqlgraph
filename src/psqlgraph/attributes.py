@@ -20,8 +20,7 @@ class _HasProps(Protocol):
 
 
 class PGProperty(Generic[T], hybrid.hybrid_property):
-
-    __slots__ = ("_name", "_setter", "_types", "_enum")
+    __slots__ = ("_enum", "_name", "_setter", "_types")
 
     def __init__(
         self,
@@ -147,7 +146,6 @@ class JsonProperty(dict):
     """Handles unicode to str conversion while retrieving properties"""
 
     def __setitem__(self, key, value):
-
         self.set_item(key, value)
         super().__setitem__(key, value)
 
@@ -167,7 +165,6 @@ class SystemAnnotationDict(JsonProperty):
         super().__init__(util.sanitize(source._sysan))
 
     def update(self, system_annotations=None, **kwargs):
-
         if system_annotations == self:
             return
 
@@ -199,7 +196,6 @@ class PropertiesDict(JsonProperty):
         super().__init__(source.property_template(source._props))
 
     def update(self, properties=None, **kwargs):
-
         if properties == self:
             return
 

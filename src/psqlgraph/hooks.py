@@ -67,8 +67,7 @@ def receive_before_flush(
 
     """
     if session._set_flush_timestamps:
-        session._flush_timestamp = list(session.execute("SELECT CURRENT_TIMESTAMP"))[0][0]
-
+        session._flush_timestamp = next(iter(session.execute("SELECT CURRENT_TIMESTAMP")))
     for target in _get_graph_entities(session.dirty):
         target._validate()
         props, sysan = get_old_version(target, "unchanged", "deleted")

@@ -173,9 +173,7 @@ class PropertyFactory:
                     self.properties.get(name, {})
                 )
             except ValueError as ve:
-                logger.debug(
-                    "Property: '{}' is most likely a relationship. Error: {}" "".format(name, ve)
-                )
+                logger.debug(f"Property: '{name}' is most likely a relationship. Error: {ve}")
 
     def create(self, name, override=None):
         """
@@ -193,8 +191,7 @@ class PropertyFactory:
 
         if name not in self.type_factories:
             raise ValueError(
-                "No factory defined for property: '{}'. Most likely a "
-                "relationship.".format(name)
+                f"No factory defined for property: '{name}'. Most likely a relationship."
             )
 
         return name, self.type_factories[name].random_value(override)
@@ -205,7 +202,8 @@ class NodeFactory:
         self.models = models
         self.schema = schema
         self.property_factories = {
-            label: PropertyFactory(node_def["properties"]) for label, node_def in schema.items()
+            label: PropertyFactory(node_def["properties"])
+            for label, node_def in schema.items()
         }
         self.graph_globals = graph_globals or {}
 
@@ -292,9 +290,7 @@ class GraphFactory:
     def validate_nodes_metadata(nodes, unique_key):
         for node_meta in nodes:
             if "label" not in node_meta or unique_key not in node_meta:
-                msg = "Node 'label' or unique property '{}' is missing: {}" "".format(
-                    unique_key, node_meta
-                )
+                msg = f"Node 'label' or unique property '{unique_key}' is missing: {node_meta}"
                 raise ValueError(msg)
 
     @staticmethod
@@ -438,7 +434,9 @@ class GraphFactory:
 
                 child_cls = edge_info["type"]
 
-                child_node = self.node_factory.create(child_cls.get_label(), all_props=all_props)
+                child_node = self.node_factory.create(
+                    child_cls.get_label(), all_props=all_props
+                )
 
                 label_node_map[child_node.get_label()].add(child_node[unique_key])
                 nodes_map[child_node[unique_key]] = child_node
@@ -541,19 +539,22 @@ class GraphFactory:
             strict: raise error is edge is invalid
         Raises:
             PSQLGraphError if either no association is found or multiple associations are found
-            for the source and destination nodes. Specifying a label reduces the chances of finding
-            multiple associations.
+            for the source and destination nodes. Specifying a label reduces the chances of
+            finding multiple associations.
         """
         association_name = None
         if edge_label:
             # attempt to get association using link name - e.g., performed_on
-            association_name = self.get_association_by_edge_label(src_node, dst_node, edge_label)
+            association_name = self.get_association_by_edge_label(
+                src_node, dst_node, edge_label
+            )
 
         if association_name:
             getattr(src_node, association_name).append(dst_node)
             return
 
-        # attempt to get association by going through all links defined on the source node if needed.
+        # attempt to get association by going through all links defined on the
+        # source node if needed.
         association_names = self.get_association_by_edge_name(src_node, dst_node, edge_label)
 
         if len(association_names) == 1:
@@ -578,7 +579,8 @@ class GraphFactory:
                     f"between '{src_node.label}' and '{dst_node.label}' "
                 )
             logger.warning(
-                "Could not find a direct relation (edge name or label = '%s') between '%s' and '%s'",
+                "Could not find a direct relation (edge name or label = '%s') "
+                "between '%s' and '%s'",
                 edge_label,
                 src_node.label,
                 dst_node.label,
@@ -588,7 +590,10 @@ class GraphFactory:
             self.make_association(dst_node, src_node, edge_label, strict=True)
 
     def get_association_by_edge_name(
-        self, src_node: psqlgraph.Node, dst_node: psqlgraph.Node, edge_name: str | None = None
+        self,
+        src_node: psqlgraph.Node,
+        dst_node: psqlgraph.Node,
+        edge_name: str | None = None,
     ) -> list[str]:
         """Get the association name used to link the src and dst nodes
         Args:
@@ -603,7 +608,7 @@ class GraphFactory:
             node is aliquot, the name of the edge from the `case` node is `aliquots`
         """
         association_names = []
-        for assoc_name, assoc_meta in src_node._pg_edges.items():  # noqa
+        for assoc_name, assoc_meta in src_node._pg_edges.items():
             if edge_name and assoc_name != edge_name:
                 continue
 

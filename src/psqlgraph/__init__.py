@@ -18,6 +18,6 @@ __all__ = (
     "create_all",
     "drop_all",
     "pg_property",
-    "poly_node",
     "poly_edge",
+    "poly_node",
 )

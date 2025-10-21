@@ -11,11 +11,11 @@ classifiers = [
   "Topic :: Internet",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Development Status   :: 5 - Production/Stable"
 ]
 dependencies = [
@@ -32,7 +32,7 @@ keywords = ["psqlgraph", "sqlalchemy", "Genomic Data Commons", "graph databases"
 license = {file = "LICENSE"}
 name = "psqlgraph"
 readme = "README.md"
-requires-python = ">=3.9,<3.14"
+requires-python = ">=3.10"
 
 [project.optional-dependencies]
 dev = ["coverage[toml]", "pytest", "pytest-cov>=2.7.1"]
@@ -40,10 +40,6 @@ lint = ["mypy", "pre-commit"]
 
 [project.urls]
 repository = "https://github.com/NCI-GDC/psqlgraph"
-
-[tool.black]
-include = '\.pyi?$'
-line-length = 98
 
 [tool.coverage.html]
 directory = "docs/htmlcov"
@@ -54,11 +50,6 @@ title = "psqlgraph coverage report"
 branch = true
 context = "unit tests"
 source = ["psqlgraph"]
-
-[tool.isort]
-known_first_party = ["psqlgraph", "test"]
-line_length = 98
-profile = "black"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -72,6 +63,47 @@ log_cli_level = "INFO"
 norecursedirs = [".git", ".tox", "dist", "build", "doc", "docs", "travis"]
 testpaths = ["test"]
 
+[tool.ruff]
+line-length = 95
+src = ["src", "tests"]
+target-version = "py310"
+
+[tool.ruff.lint]
+# see https://docs.astral.sh/ruff/rules/
+select = [
+  "E", # pydocstyle errors
+  "F", # pyflakes
+  "I", # isort
+  "N", # pep8 naming
+  "RUF", # ruff specific rules
+  "UP", # pyupgrade
+  "W" # pydocstyle warnings
+]
+
 [tool.setuptools_scm]
 local_scheme = "versionista-local-format"
 version_scheme = "versionista-format"
+
+[tool.tox]
+env_list = ["py310", "py311", "py312", "py313", "py314"]
+skip_missing_interpreters = true
+isolated_build = true
+
+[tool.tox.env_run_base]
+usedevelop = true
+extras = ["dev"]
+passenv = ["PG_*"]
+set_env = {SQLALCHEMY_WARN_20 = "1"}
+commands = [
+  [
+    "python",
+    "-m",
+    "pytest",
+    "-lv",
+    {replace = "posargs", default = [
+      "--cov-report=html",
+      "--cov-report=xml",
+      "--junit-xml=report.xml"
+    ], extend = true}
+  ]
+]

@@ -14,7 +14,7 @@ class TestPGProperties(test.PsqlgraphBaseTest):
         with self.g.session_scope():
             self.g.node_insert(models.Foo(str(uuid.uuid4()), fobble=5))
 
-            fobbles = tuple(f for f, in self.g.nodes(models.Foo.fobble))
+            fobbles = tuple(f for (f,) in self.g.nodes(models.Foo.fobble))
 
             assert fobbles == (5,)
 
@@ -51,7 +51,9 @@ class TestPGProperties(test.PsqlgraphBaseTest):
             )
 
             with pytest.raises(sqlalchemy_exc.DataError):
-                self.g.nodes(models.Foo).filter(models.Foo.mixed_value == "very important").one()
+                self.g.nodes(models.Foo).filter(
+                    models.Foo.mixed_value == "very important"
+                ).one()
 
     def test_type_validation(self):
         """Ensures you cannot set property to the incorrect type."""

@@ -10,23 +10,20 @@ def validate(f, value, types, enum=None):
     if enum:
         if value not in enum and value is not None:
             raise ValidationError(
-                "Value '{}' not in allowed value list for {} for property {}.".format(
-                    value, enum, f.__name__
-                )
+                f"Value '{value}' not in allowed value list for {enum} for "
+                f"property {f.__name__}."
             )
     if not types:
         return
 
-    _types = types + (type(None),)
+    _types = (*types, type(None))
     if str in types:
-        _types = _types + (str,)
+        _types = (*_types, str)
 
     if not isinstance(value, _types):
         raise ValidationError(
-            (
-                "Value '{}' is of type {} and is not one of the allowed types "
-                "for property {}: {}."
-            ).format(value, type(value), f.__name__, _types)
+            f"Value '{value}' is of type {type(value)} and is not one of the allowed types "
+            f"for property {f.__name__}: {_types}."
         )
 
 

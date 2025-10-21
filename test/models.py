@@ -1,3 +1,6 @@
+from collections.abc import Mapping, Sequence
+from typing import Any, ClassVar
+
 import psqlgraph
 
 
@@ -64,8 +67,7 @@ class FakeDictionary:
 
 
 class Test(psqlgraph.Node):
-
-    _pg_edges = {}
+    _pg_edges: ClassVar[dict[str, dict[str, Any]]] = {}
 
     __label__ = "test"
     __tablename__ = "node_test"
@@ -94,11 +96,10 @@ class Test(psqlgraph.Node):
 
 
 class Foo(psqlgraph.Node):
-
     __label__ = "foo"
     __tablename__ = "node_foo"
 
-    _pg_edges = {}
+    _pg_edges: ClassVar[dict[str, dict[str, Any]]] = {}
 
     @psqlgraph.pg_property()
     def bar(self, value):
@@ -126,28 +127,25 @@ class Foo(psqlgraph.Node):
 
 
 class Circle1(psqlgraph.Node):
-
     __label__ = "circle_1"
     __tablename__ = "node_circle1"
 
-    _pg_edges = {}
+    _pg_edges: ClassVar[dict[str, dict[str, Any]]] = {}
 
 
 class Circle2(psqlgraph.Node):
-
     __label__ = "circle_2"
     __tablename__ = "node_circle2"
 
-    _pg_edges = {}
+    _pg_edges: ClassVar[dict[str, dict[str, Any]]] = {}
 
 
 class FooBar(psqlgraph.Node):
-
     __label__ = "foo_bar"
     __tablename__ = "node_foobar"
-    __nonnull_properties__ = ["bar"]
+    __nonnull_properties__: ClassVar[Sequence[str]] = ["bar"]
 
-    _pg_edges = {}
+    _pg_edges: ClassVar[dict[str, dict[str, Any]]] = {}
 
     @psqlgraph.pg_property()
     def bar(self, value):
@@ -158,9 +156,9 @@ class TestDefaultValue(psqlgraph.Node):
     __label__ = "test_default_value"
     __tablename__ = "node_testdefaultvalue"
 
-    _pg_edges = {}
+    _pg_edges: ClassVar[dict[str, dict[str, Any]]] = {}
 
-    _defaults = {"property_with_default": "open"}
+    _defaults: ClassVar[Mapping[str, str]] = {"property_with_default": "open"}
 
     @psqlgraph.pg_property(enum=("open", "submitted", "closed", "legacy"))
     def property_with_default(self, value):
@@ -172,7 +170,6 @@ class TestDefaultValue(psqlgraph.Node):
 
 
 class Edge1(psqlgraph.Edge):
-
     __label__ = "edge1"
     __tablename__ = "edge_edge1"
 
@@ -197,7 +194,6 @@ class Edge1(psqlgraph.Edge):
 
 
 class Edge2(psqlgraph.Edge):
-
     __label__ = "test_edge_2"
     __tablename__ = "edge_edge2"
 
@@ -224,7 +220,6 @@ class Edge3(psqlgraph.Edge):
 # edge4 and edge5 are used to test special case, Foo->Bar and Bar->Foo are both valid
 # edges.
 class Edge4(psqlgraph.Edge):
-
     __label__ = "edge4"
     __tablename__ = "edge_edge4"
 
@@ -237,7 +232,6 @@ class Edge4(psqlgraph.Edge):
 
 
 class Edge5(psqlgraph.Edge):
-
     __label__ = "edge5"
     __tablename__ = "edge_edge5"
 

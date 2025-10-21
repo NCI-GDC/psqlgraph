@@ -107,16 +107,3 @@ commands = [
     ], extend = true}
   ]
 ]
-
-[tool.tox.testenv.publish]
-changedir = ""
-pass_env = ["TWINE_*", "CI_COMMIT_*"]
-skip_install = true
-deps = ["setuptools_scm", "setuptools_git_versioning", "build", "twine"]
-install_command = ["python", "-m", "pip", "{opts}", "{packages}"]
-commands = [
-  ["python", "-m", "setuptools_git_versioning"],
-  ["python", "-m", "build"],
-  ["python", "-m", "twine", "check", "dist/*"],
-  ["python", "-m", "twine", "upload", "dist/*"]
-]

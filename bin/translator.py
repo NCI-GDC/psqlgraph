@@ -141,9 +141,9 @@ def translate_edge_range(_args):
                 .all()
             ):
                 try:
-                    a_type = dst.get_edge_by_labels(old.src.label, old.label, old.dst.label)
-                    print(a_type.__name__)
-                    new = a_type(
+                    edge_type = dst.get_edge_by_labels(old.src.label, old.label, old.dst.label)
+                    print(edge_type.__name__)
+                    new = edge_type(
                         src_id=old.src_id,
                         dst_id=old.dst_id,
                         properties=old.properties,

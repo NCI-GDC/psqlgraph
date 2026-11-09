@@ -16,7 +16,6 @@ tox:
     - name: docker.osdc.io/ncigdc/ci-postgres-13:${BASE_CONTAINER_VERSION}
       alias: postgres
   variables:
-    BASE_CONTAINER_VERSION: 3.5.0
     # these are for postgres docker
     POSTGRES_DB: automated_test
     POSTGRES_USER: test

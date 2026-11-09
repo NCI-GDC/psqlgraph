@@ -1,11 +1,10 @@
-import more_itertools
+import pytest
 
 from test import models
 
 
-def test_value_chain_nodes() -> None:
-    first = models.Foo(node_id="first")
-    second = models.Foo(node_id="second")
+def test_node_is_not_iterable() -> None:
+    node = models.Foo(node_id="first")
 
-    assert list(more_itertools.value_chain(first, second)) == [first, second]
-    assert list(more_itertools.value_chain(first, [second])) == [first, second]
+    with pytest.raises(TypeError):
+        iter(node)

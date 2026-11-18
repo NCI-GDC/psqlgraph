@@ -1,6 +1,6 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools>=68", "wheel", "setuptools_scm[toml]>=7.0", "versionista>=1.1.0"]
+requires = ["setuptools", "setuptools_scm"]
 
 [project]
 authors = [{name = "NCI GDC", email = "support@nci-gdc.datacommons.io"}]
@@ -81,8 +81,7 @@ select = [
 ]
 
 [tool.setuptools_scm]
-local_scheme = "versionista-local-format"
-version_scheme = "versionista-format"
+fallback_version = "0.0.0"
 
 [tool.tox]
 env_list = ["py310", "py311", "py312", "py313", "py314"]

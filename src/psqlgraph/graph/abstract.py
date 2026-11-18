@@ -208,6 +208,8 @@ class AbstractEntity:
 
         return {**defaults, **properties}
 
+    __iter__ = None
+
     def __getitem__(self, key: str) -> Any:
         """Returns value corresponding to key in _props"""
         return getattr(self, key)

@@ -5,7 +5,8 @@ Session hooks
 from collections.abc import Iterable, Iterator
 from typing import Any
 
-from sqlalchemy import func, orm, select
+import sqlalchemy
+from sqlalchemy import func, orm
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import session
 
@@ -67,7 +68,9 @@ def receive_before_flush(
 
     """
     if session._set_flush_timestamps:
-        session._flush_timestamp = session.execute(select(func.current_timestamp())).scalar()
+        session._flush_timestamp = session.execute(
+            sqlalchemy.select(func.current_timestamp())
+        ).scalar()
     for target in _get_graph_entities(session.dirty):
         target._validate()
         props, sysan = get_old_version(target, "unchanged", "deleted")
